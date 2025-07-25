@@ -4,26 +4,290 @@ let currentList = null;
 let lastAction = null;
 let csvWorker = null;
 let randomWorker = null;
+let pendingListData = null;
+let audioContext = null;
 let settings = {
     displayDuration: 3,
+    countdownDuration: 5,
+    displayMode: 'all-at-once',
     preventDuplicates: false,
+    enableSoundEffects: false,
     primaryColor: '#6366f1',
-    secondaryColor: '#8b5cf6'
+    secondaryColor: '#8b5cf6',
+    fontFamily: 'Inter',
+    backgroundType: 'gradient',
+    backgroundImage: null,
+    theme: 'light',
+    themePreset: 'default'
 };
 
-// Web Workers Setup
+// Initialize tooltips
+function initTooltips() {
+    // Dispose existing tooltips first
+    const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    existingTooltips.forEach(el => {
+        const existingTooltip = bootstrap.Tooltip.getInstance(el);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+    });
+    
+    // Reinitialize
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
+
+// Theme management
+function initTheme() {
+    const savedTheme = localStorage.getItem('app-theme') || 'light';
+    settings.theme = savedTheme;
+    applyTheme(savedTheme);
+    updateThemeToggle(savedTheme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.body.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyTheme(newTheme);
+    settings.theme = newTheme;
+    localStorage.setItem('app-theme', newTheme);
+    updateThemeToggle(newTheme);
+}
+
+function applyTheme(theme) {
+    document.body.setAttribute('data-theme', theme);
+    
+    // Update meta theme-color for PWA
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (theme === 'dark') {
+        metaThemeColor.setAttribute('content', '#1f2937');
+    } else {
+        metaThemeColor.setAttribute('content', settings.primaryColor);
+    }
+}
+
+function updateThemeToggle(theme) {
+    const themeToggle = document.getElementById('themeToggle');
+    const icon = themeToggle.querySelector('i');
+    
+    if (theme === 'dark') {
+        icon.className = 'bi bi-sun-fill';
+        themeToggle.title = 'Switch to light mode';
+    } else {
+        icon.className = 'bi bi-moon-fill';
+        themeToggle.title = 'Switch to dark mode';
+    }
+}
+
+// Theme presets
+const themePresets = {
+    default: { primary: '#6366f1', secondary: '#8b5cf6' },
+    emerald: { primary: '#10b981', secondary: '#059669' },
+    ruby: { primary: '#ef4444', secondary: '#dc2626' },
+    gold: { primary: '#f59e0b', secondary: '#d97706' },
+    ocean: { primary: '#0ea5e9', secondary: '#0284c7' },
+    corporate: { primary: '#64748b', secondary: '#475569' }
+};
+
+function applyThemePreset(presetName) {
+    const preset = themePresets[presetName];
+    if (preset) {
+        settings.primaryColor = preset.primary;
+        settings.secondaryColor = preset.secondary;
+        settings.themePreset = presetName;
+        
+        document.getElementById('primaryColor').value = preset.primary;
+        document.getElementById('secondaryColor').value = preset.secondary;
+        
+        applyColors();
+        document.body.setAttribute('data-theme-preset', presetName);
+        showToast(`Applied ${presetName} theme`, 'success');
+    }
+}
+
+function applyColors() {
+    const root = document.documentElement;
+    root.style.setProperty('--primary-color', settings.primaryColor);
+    root.style.setProperty('--secondary-color', settings.secondaryColor);
+    
+    // Update meta theme-color
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    metaThemeColor.setAttribute('content', settings.primaryColor);
+}
+
+function applyFont() {
+    const root = document.documentElement;
+    root.style.setProperty('--font-family', `'${settings.fontFamily}', sans-serif`);
+}
+
+// Advanced PWA features
+function initPWA() {
+    // Check for updates
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            showToast('App updated! Refresh for new features.', 'info');
+        });
+        
+        // Listen for PWA install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            showInstallPromotion(e);
+        });
+    }
+    
+    // Register for background sync
+    if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+        navigator.serviceWorker.ready.then(registration => {
+            return registration.sync.register('winner-data-sync');
+        });
+    }
+}
+
+function showInstallPromotion(deferredPrompt) {
+    const installBanner = document.createElement('div');
+    installBanner.className = 'alert alert-info alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+    installBanner.style.zIndex = '1050';
+    installBanner.innerHTML = `
+        <strong>Install App</strong> Add Winner Selection to your home screen for offline access!
+        <button type="button" class="btn btn-sm btn-primary ms-2" id="installApp">Install</button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(installBanner);
+    
+    document.getElementById('installApp').addEventListener('click', () => {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                showToast('App installed successfully!', 'success');
+            }
+            installBanner.remove();
+        });
+    });
+    
+    // Auto-remove after 10 seconds
+    setTimeout(() => {
+        if (document.body.contains(installBanner)) {
+            installBanner.remove();
+        }
+    }, 10000);
+}
+
+// Sound effects
+function initAudio() {
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+        console.log('Web Audio API not supported');
+    }
+}
+
+function playWinnerSound() {
+    if (!settings.enableSoundEffects || !audioContext) return;
+    
+    try {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Create a pleasant chime sound
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+        oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+        
+        // Show sound indicator
+        showSoundIndicator();
+    } catch (e) {
+        console.log('Error playing sound:', e);
+    }
+}
+
+function playCountdownSound() {
+    if (!settings.enableSoundEffects || !audioContext) return;
+    
+    try {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+        console.log('Error playing countdown sound:', e);
+    }
+}
+
+function showSoundIndicator() {
+    const indicator = document.createElement('div');
+    indicator.className = 'sound-indicator';
+    indicator.innerHTML = '<i class="bi bi-volume-up me-1"></i>Sound played';
+    document.body.appendChild(indicator);
+    
+    setTimeout(() => {
+        indicator.remove();
+    }, 2000);
+}
+
+// Web Workers Setup (updated)
 function createCSVWorker() {
     const workerCode = `
         function parseCSV(csvText) {
             const lines = csvText.split('\\n').filter(line => line.trim());
             if (lines.length === 0) return { headers: [], data: [] };
             
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            // Better CSV parsing with quote handling
+            function parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const nextChar = line[i + 1];
+                    
+                    if (char === '"') {
+                        if (inQuotes && nextChar === '"') {
+                            current += '"';
+                            i++; // Skip next quote
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current.trim());
+                return result;
+            }
+            
+            const headers = parseCSVLine(lines[0]).map(h => h.replace(/"/g, ''));
             const data = [];
             
             for (let i = 1; i < lines.length; i++) {
                 const row = {};
-                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                const values = parseCSVLine(lines[i]);
                 headers.forEach((header, index) => {
                     row[header] = values[index] || '';
                 });
@@ -67,6 +331,17 @@ function createRandomWorker() {
         
         function selectRandomWinners(entries, numWinners, seed) {
             // Use seed for reproducible randomness if needed
+            if (seed) {
+                Math.seedrandom = function(seed) {
+                    let x = Math.sin(seed) * 10000;
+                    return function() {
+                        x = Math.sin(x) * 10000;
+                        return x - Math.floor(x);
+                    };
+                };
+                Math.random = Math.seedrandom(seed);
+            }
+            
             const available = [...entries];
             const selected = [];
             
@@ -116,7 +391,7 @@ function hideProgress() {
 // IndexedDB setup with proper promise handling
 async function initDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('WinnerSelectionApp', 2);
+        const request = indexedDB.open('WinnerSelectionApp', 3);
         
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
@@ -194,26 +469,7 @@ function confirmAction(message) {
     });
 }
 
-// Enhanced Database operations with proper async handling
-function dbOperation(stores, mode, operation) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(stores, mode);
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
-        
-        try {
-            const result = operation(transaction);
-            if (result instanceof Promise) {
-                result.then(resolve).catch(reject);
-            } else {
-                resolve(result);
-            }
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
+// Database operations (keeping existing implementations)
 async function saveList(listData) {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(['lists', 'entries'], 'readwrite');
@@ -407,7 +663,6 @@ async function getAllHistory() {
         
         request.onsuccess = () => {
             const results = request.result || [];
-            // Sort by timestamp descending
             results.sort((a, b) => b.timestamp - a.timestamp);
             resolve(results);
         };
@@ -451,6 +706,241 @@ function exportToCSV(data, filename) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// Data preview functionality
+function showDataPreview(headers, data) {
+    const previewCard = document.getElementById('dataPreviewCard');
+    const previewHeaders = document.getElementById('previewHeaders');
+    const previewBody = document.getElementById('previewBody');
+    
+    // Show first 5 rows for preview
+    const previewData = data.slice(0, 5);
+    
+    // Create header row
+    previewHeaders.innerHTML = headers.map(header => 
+        `<th>${header}</th>`
+    ).join('');
+    
+    // Create data rows
+    previewBody.innerHTML = previewData.map(row =>
+        `<tr>${headers.map(header => 
+            `<td>${row[header] || ''}</td>`
+        ).join('')}</tr>`
+    ).join('');
+    
+    previewCard.style.display = 'block';
+    previewCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Background management
+function handleBackgroundImageUpload() {
+    const fileInput = document.getElementById('backgroundImage');
+    const file = fileInput.files[0];
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            settings.backgroundImage = e.target.result;
+            showToast('Background image uploaded', 'success');
+            
+            // Show preview
+            const preview = document.querySelector('.bg-preview') || createBackgroundPreview();
+            preview.style.backgroundImage = `url(${e.target.result})`;
+            preview.classList.remove('empty');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function createBackgroundPreview() {
+    const preview = document.createElement('div');
+    preview.className = 'bg-preview empty';
+    preview.textContent = 'No image selected';
+    
+    const container = document.getElementById('backgroundImageUpload');
+    container.appendChild(preview);
+    
+    return preview;
+}
+
+function applyCustomBackground() {
+    const displays = [
+        document.getElementById('winnerDisplayContainer'),
+        document.getElementById('fullscreenDisplay')
+    ];
+    
+    displays.forEach(display => {
+        if (!display) return;
+        
+        display.classList.remove('custom-bg');
+        display.style.backgroundImage = '';
+        
+        if (settings.backgroundType === 'image' && settings.backgroundImage) {
+            display.classList.add('custom-bg');
+            display.style.backgroundImage = `url(${settings.backgroundImage})`;
+        } else if (settings.backgroundType === 'solid') {
+            display.style.background = settings.primaryColor;
+        } else {
+            display.style.background = `linear-gradient(135deg, ${settings.primaryColor} 0%, ${settings.secondaryColor} 100%)`;
+        }
+    });
+}
+
+// Backup and restore functionality
+async function createBackup() {
+    try {
+        showProgress('Creating Backup', 'Gathering data...');
+        
+        const backupData = {
+            version: '1.0.0',
+            timestamp: Date.now(),
+            lists: await getAllLists(),
+            entries: [],
+            winners: await getAllWinners(),
+            prizes: await getAllPrizes(),
+            history: await getAllHistory(),
+            settings: settings
+        };
+        
+        updateProgress(25, 'Collecting list entries...');
+        
+        // Get all entries for all lists
+        for (const list of backupData.lists) {
+            const listData = await getList(list.listId);
+            if (listData) {
+                backupData.entries.push(...listData.entries);
+            }
+        }
+        
+        updateProgress(75, 'Preparing download...');
+        
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `winner-app-backup-${new Date().toISOString().split('T')[0]}.json`;
+        
+        updateProgress(100, 'Download ready!');
+        
+        setTimeout(() => {
+            hideProgress();
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Backup created successfully', 'success');
+        }, 500);
+        
+    } catch (error) {
+        hideProgress();
+        console.error('Error creating backup:', error);
+        showToast('Error creating backup: ' + error.message, 'error');
+    }
+}
+
+async function restoreFromBackup(backupData) {
+    try {
+        showProgress('Restoring Data', 'Validating backup...');
+        
+        if (!backupData.version || !backupData.lists) {
+            throw new Error('Invalid backup file format');
+        }
+        
+        const confirmed = await confirmAction(
+            `This will replace all current data with backup from ${new Date(backupData.timestamp).toLocaleString()}. Continue?`
+        );
+        
+        if (!confirmed) {
+            hideProgress();
+            return;
+        }
+        
+        updateProgress(25, 'Clearing existing data...');
+        
+        // Clear all existing data
+        const transaction = db.transaction(['lists', 'entries', 'winners', 'prizes', 'history', 'settings'], 'readwrite');
+        await Promise.all([
+            transaction.objectStore('lists').clear(),
+            transaction.objectStore('entries').clear(),
+            transaction.objectStore('winners').clear(),
+            transaction.objectStore('prizes').clear(),
+            transaction.objectStore('history').clear(),
+            transaction.objectStore('settings').clear()
+        ]);
+        
+        updateProgress(50, 'Restoring lists and entries...');
+        
+        // Restore lists
+        for (const list of backupData.lists) {
+            await saveList({
+                metadata: list,
+                entries: backupData.entries.filter(entry => entry.listId === list.listId)
+            });
+        }
+        
+        updateProgress(75, 'Restoring winners and settings...');
+        
+        // Restore other data
+        for (const winner of backupData.winners) {
+            await saveWinner(winner);
+        }
+        
+        for (const prize of backupData.prizes) {
+            await savePrize(prize);
+        }
+        
+        for (const historyEntry of backupData.history) {
+            await saveHistory(historyEntry);
+        }
+        
+        // Restore settings
+        if (backupData.settings) {
+            settings = { ...settings, ...backupData.settings };
+            await saveSettings(settings);
+            applyAllSettings();
+        }
+        
+        updateProgress(100, 'Restore complete!');
+        
+        setTimeout(() => {
+            hideProgress();
+            showToast('Data restored successfully', 'success');
+            
+            // Reload all UI
+            loadLists();
+            loadPrizes();
+            loadWinners();
+            loadHistory();
+        }, 500);
+        
+    } catch (error) {
+        hideProgress();
+        console.error('Error restoring backup:', error);
+        showToast('Error restoring backup: ' + error.message, 'error');
+    }
+}
+
+function applyAllSettings() {
+    // Apply display mode settings
+    document.getElementById('displayMode').value = settings.displayMode;
+    document.getElementById('displayDuration').value = settings.displayDuration;
+    document.getElementById('countdownDuration').value = settings.countdownDuration;
+    document.getElementById('preventDuplicates').checked = settings.preventDuplicates;
+    document.getElementById('enableSoundEffects').checked = settings.enableSoundEffects;
+    
+    // Apply theme settings
+    document.getElementById('fontFamily').value = settings.fontFamily;
+    document.getElementById('primaryColor').value = settings.primaryColor;
+    document.getElementById('secondaryColor').value = settings.secondaryColor;
+    document.getElementById('backgroundType').value = settings.backgroundType;
+    
+    // Apply theme
+    applyTheme(settings.theme);
+    applyColors();
+    applyFont();
+    applyCustomBackground();
+    
+    updateDisplayModeSettings();
+    updateBackgroundTypeSettings();
 }
 
 // UI functions
@@ -645,7 +1135,41 @@ function updateListInfo() {
     }
 }
 
-// Action functions with Web Workers
+function updateDisplayModeSettings() {
+    const displayMode = document.getElementById('displayMode').value;
+    const countdownSettings = document.getElementById('countdownSettings');
+    const durationLabel = document.querySelector('label[for="displayDuration"]');
+    
+    if (displayMode === 'countdown') {
+        countdownSettings.style.display = 'block';
+        durationLabel.innerHTML = 'Animation Duration (seconds) <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Time for winner reveal animation after countdown"></i>';
+    } else {
+        countdownSettings.style.display = 'none';
+        if (displayMode === 'sequential') {
+            durationLabel.innerHTML = 'Duration Per Winner (seconds) <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Time to display each winner individually"></i>';
+        } else {
+            durationLabel.innerHTML = 'Animation Duration (seconds) <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Time for all winners to appear"></i>';
+        }
+    }
+    
+    // Reinitialize tooltips after DOM update with a small delay
+    setTimeout(() => {
+        initTooltips();
+    }, 100);
+}
+
+function updateBackgroundTypeSettings() {
+    const backgroundType = document.getElementById('backgroundType').value;
+    const imageUpload = document.getElementById('backgroundImageUpload');
+    
+    if (backgroundType === 'image') {
+        imageUpload.style.display = 'block';
+    } else {
+        imageUpload.style.display = 'none';
+    }
+}
+
+// Action functions with Web Workers and enhanced features
 async function uploadList() {
     const nameInput = document.getElementById('listName');
     const fileInput = document.getElementById('csvFile');
@@ -662,8 +1186,7 @@ async function uploadList() {
     
     const file = fileInput.files[0];
     
-    // Show progress
-    showProgress('Uploading List', 'Reading file...');
+    showProgress('Reading File', 'Processing CSV...');
     
     try {
         const csvText = await new Promise((resolve, reject) => {
@@ -675,7 +1198,6 @@ async function uploadList() {
         
         updateProgress(20, 'Parsing CSV data...');
         
-        // Use Web Worker for CSV parsing
         csvWorker = createCSVWorker();
         
         const parseResult = await new Promise((resolve, reject) => {
@@ -695,50 +1217,29 @@ async function uploadList() {
         
         const { headers, data } = parseResult;
         
-        if (data.length === 0) {
-            hideProgress();
-            showToast('CSV file is empty', 'error');
-            return;
-        }
-        
-        if (data.length > 20000) {
-            hideProgress();
-            showToast('CSV file has too many entries (max 20,000)', 'error');
-            return;
-        }
-        
-        updateProgress(85, 'Saving to database...');
-        
-        const listId = generateId(8);
-        const listData = {
-            metadata: {
-                listId,
-                name: nameInput.value.trim(),
-                headers,
-                totalEntries: data.length,
-                timestamp: Date.now(),
-                nameConfig: { columns: [headers[0]], delimiters: [] }
-            },
-            entries: data.map((row, index) => ({
-                id: `${listId}_${index}`,
-                listId,
-                data: row
-            }))
-        };
-        
-        await saveList(listData);
-        
-        updateProgress(100, 'Upload complete!');
+        updateProgress(100, 'Processing complete!');
         
         setTimeout(() => {
             hideProgress();
-            showToast('List uploaded successfully', 'success');
             
-            nameInput.value = '';
-            fileInput.value = '';
+            if (data.length === 0) {
+                showToast('CSV file is empty', 'error');
+                return;
+            }
             
-            loadLists();
-            showNameConfig(listData.metadata);
+            if (data.length > 20000) {
+                showToast('CSV file has too many entries (max 20,000)', 'error');
+                return;
+            }
+            
+            // Store pending data and show preview
+            pendingListData = {
+                name: nameInput.value.trim(),
+                headers,
+                data
+            };
+            
+            showDataPreview(headers, data);
         }, 500);
         
     } catch (error) {
@@ -751,6 +1252,59 @@ async function uploadList() {
             csvWorker = null;
         }
     }
+}
+
+async function confirmUpload() {
+    if (!pendingListData) return;
+    
+    showProgress('Saving List', 'Creating list...');
+    
+    try {
+        const listId = generateId(8);
+        const listData = {
+            metadata: {
+                listId,
+                name: pendingListData.name,
+                headers: pendingListData.headers,
+                totalEntries: pendingListData.data.length,
+                timestamp: Date.now(),
+                nameConfig: { columns: [pendingListData.headers[0]], delimiters: [] }
+            },
+            entries: pendingListData.data.map((row, index) => ({
+                id: `${listId}_${index}`,
+                listId,
+                data: row
+            }))
+        };
+        
+        await saveList(listData);
+        
+        updateProgress(100, 'List saved!');
+        
+        setTimeout(() => {
+            hideProgress();
+            showToast('List uploaded successfully', 'success');
+            
+            document.getElementById('listName').value = '';
+            document.getElementById('csvFile').value = '';
+            document.getElementById('dataPreviewCard').style.display = 'none';
+            
+            loadLists();
+            showNameConfig(listData.metadata);
+            
+            pendingListData = null;
+        }, 500);
+        
+    } catch (error) {
+        hideProgress();
+        console.error('Error saving list:', error);
+        showToast('Error saving list: ' + error.message, 'error');
+    }
+}
+
+function cancelUpload() {
+    document.getElementById('dataPreviewCard').style.display = 'none';
+    pendingListData = null;
 }
 
 function showNameConfig(metadata) {
@@ -769,7 +1323,6 @@ function showNameConfig(metadata) {
         </div>
     `).join('');
     
-    // Update delimiter inputs based on checkbox state
     document.querySelectorAll('.column-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const delimiter = document.querySelector(`[data-column="${this.value}"]`);
@@ -777,7 +1330,6 @@ function showNameConfig(metadata) {
         });
     });
     
-    // Store current metadata for saving
     configDiv.dataset.listId = metadata.listId;
 }
 
@@ -796,7 +1348,6 @@ async function saveNameConfig() {
     }
     
     try {
-        // Update the list metadata
         const listData = await getList(listId);
         if (listData) {
             listData.metadata.nameConfig = { columns: selectedColumns, delimiters };
@@ -877,7 +1428,6 @@ async function selectWinners() {
     showProgress('Selecting Winners', 'Preparing selection...');
     
     try {
-        // Get the selected prize
         const prizes = await getAllPrizes();
         const selectedPrize = prizes.find(p => p.prizeId === selectedPrizeId);
         
@@ -889,7 +1439,6 @@ async function selectWinners() {
         
         updateProgress(25, 'Random selection in progress...');
         
-        // Use Web Worker for random selection
         randomWorker = createRandomWorker();
         
         const selectedEntries = await new Promise((resolve, reject) => {
@@ -967,10 +1516,12 @@ async function selectWinners() {
         setTimeout(() => {
             hideProgress();
             
-            // Display winners
+            // Play sound effect
+            playWinnerSound();
+            
+            // Display winners with enhanced animation
             displayWinners(winners, selectedPrize.name);
             
-            // Update UI
             loadPrizes();
             loadWinners();
             loadHistory();
@@ -1000,13 +1551,32 @@ function displayWinners(winners, prize) {
     displayDiv.classList.remove('d-none');
     prizeDiv.textContent = prize;
     
-    if (winners.length === 1) {
-        winnersListDiv.innerHTML = `<div class="winner-name">${winners[0].displayName}</div>`;
+    // Apply custom background
+    applyCustomBackground();
+    
+    if (settings.displayMode === 'sequential') {
+        displayWinnersSequentially(winnersListDiv, winners);
     } else {
         winnersListDiv.innerHTML = winners.map((winner, index) => 
             `<div class="winner-name" style="animation-delay: ${index * 0.2}s">${winner.displayName}</div>`
         ).join('');
     }
+}
+
+function displayWinnersSequentially(container, winners) {
+    container.innerHTML = '';
+    
+    winners.forEach((winner, index) => {
+        setTimeout(() => {
+            const winnerDiv = document.createElement('div');
+            winnerDiv.className = 'winner-name sequential';
+            winnerDiv.textContent = winner.displayName;
+            winnerDiv.style.animationDelay = '0s';
+            container.appendChild(winnerDiv);
+            
+            playWinnerSound();
+        }, index * settings.displayDuration * 1000);
+    });
 }
 
 async function undoLastAction() {
@@ -1080,7 +1650,7 @@ async function undoLastAction() {
     }
 }
 
-function enterFullscreen() {
+async function enterFullscreen() {
     const displayDiv = document.getElementById('winnerDisplay');
     if (displayDiv.classList.contains('d-none')) {
         showToast('No winners to display', 'warning');
@@ -1088,27 +1658,72 @@ function enterFullscreen() {
     }
     
     const fullscreenDiv = document.getElementById('fullscreenDisplay');
+    const countdownDisplay = document.getElementById('countdownDisplay');
+    const fullscreenContent = document.getElementById('fullscreenContent');
     const fullscreenPrize = document.getElementById('fullscreenPrize');
     const fullscreenWinners = document.getElementById('fullscreenWinnersList');
+    
+    // Apply custom background
+    applyCustomBackground();
     
     fullscreenPrize.textContent = document.getElementById('displayPrize').textContent;
     fullscreenWinners.innerHTML = document.getElementById('winnersList').innerHTML;
     
     fullscreenDiv.classList.remove('d-none');
     
-    if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
+    if (settings.displayMode === 'countdown') {
+        // Show countdown first
+        countdownDisplay.classList.remove('d-none');
+        fullscreenContent.classList.add('d-none');
+        
+        await startCountdown();
+        
+        // Then show winners
+        countdownDisplay.classList.add('d-none');
+        fullscreenContent.classList.remove('d-none');
+    } else {
+        countdownDisplay.classList.add('d-none');
+        fullscreenContent.classList.remove('d-none');
     }
+    
+    try {
+        if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+        }
+    } catch (error) {
+        console.log('Fullscreen not supported or denied');
+    }
+}
+
+async function startCountdown() {
+    const countdownNumber = document.getElementById('countdownNumber');
+    let timeLeft = settings.countdownDuration;
+    
+    return new Promise((resolve) => {
+        const countdownInterval = setInterval(() => {
+            countdownNumber.textContent = timeLeft;
+            playCountdownSound();
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                resolve();
+            }
+            timeLeft--;
+        }, 1000);
+    });
 }
 
 function exitFullscreen() {
     document.getElementById('fullscreenDisplay').classList.add('d-none');
     
-    if (document.exitFullscreen) {
-        document.exitFullscreen();
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(error => {
+            console.log('Error exiting fullscreen:', error);
+        });
     }
 }
 
+// Action functions for delete operations
 async function deleteListAction(listId) {
     const confirmed = await confirmAction('Are you sure you want to delete this list?');
     if (!confirmed) return;
@@ -1224,21 +1839,22 @@ async function clearAllWinnersAction() {
     }
 }
 
-function applyTheme() {
-    const root = document.documentElement;
-    root.style.setProperty('--primary-color', settings.primaryColor);
-    root.style.setProperty('--secondary-color', settings.secondaryColor);
-}
-
 async function saveAllSettings() {
     try {
+        settings.displayMode = document.getElementById('displayMode').value;
         settings.displayDuration = parseInt(document.getElementById('displayDuration').value);
+        settings.countdownDuration = parseInt(document.getElementById('countdownDuration').value);
         settings.preventDuplicates = document.getElementById('preventDuplicates').checked;
+        settings.enableSoundEffects = document.getElementById('enableSoundEffects').checked;
+        settings.fontFamily = document.getElementById('fontFamily').value;
         settings.primaryColor = document.getElementById('primaryColor').value;
         settings.secondaryColor = document.getElementById('secondaryColor').value;
+        settings.backgroundType = document.getElementById('backgroundType').value;
         
         await saveSettings(settings);
-        applyTheme();
+        applyColors();
+        applyFont();
+        applyCustomBackground();
         showToast('Settings saved successfully', 'success');
     } catch (error) {
         console.error('Error saving settings:', error);
@@ -1250,20 +1866,14 @@ async function loadAppSettings() {
     try {
         const savedSettings = await loadSettings();
         settings = { ...settings, ...savedSettings };
-        
-        document.getElementById('displayDuration').value = settings.displayDuration;
-        document.getElementById('preventDuplicates').checked = settings.preventDuplicates;
-        document.getElementById('primaryColor').value = settings.primaryColor;
-        document.getElementById('secondaryColor').value = settings.secondaryColor;
-        
-        applyTheme();
+        applyAllSettings();
     } catch (error) {
         console.error('Error loading settings:', error);
     }
 }
 
 function viewHistoryDetails(historyId) {
-    // This could open a modal with detailed history information
+  // This could open a modal with detailed history information
     showToast('History details view - feature to be implemented', 'info');
 }
 
@@ -1273,6 +1883,16 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .then(registration => {
                 console.log('Service Worker registered successfully');
+                
+                // Listen for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            showToast('New version available! Refresh to update.', 'info');
+                        }
+                    });
+                });
             })
             .catch(error => {
                 console.log('Service Worker registration failed:', error);
@@ -1286,14 +1906,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         showProgress('Initializing App', 'Setting up database...');
         
         await initDB();
+        initAudio();
+        initTheme();
+        initPWA();
+        
         updateProgress(25, 'Loading settings...');
-        
         await loadAppSettings();
+        
         updateProgress(50, 'Loading lists...');
-        
         await loadLists();
-        updateProgress(75, 'Loading data...');
         
+        updateProgress(75, 'Loading data...');
         await loadPrizes();
         await loadWinners();
         await loadHistory();
@@ -1303,13 +1926,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             hideProgress();
             
-            // Event listeners
+            // Main event listeners
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.getElementById('uploadBtn').addEventListener('click', uploadList);
+            document.getElementById('confirmUpload').addEventListener('click', confirmUpload);
+            document.getElementById('cancelUpload').addEventListener('click', cancelUpload);
             document.getElementById('saveConfigBtn').addEventListener('click', saveNameConfig);
             document.getElementById('currentListSelect').addEventListener('change', selectCurrentList);
             document.getElementById('selectWinnersBtn').addEventListener('click', selectWinners);
             document.getElementById('undoBtn').addEventListener('click', undoLastAction);
             document.getElementById('fullscreenBtn').addEventListener('click', enterFullscreen);
+            document.getElementById('exitFullscreenBtn').addEventListener('click', exitFullscreen);
             document.getElementById('addPrizeBtn').addEventListener('click', addPrize);
             document.getElementById('exportWinnersBtn').addEventListener('click', exportWinners);
             document.getElementById('clearWinnersBtn').addEventListener('click', clearAllWinnersAction);
@@ -1317,8 +1944,52 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('saveThemeBtn').addEventListener('click', () => {
                 settings.primaryColor = document.getElementById('primaryColor').value;
                 settings.secondaryColor = document.getElementById('secondaryColor').value;
-                applyTheme();
+                applyColors();
                 showToast('Theme applied', 'success');
+            });
+            document.getElementById('settingsLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                const settingsTab = new bootstrap.Tab(document.getElementById('settings-tab'));
+                settingsTab.show();
+            });
+            
+            // Settings event listeners
+            document.getElementById('displayMode').addEventListener('change', updateDisplayModeSettings);
+            document.getElementById('backgroundType').addEventListener('change', updateBackgroundTypeSettings);
+            document.getElementById('backgroundImage').addEventListener('change', handleBackgroundImageUpload);
+            document.getElementById('fontFamily').addEventListener('change', () => {
+                settings.fontFamily = document.getElementById('fontFamily').value;
+                applyFont();
+            });
+            
+            // Theme preset buttons
+            document.querySelectorAll('.theme-preset').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const theme = e.currentTarget.dataset.theme;
+                    applyThemePreset(theme);
+                });
+            });
+            
+            // Backup/restore functionality
+            document.getElementById('backupData').addEventListener('click', createBackup);
+            document.getElementById('restoreData').addEventListener('click', () => {
+                document.getElementById('restoreFileInput').click();
+            });
+            
+            document.getElementById('restoreFileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const backupData = JSON.parse(e.target.result);
+                            restoreFromBackup(backupData);
+                        } catch (error) {
+                            showToast('Invalid backup file format', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
             });
             
             // History filter
@@ -1332,6 +2003,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     exitFullscreen();
                 }
             });
+
+            // Initialize tooltips
+            initTooltips();
             
             showToast('App loaded successfully', 'success');
         }, 500);

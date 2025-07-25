@@ -1,4 +1,4 @@
-const CACHE_NAME = 'winner-selection-app-v1.0.0';
+const CACHE_NAME = 'winner-selection-app-v1.1.0';
 const STATIC_CACHE_NAME = 'winner-app-static-v1';
 const DYNAMIC_CACHE_NAME = 'winner-app-dynamic-v1';
 
@@ -8,18 +8,19 @@ const STATIC_FILES = [
     './styles.css',
     './app.js',
     './manifest.json',
+    './favicon.ico',
     // Bootstrap CSS
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
     // Bootstrap Icons
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
     // Google Fonts
-    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
+    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Poppins:wght@300;400;500;600;700&display=swap',
     // Toastify CSS
     'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css',
     // Bootstrap JS
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
-    // Toastify JS
-    'https://cdn.jsdelivr.net/npm/toastify-js'
+    // Toastify JS - FIXED URL
+    'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.js'
 ];
 
 // Install event - cache static files
@@ -28,16 +29,50 @@ self.addEventListener('install', (event) => {
     
     event.waitUntil(
         caches.open(STATIC_CACHE_NAME)
-            .then((cache) => {
+            .then(async (cache) => {
                 console.log('[Service Worker] Caching static files');
-                return cache.addAll(STATIC_FILES);
+                
+                // Cache files individually to handle failures gracefully
+                const cachePromises = STATIC_FILES.map(async (url) => {
+                    try {
+                        await cache.add(url);
+                        console.log(`[Service Worker] Cached: ${url}`);
+                        return { url, success: true };
+                    } catch (error) {
+                        console.warn(`[Service Worker] Failed to cache: ${url}`, error);
+                        return { url, success: false, error };
+                    }
+                });
+                
+                const results = await Promise.all(cachePromises);
+                
+                const failed = results.filter(r => !r.success);
+                const succeeded = results.filter(r => r.success);
+                
+                console.log(`[Service Worker] Successfully cached ${succeeded.length}/${STATIC_FILES.length} files`);
+                
+                if (failed.length > 0) {
+                    console.warn('[Service Worker] Failed to cache:', failed.map(f => f.url));
+                    
+                    // Only fail installation if critical local files failed
+                    const criticalFailed = failed.filter(f => 
+                        f.url.startsWith('./') || f.url.includes('index.html')
+                    );
+                    
+                    if (criticalFailed.length > 0) {
+                        throw new Error(`Critical files failed to cache: ${criticalFailed.map(f => f.url).join(', ')}`);
+                    }
+                }
+                
+                return cache;
             })
             .then(() => {
-                console.log('[Service Worker] Static files cached successfully');
+                console.log('[Service Worker] Installation completed');
                 return self.skipWaiting();
             })
             .catch((error) => {
-                console.error('[Service Worker] Error caching static files:', error);
+                console.error('[Service Worker] Installation failed:', error);
+                throw error; // This will prevent the service worker from installing
             })
     );
 });
@@ -78,6 +113,17 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
+    // Skip chrome-extension requests
+    if (request.url.startsWith('chrome-extension://')) {
+        console.log('[Service Worker] Skipping chrome-extension request:', request.url);
+        return;
+    }
+    
+    // Skip blob and data URLs
+    if (request.url.startsWith('blob:') || request.url.startsWith('data:')) {
+        return;
+    }
+    
     // Skip requests with cache control headers that prevent caching
     if (request.headers.get('cache-control') === 'no-cache') {
         return;
@@ -106,39 +152,51 @@ async function handleFetch(request) {
         return await cacheFirst(request);
         
     } catch (error) {
-        console.error('[Service Worker] Fetch error:', error);
+        console.error('[Service Worker] Fetch error for:', request.url, error);
         
         // Return offline fallback for HTML pages
         if (request.destination === 'document') {
             const cache = await caches.open(STATIC_CACHE_NAME);
-            return await cache.match('./index.html');
+            const fallback = await cache.match('./index.html');
+            if (fallback) {
+                return fallback;
+            }
         }
         
-        // For other requests, just let them fail
-        throw error;
+        // For other requests, return a simple error response
+        return new Response('Network error occurred', { 
+            status: 408,
+            statusText: 'Network Error',
+            headers: { 'Content-Type': 'text/plain' }
+        });
     }
 }
 
 // Cache first strategy
 async function cacheFirst(request) {
-    const cache = await caches.open(STATIC_CACHE_NAME);
-    const cachedResponse = await cache.match(request);
-    
-    if (cachedResponse) {
-        console.log('[Service Worker] Serving from cache:', request.url);
-        return cachedResponse;
+    try {
+        const cache = await caches.open(STATIC_CACHE_NAME);
+        const cachedResponse = await cache.match(request);
+        
+        if (cachedResponse) {
+            console.log('[Service Worker] Serving from cache:', request.url);
+            return cachedResponse;
+        }
+        
+        console.log('[Service Worker] Fetching from network:', request.url);
+        const networkResponse = await fetch(request);
+        
+        // Cache successful responses
+        if (networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            cache.put(request, responseClone);
+        }
+        
+        return networkResponse;
+    } catch (error) {
+        console.error('[Service Worker] Cache first error:', error);
+        throw error;
     }
-    
-    console.log('[Service Worker] Fetching from network:', request.url);
-    const networkResponse = await fetch(request);
-    
-    // Cache successful responses
-    if (networkResponse.status === 200) {
-        const responseClone = networkResponse.clone();
-        cache.put(request, responseClone);
-    }
-    
-    return networkResponse;
 }
 
 // Network first strategy
@@ -172,8 +230,8 @@ async function networkFirst(request) {
 
 // Helper functions
 function isStaticFile(url) {
-    const staticExtensions = ['.html', '.css', '.js', '.json'];
-    const staticFiles = ['./index.html', './styles.css', './app.js', './manifest.json'];
+    const staticExtensions = ['.html', '.css', '.js', '.json', '.ico'];
+    const staticFiles = ['./index.html', './styles.css', './app.js', './manifest.json', './favicon.ico'];
     
     return staticFiles.some(file => url.includes(file)) ||
            staticExtensions.some(ext => url.endsWith(ext));
@@ -191,12 +249,24 @@ function isCDNFile(url) {
 
 // Handle messages from the main thread
 self.addEventListener('message', (event) => {
+    console.log('[Service Worker] Message received:', event.data);
+    
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
     
     if (event.data && event.data.type === 'GET_VERSION') {
         event.ports[0].postMessage({ version: CACHE_NAME });
+    }
+    
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        event.waitUntil(
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cacheName => caches.delete(cacheName))
+                );
+            })
+        );
     }
 });
 
@@ -217,7 +287,18 @@ async function syncWinnerData() {
     
     try {
         // Open IndexedDB and check for any pending sync operations
-        // This is a placeholder for future enhancement
+        // This is a placeholder for future enhancement where we might
+        // sync data with a backend server
+        
+        // For now, just notify that we're online
+        const clients = await self.clients.matchAll();
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'SYNC_COMPLETE',
+                message: 'Data sync completed successfully'
+            });
+        });
+        
         console.log('[Service Worker] Winner data sync completed');
     } catch (error) {
         console.error('[Service Worker] Error syncing winner data:', error);
@@ -228,10 +309,11 @@ async function syncWinnerData() {
 self.addEventListener('push', (event) => {
     console.log('[Service Worker] Push message received:', event);
     
-    const options = {
-        body: event.data ? event.data.text() : 'Winner Selection App notification',
-        icon: './icon-192.png',
-        badge: './icon-96.png',
+    let notificationData = {
+        title: 'Winner Selection App',
+        body: 'You have a new notification',
+        icon: './favicon.ico',
+        badge: './favicon.ico',
         vibrate: [100, 50, 100],
         data: {
             dateOfArrival: Date.now(),
@@ -239,20 +321,29 @@ self.addEventListener('push', (event) => {
         },
         actions: [
             {
-                action: 'explore',
+                action: 'open',
                 title: 'Open App',
-                icon: './icon-192.png'
+                icon: './favicon.ico'
             },
             {
                 action: 'close',
                 title: 'Close',
-                icon: './icon-192.png'
+                icon: './favicon.ico'
             }
         ]
     };
     
+    if (event.data) {
+        try {
+            const pushData = event.data.json();
+            notificationData = { ...notificationData, ...pushData };
+        } catch (e) {
+            notificationData.body = event.data.text();
+        }
+    }
+    
     event.waitUntil(
-        self.registration.showNotification('Winner Selection App', options)
+        self.registration.showNotification(notificationData.title, notificationData)
     );
 });
 
@@ -262,12 +353,34 @@ self.addEventListener('notificationclick', (event) => {
     
     event.notification.close();
     
-    if (event.action === 'explore') {
+    if (event.action === 'open' || !event.action) {
         // Open the app
         event.waitUntil(
-            clients.openWindow('./index.html')
+            clients.matchAll().then(clientList => {
+                // Check if app is already open
+                for (let client of clientList) {
+                    if (client.url.includes('index.html') && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // If not open, open it
+                if (clients.openWindow) {
+                    return clients.openWindow('./index.html');
+                }
+            })
         );
     }
+});
+
+// Network status change handling
+self.addEventListener('online', () => {
+    console.log('[Service Worker] App is back online');
+    // Trigger background sync
+    self.registration.sync.register('winner-data-sync');
+});
+
+self.addEventListener('offline', () => {
+    console.log('[Service Worker] App is now offline');
 });
 
 // Log service worker errors
@@ -278,6 +391,40 @@ self.addEventListener('error', (event) => {
 // Log unhandled promise rejections
 self.addEventListener('unhandledrejection', (event) => {
     console.error('[Service Worker] Unhandled promise rejection:', event.reason);
+    // Prevent the default behavior (logging to console)
+    event.preventDefault();
+});
+
+// Cleanup function for periodic maintenance
+async function performMaintenance() {
+    try {
+        // Clean up old cache entries
+        const cache = await caches.open(DYNAMIC_CACHE_NAME);
+        const requests = await cache.keys();
+        
+        const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        
+        for (const request of requests) {
+            const response = await cache.match(request);
+            if (response) {
+                const dateHeader = response.headers.get('date');
+                if (dateHeader) {
+                    const responseDate = new Date(dateHeader).getTime();
+                    if (responseDate < oneWeekAgo) {
+                        await cache.delete(request);
+                        console.log('[Service Worker] Cleaned up old cache entry:', request.url);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[Service Worker] Error during maintenance:', error);
+    }
+}
+
+// Perform maintenance on install
+self.addEventListener('install', (event) => {
+    event.waitUntil(performMaintenance());
 });
 
 console.log('[Service Worker] Service Worker script loaded successfully');
