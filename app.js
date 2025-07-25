@@ -1,5 +1,6 @@
 // Global variables
 let db;
+let appModal = null;
 let currentList = null;
 let lastAction = null;
 let settings = {
@@ -17,6 +18,7 @@ let settings = {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function () {
+  appModal = new bootstrap.Modal(document.getElementById('appModal'));
   try {
     await initDB();
     await loadSettings();
@@ -601,7 +603,7 @@ function setupEventListeners() {
     undoSelectionBtn.addEventListener('click', undoLastSelection);
   }
 
-  // Management Interface Event Listeners
+  // Management Event Listeners
   setupManagementEventListeners();
 }
 
@@ -988,7 +990,7 @@ function playChord(audioContext) {
   });
 }
 
-// Management Interface Event Listeners
+// Management Event Listeners
 function setupManagementEventListeners() {
   // CSV Upload
   const uploadBtn = document.getElementById('uploadBtn');
@@ -1532,7 +1534,7 @@ async function updateHistoryStats() {
   }
 }
 
-// Utility functions for management interface
+// Utility functions for Management
 async function viewList(listId) {
   try {
     const list = await getList(listId);
@@ -1550,79 +1552,147 @@ async function viewList(listId) {
   }
 }
 
-async function deleteListConfirm(listId) {
-  if (confirm('Are you sure you want to delete this list? This action cannot be undone.')) {
+// New Modal Helper Function
+function showConfirmationModal(title, message, onConfirm) {
+  const modalTitle = document.getElementById('appModalLabel');
+  const modalBody = document.getElementById('appModalBody');
+  const confirmBtn = document.getElementById('appModalConfirmBtn');
+  const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+
+  modalTitle.textContent = title;
+  modalBody.innerHTML = `<p>${message}</p>`;
+  confirmBtn.textContent = 'Confirm';
+  confirmBtn.className = 'btn btn-danger';
+  confirmBtn.style.display = 'inline-block';
+  cancelBtn.textContent = 'Cancel';
+
+  // This pattern removes old listeners and adds a new one to prevent multiple executions
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+  newConfirmBtn.addEventListener('click', async () => {
     try {
+      await onConfirm(); // Await the async operation before hiding
+    } catch (error) {
+      console.error(`Error in confirmation modal for "${title}":`, error);
+      showToast(`Operation failed: ${error.message}`, 'error');
+    } finally {
+      appModal.hide(); // Hide modal only after the operation is complete
+    }
+  }, { once: true });
+
+  appModal.show();
+}
+
+async function viewList(listId) {
+  try {
+    const list = await getList(listId);
+    if (list) {
+      const modalTitle = document.getElementById('appModalLabel');
+      const modalBody = document.getElementById('appModalBody');
+      const confirmBtn = document.getElementById('appModalConfirmBtn');
+      const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+
+      modalTitle.textContent = `List: ${list.metadata.name}`;
+      const entriesPreview = list.entries.slice(0, 10).map(entry =>
+        `<li>${formatDisplayName(entry, list.metadata.nameConfig)}</li>`
+      ).join('');
+
+      modalBody.innerHTML = `
+        <p><strong>Total Entries:</strong> ${list.entries.length}</p>
+        <h6>First 10 Entries:</h6>
+        <ul>${entriesPreview}</ul>
+        ${list.entries.length > 10 ? '<p>...</p>' : ''}
+      `;
+
+      confirmBtn.style.display = 'none';
+      cancelBtn.textContent = 'Close';
+
+      appModal.show();
+    }
+  } catch (error) {
+    console.error('Error viewing list:', error);
+    showToast('Error viewing list: ' + error.message, 'error');
+  }
+}
+
+async function deleteListConfirm(listId) {
+  showConfirmationModal(
+    'Delete List',
+    'Are you sure you want to delete this list? This action cannot be undone.',
+    async () => {
       await deleteList(listId);
       showToast('List deleted successfully', 'success');
       await loadLists();
       await populateQuickSelects();
-    } catch (error) {
-      console.error('Error deleting list:', error);
-      showToast('Error deleting list: ' + error.message, 'error');
     }
-  }
+  );
 }
 
 async function editPrize(prizeId) {
-  try {
-    const prizes = await getAllPrizes();
-    const prize = prizes.find(p => p.prizeId === prizeId);
-    if (prize) {
-      const newName = prompt('Edit prize name:', prize.name);
-      if (newName && newName.trim()) {
-        prize.name = newName.trim();
-        await savePrize(prize);
-        showToast('Prize updated successfully', 'success');
-        await loadPrizes();
-        await populateQuickSelects();
-      }
+  const prizes = await getAllPrizes();
+  const prize = prizes.find(p => p.prizeId === prizeId);
+  if (!prize) return;
+
+  const modalTitle = document.getElementById('appModalLabel');
+  const modalBody = document.getElementById('appModalBody');
+  const confirmBtn = document.getElementById('appModalConfirmBtn');
+
+  modalTitle.textContent = 'Edit Prize';
+  modalBody.innerHTML = `
+    <div class="mb-3">
+      <label for="modalPrizeName" class="form-label">Prize Name</label>
+      <input type="text" class="form-control" id="modalPrizeName" value="${prize.name}">
+    </div>
+  `;
+  confirmBtn.textContent = 'Save Changes';
+  confirmBtn.className = 'btn btn-primary';
+  confirmBtn.style.display = 'inline-block';
+
+  const newConfirmBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+  newConfirmBtn.addEventListener('click', async () => {
+    const newName = document.getElementById('modalPrizeName').value.trim();
+    if (newName) {
+      prize.name = newName;
+      await savePrize(prize);
+      showToast('Prize updated successfully', 'success');
+      await loadPrizes();
+      await populateQuickSelects();
+      appModal.hide();
+    } else {
+      showToast('Prize name cannot be empty.', 'warning');
     }
-  } catch (error) {
-    console.error('Error editing prize:', error);
-    showToast('Error editing prize: ' + error.message, 'error');
-  }
+  }, { once: true });
+
+  appModal.show();
 }
 
 async function deletePrizeConfirm(prizeId) {
-  if (confirm('Are you sure you want to delete this prize?')) {
-    try {
-      await deletePrize(prizeId);
-      showToast('Prize deleted successfully', 'success');
-      await loadPrizes();
-      await populateQuickSelects();
-    } catch (error) {
-      console.error('Error deleting prize:', error);
-      showToast('Error deleting prize: ' + error.message, 'error');
-    }
-  }
+  showConfirmationModal('Delete Prize', 'Are you sure you want to delete this prize?', async () => {
+    await deletePrize(prizeId);
+    showToast('Prize deleted successfully', 'success');
+    await loadPrizes();
+    await populateQuickSelects();
+  });
 }
 
 async function deleteWinnerConfirm(winnerId) {
-  if (confirm('Are you sure you want to delete this winner record?')) {
-    try {
-      await deleteWinner(winnerId);
-      showToast('Winner deleted successfully', 'success');
-      await loadWinners();
-    } catch (error) {
-      console.error('Error deleting winner:', error);
-      showToast('Error deleting winner: ' + error.message, 'error');
-    }
-  }
+  showConfirmationModal('Delete Winner', 'Are you sure you want to delete this winner record?', async () => {
+    await deleteWinner(winnerId);
+    showToast('Winner deleted successfully', 'success');
+    await loadWinners();
+  });
 }
 
 async function deleteHistoryConfirm(historyId) {
-  if (confirm('Are you sure you want to delete this history entry?')) {
-    try {
-      await deleteHistory(historyId);
-      showToast('History entry deleted successfully', 'success');
-      await loadHistory();
-      await updateHistoryStats();
-    } catch (error) {
-      console.error('Error deleting history:', error);
-      showToast('Error deleting history: ' + error.message, 'error');
-    }
-  }
+  showConfirmationModal('Delete History Entry', 'Are you sure you want to delete this history entry?', async () => {
+    await deleteHistory(historyId);
+    showToast('History entry deleted successfully', 'success');
+    await loadHistory();
+    await updateHistoryStats();
+  });
 }
 
 // Handle confirm upload after preview

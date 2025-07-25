@@ -1,7 +1,7 @@
 /* CSS Custom Properties for Theming */
 :root {
-  --primary-color: #456aa1;
-  --secondary-color: #5c9af6;
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
@@ -299,7 +299,7 @@ body {
   }
 }
 
-/* Management Interface */
+/* Management */
 .management-tabs {
   display: none;
   min-height: 100vh;
@@ -310,7 +310,7 @@ body {
   display: block;
 }
 
-/* Original App Styles (for management interface) */
+/* Original App Styles (for Management) */
 .main-container {
   max-width: 1400px;
   margin: 0 auto;

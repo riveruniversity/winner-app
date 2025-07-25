@@ -9,6 +9,8 @@ const STATIC_FILES = [
   './app.js',
   './manifest.json',
   './favicon.ico',
+  './icons/icon-192x192.svg',
+  './icons/icon-512x512.svg',
   // Bootstrap CSS
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
   // Bootstrap Icons
