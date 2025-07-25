@@ -55,7 +55,7 @@
             <div class="info-label">Current List</div>
             <div class="info-value" id="currentListDisplay">Not Selected</div>
           </div>
-          <div class="info-card">
+          <div class="info-card" id="totalEntriesCard">
             <div class="info-label">Total Entries</div>
             <div class="info-value" id="totalEntriesDisplay">0</div>
           </div>
@@ -398,6 +398,15 @@
                         <label class="form-check-label" for="enableSoundEffects">
                           Enable Sound Effects
                           <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Play sound when winners are selected"></i>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="hideEntryCounts">
+                        <label class="form-check-label" for="hideEntryCounts">
+                          Hide Entry Counts
+                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of entries in lists and selection interface"></i>
                         </label>
                       </div>
                     </div>

@@ -9,6 +9,7 @@ let settings = {
   countdownDuration: 5,
   preventDuplicates: false,
   enableSoundEffects: false,
+  hideEntryCounts: false,
   fontFamily: 'Inter',
   primaryColor: '#6366f1',
   secondaryColor: '#8b5cf6',
@@ -324,6 +325,16 @@ async function initializeApp() {
   await loadHistory();
   await updateHistoryStats();
   await populateQuickSelects();
+  applyVisibilitySettings();
+}
+
+// Apply visibility settings to interface elements
+function applyVisibilitySettings() {
+  // Show/hide total entries card based on setting
+  const totalEntriesCard = document.getElementById('totalEntriesCard');
+  if (totalEntriesCard) {
+    totalEntriesCard.style.display = settings.hideEntryCounts ? 'none' : 'block';
+  }
 }
 
 async function loadLists() {
@@ -490,7 +501,9 @@ async function populateQuickSelects() {
         const listId = list.listId || list.metadata.listId;
         const option = document.createElement('option');
         option.value = listId;
-        option.textContent = `${list.metadata.name} (${list.entries.length} entries)`;
+        option.textContent = settings.hideEntryCounts 
+          ? list.metadata.name
+          : `${list.metadata.name} (${list.entries.length} entries)`;
         quickListSelect.appendChild(option);
       });
     }
@@ -783,6 +796,11 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
       hideProgress();
       displayWinnersPublicly(winners, selectedPrize, displayMode);
 
+      // Update the winners list in management interface
+      loadWinners();
+      loadHistory();
+      updateHistoryStats();
+
       if (settings.enableSoundEffects) {
         playSound('winner');
       }
@@ -935,6 +953,11 @@ async function undoLastSelection() {
 
     hideProgress();
     showToast('Selection undone successfully', 'success');
+
+    // Update the winners list in management interface
+    loadWinners();
+    loadHistory();
+    updateHistoryStats();
 
     // Reset interface
     resetToSelectionMode();
@@ -1327,6 +1350,7 @@ async function handleSaveSettings() {
       countdownDuration: parseInt(document.getElementById('countdownDuration')?.value) || settings.countdownDuration,
       preventDuplicates: document.getElementById('preventDuplicates')?.checked || settings.preventDuplicates,
       enableSoundEffects: document.getElementById('enableSoundEffects')?.checked || settings.enableSoundEffects,
+      hideEntryCounts: document.getElementById('hideEntryCounts')?.checked || settings.hideEntryCounts,
       fontFamily: document.getElementById('fontFamily')?.value || settings.fontFamily,
       primaryColor: document.getElementById('primaryColor')?.value || settings.primaryColor,
       secondaryColor: document.getElementById('secondaryColor')?.value || settings.secondaryColor,
@@ -1341,6 +1365,10 @@ async function handleSaveSettings() {
 
     // Apply theme changes
     applyTheme();
+
+    // Update interface based on new settings
+    await populateQuickSelects();
+    applyVisibilitySettings();
 
     showToast('Settings saved successfully', 'success');
 
@@ -1379,6 +1407,7 @@ function loadSettingsToForm() {
     'countdownDuration': settings.countdownDuration,
     'preventDuplicates': settings.preventDuplicates,
     'enableSoundEffects': settings.enableSoundEffects,
+    'hideEntryCounts': settings.hideEntryCounts,
     'fontFamily': settings.fontFamily,
     'primaryColor': settings.primaryColor,
     'secondaryColor': settings.secondaryColor,
