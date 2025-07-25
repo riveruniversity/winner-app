@@ -72,7 +72,6 @@
         <button class="big-play-button" id="bigPlayButton" disabled>
           <i class="bi bi-play-fill"></i>
         </button>
-        <p class="text-white-50">Click to select winners publicly!</p>
       </div>
       <!-- Prize Display (Hidden initially) -->
       <div class="prize-display d-none" id="prizeDisplay">
@@ -170,17 +169,38 @@
                       <option value="">Select Prize...</option>
                     </select>
                   </div>
+                </div>
+                <hr class="my-4">
+                <h6 class="card-subtitle mb-3 text-muted">Selection & Presentation Settings</h6>
+                <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">Number of Winners</label>
                     <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" placeholder="Winners Count">
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Display Mode</label>
-                    <select class="form-select form-select-lg" id="quickDisplayMode">
+                    <label class="form-label">
+                      Winner Display Mode
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose how winners are revealed in presentation mode"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="displayMode">
                       <option value="all-at-once">All at Once</option>
-                      <option value="sequential">One by One</option>
-                      <option value="countdown">With Countdown</option>
+                      <option value="sequential">Sequential Reveal</option>
+                      <option value="countdown">Countdown Timer</option>
                     </select>
+                  </div>
+                  <div class="col-md-6" id="durationSettings" style="display: none;">
+                    <label class="form-label" for="displayDuration">
+                      Sequential Delay (seconds)
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Delay between each winner being revealed in 'Sequential Reveal' mode."></i>
+                    </label>
+                    <input type="number" class="form-control form-control-lg" id="displayDuration" value="0.5" min="0.1" max="5" step="0.1">
+                  </div>
+                  <div class="col-md-6" id="countdownSettings" style="display: none;">
+                    <label class="form-label">
+                      Countdown Duration (seconds)
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Countdown time before revealing winners"></i>
+                    </label>
+                    <input type="number" class="form-control form-control-lg" id="countdownDuration" value="5" min="3" max="10">
                   </div>
                 </div>
               </div>
@@ -374,32 +394,7 @@
                 <!-- Display Settings -->
                 <div class="card">
                   <div class="card-body">
-                    <h5 class="card-title">Display Settings</h5>
-                    <div class="mb-3">
-                      <label class="form-label">
-                        Winner Display Mode
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose how winners are revealed in presentation mode"></i>
-                      </label>
-                      <select class="form-select" id="displayMode">
-                        <option value="all-at-once">All at Once</option>
-                        <option value="sequential">Sequential Reveal</option>
-                        <option value="countdown">Countdown Timer</option>
-                      </select>
-                    </div>
-                    <div class="mb-3" id="durationSettings">
-                      <label class="form-label" for="displayDuration">
-                        Animation Duration (seconds)
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Time for each winner animation or total reveal time"></i>
-                      </label>
-                      <input type="number" class="form-control" id="displayDuration" value="3" min="1" max="30">
-                    </div>
-                    <div class="mb-3" id="countdownSettings" style="display: none;">
-                      <label class="form-label">
-                        Countdown Duration (seconds)
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Countdown time before revealing winners"></i>
-                      </label>
-                      <input type="number" class="form-control" id="countdownDuration" value="5" min="3" max="10">
-                    </div>
+                    <h5 class="card-title">General Settings</h5>
                     <div class="mb-3">
                       <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="preventDuplicates">
@@ -423,7 +418,7 @@
                         <input class="form-check-input" type="checkbox" id="hideEntryCounts">
                         <label class="form-check-label" for="hideEntryCounts">
                           Hide Entry Counts
-                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of entries in lists and selection interface"></i>
+                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of participants in public view"></i>
                         </label>
                       </div>
                     </div>
@@ -441,9 +436,9 @@
                         <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose the main font for the application"></i>
                       </label>
                       <select class="form-select" id="fontFamily">
-                        <option value="Inter">Inter</option>
-                        <option value="Roboto">Roboto</option>
                         <option value="Open Sans">Open Sans</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Inter">Inter</option>
                         <option value="Lato">Lato</option>
                         <option value="Poppins">Poppins</option>
                       </select>

@@ -4,13 +4,10 @@ let appModal = null;
 let currentList = null;
 let lastAction = null;
 let settings = {
-  displayMode: 'all-at-once',
-  displayDuration: 3,
-  countdownDuration: 5,
   preventDuplicates: false,
   enableSoundEffects: false,
   hideEntryCounts: false,
-  fontFamily: 'Inter',
+  fontFamily: 'Open Sans',
   primaryColor: '#6366f1',
   secondaryColor: '#8b5cf6',
   backgroundType: 'gradient',
@@ -627,6 +624,29 @@ function setupEventListeners() {
 
   // Management Event Listeners
   setupManagementEventListeners();
+
+  // Event listener for the moved display mode dropdown
+  const displayModeSelect = document.getElementById('displayMode');
+  if (displayModeSelect) {
+    const durationSettings = document.getElementById('durationSettings');
+    const countdownSettings = document.getElementById('countdownSettings');
+
+    const toggleDisplaySettings = () => {
+      if (displayModeSelect.value === 'sequential') {
+        durationSettings.style.display = 'block';
+        countdownSettings.style.display = 'none';
+      } else if (displayModeSelect.value === 'countdown') {
+        durationSettings.style.display = 'none';
+        countdownSettings.style.display = 'block';
+      } else {
+        durationSettings.style.display = 'none';
+        countdownSettings.style.display = 'none';
+      }
+    };
+
+    displayModeSelect.addEventListener('change', toggleDisplaySettings);
+    toggleDisplaySettings(); // Initial check
+  }
 }
 
 async function handleBigPlayClick() {
@@ -634,7 +654,7 @@ async function handleBigPlayClick() {
     const listId = document.getElementById('quickListSelect').value;
     const prizeId = document.getElementById('quickPrizeSelect').value;
     const winnersCount = parseInt(document.getElementById('quickWinnersCount').value);
-    const displayMode = document.getElementById('quickDisplayMode').value;
+    const displayMode = document.getElementById('displayMode').value;
 
     if (!listId || !prizeId) {
       showToast('Please select both a list and a prize', 'warning');
@@ -670,7 +690,7 @@ async function handleBigPlayClick() {
     currentList = list;
 
     if (displayMode === 'countdown') {
-      showCountdown(winnersCount, selectedPrize);
+      showCountdown(winnersCount, selectedPrize, 'all-at-once');
     } else {
       await selectWinners(winnersCount, selectedPrize, displayMode);
     }
@@ -680,13 +700,12 @@ async function handleBigPlayClick() {
   }
 }
 
-function showCountdown(winnersCount, selectedPrize) {
+function showCountdown(winnersCount, selectedPrize, postCountdownDisplayMode = 'all-at-once') {
   const countdownOverlay = document.getElementById('countdownOverlay');
   const countdownNumber = document.getElementById('countdownNumber');
 
+  let count = parseInt(document.getElementById('countdownDuration').value) || 5;
   countdownOverlay.classList.remove('d-none');
-
-  let count = settings.countdownDuration || 3;
   countdownNumber.textContent = count;
 
   const interval = setInterval(() => {
@@ -699,7 +718,7 @@ function showCountdown(winnersCount, selectedPrize) {
     } else {
       clearInterval(interval);
       countdownOverlay.classList.add('d-none');
-      selectWinners(winnersCount, selectedPrize, 'all-at-once');
+      selectWinners(winnersCount, selectedPrize, postCountdownDisplayMode);
     }
   }, 1000);
 }
@@ -825,27 +844,62 @@ function displayWinnersPublicly(winners, prize, displayMode) {
   const winnersGrid = document.getElementById('winnersGrid');
   winnersGrid.innerHTML = '';
 
-  winners.forEach((winner, index) => {
-    const winnerCard = document.createElement('div');
-    winnerCard.className = 'winner-card';
-
-    if (displayMode === 'sequential') {
-      winnerCard.style.animationDelay = `${(index + 1) * 0.5}s`;
-    }
-
-    winnerCard.innerHTML = `
-      <div class="winner-number">${winner.position}</div>
-      <div class="winner-name">${winner.displayName}</div>
-      <div class="winner-details">${getWinnerDetails(winner)}</div>
-    `;
-
-    winnersGrid.appendChild(winnerCard);
-  });
+  if (displayMode === 'sequential') {
+    // Display winners one by one with delay
+    displayWinnersSequentially(winners, winnersGrid);
+  } else {
+    // Display all winners at once (default)
+    displayAllWinnersAtOnce(winners, winnersGrid);
+  }
 
   winnersGrid.classList.remove('d-none');
 
   // Show action buttons
   document.getElementById('actionButtons').classList.remove('d-none');
+}
+
+function displayAllWinnersAtOnce(winners, winnersGrid) {
+  winners.forEach((winner, index) => {
+    const winnerCard = createWinnerCard(winner, index);
+    winnersGrid.appendChild(winnerCard);
+  });
+}
+
+function displayWinnersSequentially(winners, winnersGrid) {
+  winners.forEach((winner, index) => {
+    setTimeout(() => {
+      const winnerCard = createWinnerCard(winner, index);
+      winnerCard.style.opacity = '0';
+      winnerCard.style.transform = 'translateY(20px)';
+      winnersGrid.appendChild(winnerCard);
+      
+      const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
+      // Animate in
+      setTimeout(() => {
+        winnerCard.style.transition = 'all 0.6s ease-out';
+        winnerCard.style.opacity = '1';
+        winnerCard.style.transform = 'translateY(0)';
+        
+        // Play sound for each winner if enabled
+        if (settings.enableSoundEffects) {
+          playSound('winner');
+        }
+      }, 100);
+    }, index * (displayDuration * 1000));
+  });
+}
+
+function createWinnerCard(winner, index) {
+  const winnerCard = document.createElement('div');
+  winnerCard.className = 'winner-card';
+  
+  winnerCard.innerHTML = `
+    <div class="winner-number">${winner.position}</div>
+    <div class="winner-name">${winner.displayName}</div>
+    <div class="winner-details">${getWinnerDetails(winner)}</div>
+  `;
+  
+  return winnerCard;
 }
 
 function getWinnerDetails(winner) {
@@ -1345,9 +1399,6 @@ async function handleSaveSettings() {
   try {
     // Collect settings from form
     const settingsForm = {
-      displayMode: document.getElementById('displayMode')?.value || settings.displayMode,
-      displayDuration: parseInt(document.getElementById('displayDuration')?.value) || settings.displayDuration,
-      countdownDuration: parseInt(document.getElementById('countdownDuration')?.value) || settings.countdownDuration,
       preventDuplicates: document.getElementById('preventDuplicates')?.checked || settings.preventDuplicates,
       enableSoundEffects: document.getElementById('enableSoundEffects')?.checked || settings.enableSoundEffects,
       hideEntryCounts: document.getElementById('hideEntryCounts')?.checked || settings.hideEntryCounts,
@@ -1402,9 +1453,6 @@ function applyTheme() {
 function loadSettingsToForm() {
   // Load current settings into form fields
   const settingsFields = {
-    'displayMode': settings.displayMode,
-    'displayDuration': settings.displayDuration,
-    'countdownDuration': settings.countdownDuration,
     'preventDuplicates': settings.preventDuplicates,
     'enableSoundEffects': settings.enableSoundEffects,
     'hideEntryCounts': settings.hideEntryCounts,
