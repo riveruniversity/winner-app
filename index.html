@@ -209,6 +209,20 @@
                     </div>
                   </div>
                 </div>
+
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title">Name Display Configuration</h5>
+                    <div id="nameConfig" class="d-none">
+                      <div class="mb-3">
+                        <label class="form-label">Select columns to display as name:</label>
+                        <div id="columnSelectors"></div>
+                      </div>
+                      <button class="btn btn-success" id="saveConfigBtn">Save Configuration</button>
+                    </div>
+                    <div id="noListMessage" class="text-muted">Upload a CSV file to configure name display</div>
+                  </div>
+                </div>
               </div>
               <div class="col-lg-6">
                 <div class="card">
@@ -471,7 +485,7 @@
             </div>
             <div class="text-center mt-4">
               <button class="btn btn-success btn-lg" id="saveSettingsBtn">
-                <i class="bi bi-check-lg me-2"></i>Save All Settings
+                <i class="bi bi-check-lg me-2"></i>Save
               </button>
             </div>
           </div>

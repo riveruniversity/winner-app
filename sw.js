@@ -175,6 +175,12 @@ async function handleFetch(request) {
 // Cache first strategy
 async function cacheFirst(request) {
   try {
+    // Skip caching for chrome-extension requests
+    if (request.url.startsWith('chrome-extension://')) {
+      console.log('[Service Worker] Skipping cache for chrome-extension:', request.url);
+      return fetch(request);
+    }
+
     const cache = await caches.open(STATIC_CACHE_NAME);
     const cachedResponse = await cache.match(request);
 
@@ -186,8 +192,8 @@ async function cacheFirst(request) {
     console.log('[Service Worker] Fetching from network:', request.url);
     const networkResponse = await fetch(request);
 
-    // Cache successful responses
-    if (networkResponse.status === 200) {
+    // Cache successful responses (but not chrome-extension URLs)
+    if (networkResponse.status === 200 && !request.url.startsWith('chrome-extension://')) {
       const responseClone = networkResponse.clone();
       cache.put(request, responseClone);
     }
@@ -202,11 +208,17 @@ async function cacheFirst(request) {
 // Network first strategy
 async function networkFirst(request) {
   try {
+    // Skip caching for chrome-extension requests
+    if (request.url.startsWith('chrome-extension://')) {
+      console.log('[Service Worker] Skipping cache for chrome-extension:', request.url);
+      return fetch(request);
+    }
+
     console.log('[Service Worker] Network first for:', request.url);
     const networkResponse = await fetch(request);
 
-    // Cache successful responses
-    if (networkResponse.status === 200) {
+    // Cache successful responses (but not chrome-extension URLs)
+    if (networkResponse.status === 200 && !request.url.startsWith('chrome-extension://')) {
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       const responseClone = networkResponse.clone();
       cache.put(request, responseClone);
@@ -215,6 +227,11 @@ async function networkFirst(request) {
     return networkResponse;
   } catch (error) {
     console.log('[Service Worker] Network failed, trying cache:', request.url);
+
+    // Skip cache fallback for chrome-extension requests
+    if (request.url.startsWith('chrome-extension://')) {
+      throw error;
+    }
 
     // Fallback to cache
     const cache = await caches.open(DYNAMIC_CACHE_NAME);

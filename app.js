@@ -64,7 +64,7 @@ function showToast(message, type = 'info') {
   Toastify({
     text: message,
     duration: 3000,
-    gravity: 'top',
+    gravity: 'bottom',
     position: 'right',
     style: {
       background: backgroundColor[type] || backgroundColor.info,
@@ -850,18 +850,22 @@ function formatDisplayName(entry, nameConfig) {
     return entry.data[firstField] || 'Unknown';
   }
 
-  // Use configured name format
-  let displayName = nameConfig.format;
-
-  if (nameConfig.firstNameColumn && entry.data[nameConfig.firstNameColumn]) {
-    displayName = displayName.replace('{first}', entry.data[nameConfig.firstNameColumn]);
+  // Original approach: use selected columns with individual delimiters
+  if (nameConfig.columns && nameConfig.columns.length > 0) {
+    let displayName = entry.data[nameConfig.columns[0]] || '';
+    
+    for (let i = 1; i < nameConfig.columns.length; i++) {
+      const delimiter = nameConfig.delimiters[i - 1] || ' ';
+      const value = entry.data[nameConfig.columns[i]] || '';
+      if (value) {
+        displayName += delimiter + value;
+      }
+    }
+    
+    return displayName || 'Unknown';
   }
 
-  if (nameConfig.lastNameColumn && entry.data[nameConfig.lastNameColumn]) {
-    displayName = displayName.replace('{last}', entry.data[nameConfig.lastNameColumn]);
-  }
-
-  return displayName || 'Unknown';
+  return 'Unknown';
 }
 
 function resetToSelectionMode() {
@@ -1021,9 +1025,30 @@ function setupManagementEventListeners() {
   if (restoreData) {
     restoreData.addEventListener('click', handleRestoreData);
   }
+
+  // Preview buttons
+  const confirmUpload = document.getElementById('confirmUpload');
+  const cancelUpload = document.getElementById('cancelUpload');
+
+  if (confirmUpload) {
+    confirmUpload.addEventListener('click', handleConfirmUpload);
+  }
+
+  if (cancelUpload) {
+    cancelUpload.addEventListener('click', handleCancelUpload);
+  }
+
+  // Save name configuration button
+  const saveConfigBtn = document.getElementById('saveConfigBtn');
+  if (saveConfigBtn) {
+    saveConfigBtn.addEventListener('click', handleSaveNameConfig);
+  }
 }
 
-// CSV Upload Handler
+// Global variable to store parsed CSV data for preview
+let pendingCSVData = null;
+
+// CSV Upload Handler - now shows preview first
 async function handleCSVUpload() {
   const listNameInput = document.getElementById('listName');
   const csvFileInput = document.getElementById('csvFile');
@@ -1055,47 +1080,95 @@ async function handleCSVUpload() {
       throw new Error('CSV file appears to be empty');
     }
 
-    updateProgress(50, 'Processing entries...');
+    hideProgress();
 
-    // Create list data structure
-    const listId = generateId();
-    const listData = {
-      listId: listId, // Key at root level for IndexedDB
-      metadata: {
-        listId: listId,
-        name: listName,
-        timestamp: Date.now(),
-        originalFilename: csvFile.name,
-        entryCount: data.length
-      },
-      entries: data.map((row, index) => ({
-        id: generateId(),
-        index: index,
-        data: row
-      }))
+    // Store the parsed data for later use
+    pendingCSVData = {
+      listName: listName,
+      fileName: csvFile.name,
+      data: data
     };
 
-    updateProgress(90, 'Saving list...');
-
-    await saveList(listData);
-
-    hideProgress();
-    showToast(`List "${listName}" uploaded successfully with ${data.length} entries`, 'success');
-
-    // Clear form
-    listNameInput.value = '';
-    csvFileInput.value = '';
-
-    // Refresh displays
-    await loadLists();
-    await populateQuickSelects();
+    // Show preview of first 10 records
+    showCSVPreview(data, listName);
 
   } catch (error) {
     hideProgress();
     console.error('CSV upload error:', error);
-    showToast('Error uploading CSV: ' + error.message, 'error');
+    showToast('Error processing CSV: ' + error.message, 'error');
   }
 }
+
+// Show CSV preview with first 10 records
+function showCSVPreview(data, listName) {
+  const previewCard = document.getElementById('dataPreviewCard');
+  const previewHeaders = document.getElementById('previewHeaders');
+  const previewBody = document.getElementById('previewBody');
+  
+  // Show preview card
+  previewCard.style.display = 'block';
+  
+  // Get headers from first row
+  const headers = Object.keys(data[0]);
+  
+  // Create table headers
+  previewHeaders.innerHTML = '<tr>' + 
+    headers.map(header => `<th>${header}</th>`).join('') + 
+    '</tr>';
+  
+  // Show first 10 records (or less if fewer available)
+  const previewData = data.slice(0, 10);
+  
+  previewBody.innerHTML = previewData.map(row => 
+    '<tr>' + 
+    headers.map(header => `<td>${row[header] || ''}</td>`).join('') + 
+    '</tr>'
+  ).join('');
+  
+  // Update preview title
+  const previewTitle = document.querySelector('#dataPreviewCard .card-title');
+  previewTitle.textContent = `Data Preview - "${listName}" (${data.length} total records, showing first ${previewData.length})`;
+  
+  // Show the name configuration for the uploaded data
+  showNameConfiguration(headers);
+  
+  // Scroll to preview
+  previewCard.scrollIntoView({ behavior: 'smooth' });
+  
+  showToast(`Preview ready! Showing first ${previewData.length} of ${data.length} records`, 'info');
+}
+
+// Show name configuration for uploaded CSV
+function showNameConfiguration(headers) {
+  const nameConfigSection = document.getElementById('nameConfig');
+  const columnSelectors = document.getElementById('columnSelectors');
+  const noListMessage = document.getElementById('noListMessage');
+  
+  // Show the name config section and hide the "no list" message
+  nameConfigSection.classList.remove('d-none');
+  noListMessage.classList.add('d-none');
+  
+  // Clear previous column selectors
+  columnSelectors.innerHTML = '';
+  
+  // Create checkboxes with delimiter inputs (original approach)
+  columnSelectors.innerHTML = headers.map((header, index) => `
+    <div class="form-check">
+      <input class="form-check-input column-checkbox" type="checkbox" value="${header}" id="col_${index}" ${index === 0 ? 'checked' : ''}>
+      <label class="form-check-label" for="col_${index}">${header}</label>
+      <input type="text" class="form-control form-control-sm mt-1 delimiter-input" placeholder="Delimiter (e.g., ' - ')" data-column="${header}" ${index === 0 ? 'disabled' : ''}>
+    </div>
+  `).join('');
+  
+  // Update delimiter inputs based on checkbox state
+  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const delimiterInput = document.querySelector(`[data-column="${this.value}"]`);
+      delimiterInput.disabled = !this.checked || this === document.querySelector('.column-checkbox');
+    });
+  });
+}
+
 
 function readFileAsText(file) {
   return new Promise((resolve, reject) => {
@@ -1550,4 +1623,126 @@ async function deleteHistoryConfirm(historyId) {
       showToast('Error deleting history: ' + error.message, 'error');
     }
   }
+}
+
+// Handle confirm upload after preview
+async function handleConfirmUpload() {
+  if (!pendingCSVData) {
+    showToast('No data to upload', 'error');
+    return;
+  }
+
+  try {
+    showProgress('Uploading List', 'Creating list...');
+
+    // Use saved name configuration or get current one
+    const nameConfig = pendingCSVData.nameConfig || getNameConfiguration();
+
+    // Create list data structure
+    const listId = generateId();
+    const listData = {
+      listId: listId, // Key at root level for IndexedDB
+      metadata: {
+        listId: listId,
+        name: pendingCSVData.listName,
+        timestamp: Date.now(),
+        originalFilename: pendingCSVData.fileName,
+        entryCount: pendingCSVData.data.length,
+        nameConfig: nameConfig // Save name configuration
+      },
+      entries: pendingCSVData.data.map((row, index) => ({
+        id: generateId(),
+        index: index,
+        data: row
+      }))
+    };
+
+    updateProgress(90, 'Saving list...');
+
+    await saveList(listData);
+
+    hideProgress();
+    showToast(`List "${pendingCSVData.listName}" uploaded successfully with ${pendingCSVData.data.length} entries`, 'success');
+
+    // Clear form and hide preview
+    document.getElementById('listName').value = '';
+    document.getElementById('csvFile').value = '';
+    document.getElementById('dataPreviewCard').style.display = 'none';
+    
+    // Hide name configuration and show "no list" message
+    const nameConfigSection = document.getElementById('nameConfig');
+    const noListMessage = document.getElementById('noListMessage');
+    if (nameConfigSection) nameConfigSection.classList.add('d-none');
+    if (noListMessage) noListMessage.classList.remove('d-none');
+    
+    // Clear pending data
+    pendingCSVData = null;
+
+    // Refresh displays
+    await loadLists();
+    await populateQuickSelects();
+
+  } catch (error) {
+    hideProgress();
+    console.error('Error confirming upload:', error);
+    showToast('Error uploading list: ' + error.message, 'error');
+  }
+}
+
+// Get name configuration from UI (original approach with multiple delimiters)
+function getNameConfiguration() {
+  const columnSelectors = document.getElementById('columnSelectors');
+  if (!columnSelectors) {
+    return null; // No name configuration UI present
+  }
+  
+  const selectedColumns = Array.from(document.querySelectorAll('.column-checkbox:checked')).map(cb => cb.value);
+  const delimiters = [];
+  
+  // Get delimiter for each column after the first one
+  for (let i = 1; i < selectedColumns.length; i++) {
+    const delimiterInput = document.querySelector(`[data-column="${selectedColumns[i]}"]`);
+    const delimiter = delimiterInput ? delimiterInput.value || ' ' : ' ';
+    delimiters.push(delimiter);
+  }
+  
+  return {
+    columns: selectedColumns,
+    delimiters: delimiters
+  };
+}
+
+// Handle saving name configuration
+function handleSaveNameConfig() {
+  const config = getNameConfiguration();
+  if (!config || config.columns.length === 0) {
+    showToast('Please select at least one column for name display', 'warning');
+    return;
+  }
+  
+  // Store configuration temporarily
+  if (pendingCSVData) {
+    pendingCSVData.nameConfig = config;
+    const delimiterInfo = config.delimiters.length > 0 ? ` with delimiters: [${config.delimiters.join(', ')}]` : '';
+    showToast(`Name configuration saved: ${config.columns.join(', ')}${delimiterInfo}`, 'success');
+  } else {
+    showToast('No CSV data available to configure', 'error');
+  }
+}
+
+// Handle cancel upload
+function handleCancelUpload() {
+  // Hide preview card
+  document.getElementById('dataPreviewCard').style.display = 'none';
+  
+  // Hide name configuration and show "no list" message
+  const nameConfigSection = document.getElementById('nameConfig');
+  const noListMessage = document.getElementById('noListMessage');
+  if (nameConfigSection) nameConfigSection.classList.add('d-none');
+  if (noListMessage) noListMessage.classList.remove('d-none');
+  
+  // Clear pending data
+  pendingCSVData = null;
+  
+  showToast('Upload cancelled', 'info');
 }
