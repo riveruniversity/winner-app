@@ -284,10 +284,12 @@ body {
 }
 
 .countdown-number {
+  font-family: 'Poppins', sans-serif;
   font-size: 15rem;
-  font-weight: 900;
-  color: #ff6b6b;
-  text-shadow: 0 0 50px rgba(255, 107, 107, 0.5);
+  font-weight: 700;
+  color: white;
+  /* A multi-layer shadow gives a nice glow effect that works with the theme color */
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 40px var(--primary-color);
   animation: pulse 1s ease-in-out;
   z-index: 2; /* In front of the canvas */
   position: relative;
