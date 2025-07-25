@@ -18,13 +18,22 @@ let settings = {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function () {
-  appModal = new bootstrap.Modal(document.getElementById('appModal'));
   try {
+    // Initialize other components first
     await initDB();
     await loadSettings();
     await initializeApp();
     setupEventListeners();
     setupTheme();
+    
+    // Initialize modal after everything else is ready
+    setTimeout(() => {
+      const modalElement = document.getElementById('appModal');
+      if (modalElement) {
+        appModal = new bootstrap.Modal(modalElement);
+      }
+    }, 100);
+    
     showToast('Application loaded successfully!', 'success');
   } catch (error) {
     console.error('Initialization error:', error);
@@ -839,23 +848,16 @@ function getWinnerDetails(winner) {
 }
 
 function formatDisplayName(entry, nameConfig) {
-  if (!nameConfig) {
-    // Default: try common name fields
-    const commonFields = ['name', 'full_name', 'first_name', 'last_name'];
-    for (const field of commonFields) {
-      if (entry.data[field]) {
-        return entry.data[field];
-      }
-    }
-    // If no name fields found, use first available field
-    const firstField = Object.keys(entry.data)[0];
-    return entry.data[firstField] || 'Unknown';
+  // New template-based format (nameConfig is a string)
+  if (typeof nameConfig === 'string') {
+    return nameConfig.replace(/\{([^}]+)\}/g, (match, key) => {
+      return entry.data[key.trim()] || '';
+    }).trim() || 'Unknown';
   }
 
-  // Original approach: use selected columns with individual delimiters
-  if (nameConfig.columns && nameConfig.columns.length > 0) {
+  // Backward compatibility for old object-based format
+  if (nameConfig && nameConfig.columns && nameConfig.columns.length > 0) {
     let displayName = entry.data[nameConfig.columns[0]] || '';
-    
     for (let i = 1; i < nameConfig.columns.length; i++) {
       const delimiter = nameConfig.delimiters[i - 1] || ' ';
       const value = entry.data[nameConfig.columns[i]] || '';
@@ -863,10 +865,23 @@ function formatDisplayName(entry, nameConfig) {
         displayName += delimiter + value;
       }
     }
-    
     return displayName || 'Unknown';
   }
 
+  // Ultimate fallback: try common name fields
+  const commonFields = ['name', 'full_name', 'first_name', 'last_name'];
+  for (const field of commonFields) {
+    if (entry.data[field]) {
+      return entry.data[field];
+    }
+  }
+  // If no name fields found, use first available field
+  const firstField = Object.keys(entry.data)[0];
+  return entry.data[firstField] || 'Unknown';
+}
+
+function resetToSelectionMode() {
+  // Show selection controls
   return 'Unknown';
 }
 
@@ -1132,7 +1147,7 @@ function showCSVPreview(data, listName) {
   previewTitle.textContent = `Data Preview - "${listName}" (${data.length} total records, showing first ${previewData.length})`;
   
   // Show the name configuration for the uploaded data
-  showNameConfiguration(headers);
+  showNameConfiguration(headers, data[0]);
   
   // Scroll to preview
   previewCard.scrollIntoView({ behavior: 'smooth' });
@@ -1141,34 +1156,49 @@ function showCSVPreview(data, listName) {
 }
 
 // Show name configuration for uploaded CSV
-function showNameConfiguration(headers) {
-  const nameConfigSection = document.getElementById('nameConfig');
-  const columnSelectors = document.getElementById('columnSelectors');
-  const noListMessage = document.getElementById('noListMessage');
-  
-  // Show the name config section and hide the "no list" message
-  nameConfigSection.classList.remove('d-none');
-  noListMessage.classList.add('d-none');
-  
-  // Clear previous column selectors
-  columnSelectors.innerHTML = '';
-  
-  // Create checkboxes with delimiter inputs (original approach)
-  columnSelectors.innerHTML = headers.map((header, index) => `
-    <div class="form-check">
-      <input class="form-check-input column-checkbox" type="checkbox" value="${header}" id="col_${index}" ${index === 0 ? 'checked' : ''}>
-      <label class="form-check-label" for="col_${index}">${header}</label>
-      <input type="text" class="form-control form-control-sm mt-1 delimiter-input" placeholder="Delimiter (e.g., ' - ')" data-column="${header}" ${index === 0 ? 'disabled' : ''}>
-    </div>
-  `).join('');
-  
-  // Update delimiter inputs based on checkbox state
-  document.querySelectorAll('.column-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-      const delimiterInput = document.querySelector(`[data-column="${this.value}"]`);
-      delimiterInput.disabled = !this.checked || this === document.querySelector('.column-checkbox');
-    });
+function showNameConfiguration(headers, firstRow) {
+  const nameConfigCard = document.getElementById('nameConfigCard');
+  const availableFields = document.getElementById('availableFields');
+  const nameTemplateInput = document.getElementById('nameTemplate');
+  const namePreview = document.getElementById('namePreview');
+
+  nameConfigCard.style.display = 'block';
+  availableFields.innerHTML = '';
+
+  // Create clickable field buttons
+  headers.forEach(header => {
+    const fieldBtn = document.createElement('button');
+    fieldBtn.className = 'btn btn-sm btn-outline-secondary';
+    fieldBtn.textContent = header;
+    fieldBtn.onclick = () => {
+      const cursorPos = nameTemplateInput.selectionStart;
+      const text = nameTemplateInput.value;
+      const placeholder = `{${header}}`;
+      nameTemplateInput.value = text.slice(0, cursorPos) + placeholder + text.slice(cursorPos);
+      nameTemplateInput.focus();
+      updatePreview();
+    };
+    availableFields.appendChild(fieldBtn);
   });
+
+  // Set a default template
+  const defaultTemplate = headers.length > 1 ? `{${headers[0]}} {${headers[1]}}` : `{${headers[0]}}`;
+  nameTemplateInput.value = defaultTemplate;
+
+  // Function to update the preview
+  function updatePreview() {
+    const template = nameTemplateInput.value;
+    const previewText = template.replace(/\{([^}]+)\}/g, (match, key) => {
+      return firstRow[key] || '';
+    });
+    namePreview.textContent = previewText;
+  }
+
+  // Initial preview
+  updatePreview();
+
+  // Update preview on input
+  nameTemplateInput.addEventListener('input', updatePreview);
 }
 
 
@@ -1706,7 +1736,7 @@ async function handleConfirmUpload() {
     showProgress('Uploading List', 'Creating list...');
 
     // Use saved name configuration or get current one
-    const nameConfig = pendingCSVData.nameConfig || getNameConfiguration();
+    const nameConfig = getNameConfiguration();
 
     // Create list data structure
     const listId = generateId();
@@ -1737,13 +1767,7 @@ async function handleConfirmUpload() {
     // Clear form and hide preview
     document.getElementById('listName').value = '';
     document.getElementById('csvFile').value = '';
-    document.getElementById('dataPreviewCard').style.display = 'none';
-    
-    // Hide name configuration and show "no list" message
-    const nameConfigSection = document.getElementById('nameConfig');
-    const noListMessage = document.getElementById('noListMessage');
-    if (nameConfigSection) nameConfigSection.classList.add('d-none');
-    if (noListMessage) noListMessage.classList.remove('d-none');
+    handleCancelUpload(); // Use cancel function to reset UI
     
     // Clear pending data
     pendingCSVData = null;
@@ -1759,57 +1783,17 @@ async function handleConfirmUpload() {
   }
 }
 
-// Get name configuration from UI (original approach with multiple delimiters)
+// Get name configuration from UI
 function getNameConfiguration() {
-  const columnSelectors = document.getElementById('columnSelectors');
-  if (!columnSelectors) {
-    return null; // No name configuration UI present
-  }
-  
-  const selectedColumns = Array.from(document.querySelectorAll('.column-checkbox:checked')).map(cb => cb.value);
-  const delimiters = [];
-  
-  // Get delimiter for each column after the first one
-  for (let i = 1; i < selectedColumns.length; i++) {
-    const delimiterInput = document.querySelector(`[data-column="${selectedColumns[i]}"]`);
-    const delimiter = delimiterInput ? delimiterInput.value || ' ' : ' ';
-    delimiters.push(delimiter);
-  }
-  
-  return {
-    columns: selectedColumns,
-    delimiters: delimiters
-  };
-}
-
-// Handle saving name configuration
-function handleSaveNameConfig() {
-  const config = getNameConfiguration();
-  if (!config || config.columns.length === 0) {
-    showToast('Please select at least one column for name display', 'warning');
-    return;
-  }
-  
-  // Store configuration temporarily
-  if (pendingCSVData) {
-    pendingCSVData.nameConfig = config;
-    const delimiterInfo = config.delimiters.length > 0 ? ` with delimiters: [${config.delimiters.join(', ')}]` : '';
-    showToast(`Name configuration saved: ${config.columns.join(', ')}${delimiterInfo}`, 'success');
-  } else {
-    showToast('No CSV data available to configure', 'error');
-  }
+  const nameTemplateInput = document.getElementById('nameTemplate');
+  return nameTemplateInput.value.trim();
 }
 
 // Handle cancel upload
 function handleCancelUpload() {
   // Hide preview card
   document.getElementById('dataPreviewCard').style.display = 'none';
-  
-  // Hide name configuration and show "no list" message
-  const nameConfigSection = document.getElementById('nameConfig');
-  const noListMessage = document.getElementById('noListMessage');
-  if (nameConfigSection) nameConfigSection.classList.add('d-none');
-  if (noListMessage) noListMessage.classList.remove('d-none');
+  document.getElementById('nameConfigCard').style.display = 'none';
   
   // Clear pending data
   pendingCSVData = null;
