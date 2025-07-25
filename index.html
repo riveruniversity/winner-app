@@ -186,6 +186,7 @@
                       <option value="all-at-once">All at Once</option>
                       <option value="sequential">Sequential Reveal</option>
                       <option value="countdown">Countdown Timer</option>
+                      <option value="animation">Countdown Animation</option>
                     </select>
                   </div>
                   <div class="col-md-6" id="durationSettings" style="display: none;">
@@ -533,6 +534,7 @@
   <!-- Countdown Animation Overlay -->
   <div class="countdown-animation d-none" id="countdownOverlay">
     <div class="countdown-number" id="countdownNumber">3</div>
+    <canvas id="animationCanvas"></canvas>
   </div>
   <!-- Hidden file input for restore -->
   <input type="file" id="restoreFileInput" accept=".json" style="display: none;">

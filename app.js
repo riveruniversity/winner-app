@@ -2,6 +2,7 @@
 let db;
 let appModal = null;
 let currentList = null;
+let animationFrameId = null;
 let lastAction = null;
 let settings = {
   preventDuplicates: false,
@@ -632,15 +633,17 @@ function setupEventListeners() {
     const countdownSettings = document.getElementById('countdownSettings');
 
     const toggleDisplaySettings = () => {
-      if (displayModeSelect.value === 'sequential') {
-        durationSettings.style.display = 'block';
-        countdownSettings.style.display = 'none';
-      } else if (displayModeSelect.value === 'countdown') {
-        durationSettings.style.display = 'none';
-        countdownSettings.style.display = 'block';
-      } else {
-        durationSettings.style.display = 'none';
-        countdownSettings.style.display = 'none';
+      const mode = displayModeSelect.value;
+      const showSequential = mode === 'sequential';
+      const showCountdown = mode === 'countdown' || mode === 'animation';
+
+      durationSettings.style.display = showSequential ? 'block' : 'none';
+      countdownSettings.style.display = showCountdown ? 'block' : 'none';
+
+      // Hide or show the entire row if no options are visible
+      const presentationOptionsRow = document.getElementById('presentationOptionsRow');
+      if (presentationOptionsRow) {
+        presentationOptionsRow.style.display = (showSequential || showCountdown) ? 'flex' : 'none';
       }
     };
 
@@ -689,8 +692,10 @@ async function handleBigPlayClick() {
     // Set current list for global access
     currentList = list;
 
-    if (displayMode === 'countdown') {
+    if (displayMode === 'countdown' || displayMode === 'animation') {
       showCountdown(winnersCount, selectedPrize, 'all-at-once');
+    } else if (displayMode === 'animation') {
+      showAnimatedCountdown(winnersCount, selectedPrize, 'all-at-once');
     } else {
       await selectWinners(winnersCount, selectedPrize, displayMode);
     }
@@ -703,6 +708,11 @@ async function handleBigPlayClick() {
 function showCountdown(winnersCount, selectedPrize, postCountdownDisplayMode = 'all-at-once') {
   const countdownOverlay = document.getElementById('countdownOverlay');
   const countdownNumber = document.getElementById('countdownNumber');
+  const displayMode = document.getElementById('displayMode').value;
+
+  if (displayMode === 'animation') {
+    startParticleAnimation();
+  }
 
   let count = parseInt(document.getElementById('countdownDuration').value) || 5;
   countdownOverlay.classList.remove('d-none');
@@ -717,6 +727,9 @@ function showCountdown(winnersCount, selectedPrize, postCountdownDisplayMode = '
       }
     } else {
       clearInterval(interval);
+      if (displayMode === 'animation') {
+        stopParticleAnimation();
+      }
       countdownOverlay.classList.add('d-none');
       selectWinners(winnersCount, selectedPrize, postCountdownDisplayMode);
     }
@@ -950,6 +963,115 @@ function formatDisplayName(entry, nameConfig) {
   // If no name fields found, use first available field
   const firstField = Object.keys(entry.data)[0];
   return entry.data[firstField] || 'Unknown';
+}
+
+
+// Particle Animation Functions
+function startParticleAnimation() {
+  const canvas = document.getElementById('animationCanvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Convert hex to RGB
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  const primaryRgb = hexToRgb(settings.primaryColor);
+  const secondaryRgb = hexToRgb(settings.secondaryColor);
+
+  class Particle {
+    constructor() {
+      this.x = canvas.width / 2;
+      this.y = canvas.height / 2;
+      this.radius = Math.random() * 3 + 1;
+      this.life = Math.random() * 50 + 50;
+      this.angle = Math.random() * Math.PI * 2;
+      this.speed = Math.random() * 5 + 2;
+      this.color = Math.random() > 0.5 ? primaryRgb : secondaryRgb;
+      this.opacity = 1;
+    }
+
+    update() {
+      this.x += Math.cos(this.angle) * this.speed;
+      this.y += Math.sin(this.angle) * this.speed;
+      this.angle += (Math.random() - 0.5) * 0.4; // Swirl effect
+      this.life--;
+      this.opacity = this.life / 100;
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.opacity})`;
+      ctx.fill();
+    }
+  }
+
+  function createBurst(x, y, count = 50) {
+    for (let i = 0; i < count; i++) {
+      const p = new Particle();
+      p.x = x;
+      p.y = y;
+      p.speed = Math.random() * 6 + 3;
+      particles.push(p);
+    }
+  }
+
+  let burstCounter = 0;
+
+  function animate() {
+    // Fading trail effect
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Create new particles for the "breeze"
+    for (let i = 0; i < 5; i++) {
+      particles.push(new Particle());
+    }
+
+    // Create a burst effect periodically
+    burstCounter++;
+    if (burstCounter % 60 === 0) { // Every second
+      createBurst(Math.random() * canvas.width, Math.random() * canvas.height);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.update();
+      p.draw();
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+      }
+    }
+
+    animationFrameId = requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+function stopParticleAnimation() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+    const canvas = document.getElementById('animationCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
 }
 
 function resetToSelectionMode() {
