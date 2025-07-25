@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winner Selection App</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="Professional random winner selection application">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Winner App">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Bootstrap CSS for modern styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Toastify for notifications -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab">
+                        <i class="bi bi-house-door me-2"></i>Home
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="lists-tab" data-bs-toggle="tab" data-bs-target="#lists" type="button" role="tab">
+                        <i class="bi bi-list-ul me-2"></i>Lists
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab">
+                        <i class="bi bi-trophy me-2"></i>Winners
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+                        <i class="bi bi-clock-history me-2"></i>History
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="bi bi-gear me-2"></i>Settings
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabContent">
+                <!-- Home Tab -->
+                <div class="tab-pane fade show active" id="home" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Random Selection</h5>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Current List</label>
+                                        <select class="form-select" id="currentListSelect">
+                                            <option value="">Select a list...</option>
+                                        </select>
+                                        <small class="text-muted" id="listInfo">No list selected</small>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Number of Winners</label>
+                                        <input type="number" class="form-control" id="numWinners" value="1" min="1">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Prize</label>
+                                        <select class="form-select" id="prizeSelect">
+                                            <option value="">Select a prize...</option>
+                                        </select>
+                                    </div>
+
+                                    <button class="btn btn-primary w-100 mb-3" id="selectWinnersBtn" disabled>
+                                        <i class="bi bi-shuffle me-2"></i>Select Winners
+                                    </button>
+
+                                    <button class="btn btn-outline-secondary w-100 mb-2" id="fullscreenBtn" disabled>
+                                        <i class="bi bi-fullscreen me-2"></i>Enter Fullscreen
+                                    </button>
+
+                                    <button class="btn btn-outline-warning w-100" id="undoBtn" disabled>
+                                        <i class="bi bi-arrow-counterclockwise me-2"></i>Undo Last Selection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8">
+                            <div id="winnerDisplay" class="d-none">
+                                <div class="winner-display">
+                                    <div class="winner-prize" id="displayPrize"></div>
+                                    <div id="winnersList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lists Tab -->
+                <div class="tab-pane fade" id="lists" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Upload CSV List</h5>
+                                    <div class="mb-3">
+                                        <label class="form-label">List Name</label>
+                                        <input type="text" class="form-control" id="listName" placeholder="Enter list name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">CSV File</label>
+                                        <input type="file" class="form-control" id="csvFile" accept=".csv">
+                                    </div>
+                                    <button class="btn btn-primary" id="uploadBtn">
+                                        <i class="bi bi-upload me-2"></i>Upload List
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Name Display Configuration</h5>
+                                    <div id="nameConfig" class="d-none">
+                                        <div class="mb-3">
+                                            <label class="form-label">Select columns to display as name:</label>
+                                            <div id="columnSelectors"></div>
+                                        </div>
+                                        <button class="btn btn-success" id="saveConfigBtn">Save Configuration</button>
+                                    </div>
+                                    <div id="noListMessage" class="text-muted">Upload a CSV file to configure name display</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Saved Lists</h5>
+                                    <div id="savedLists">
+                                        <p class="text-muted">No lists saved yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Winners Tab -->
+                <div class="tab-pane fade" id="winners" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="card-title mb-0">Winners List</h5>
+                                <div>
+                                    <button class="btn btn-success me-2" id="exportWinnersBtn">
+                                        <i class="bi bi-download me-2"></i>Export CSV
+                                    </button>
+                                    <button class="btn btn-danger" id="clearWinnersBtn">
+                                        <i class="bi bi-trash me-2"></i>Clear All
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr id="winnersTableHeader">
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Prize</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="winnersTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Tab -->
+                <div class="tab-pane fade" id="history" role="tabpanel">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Selection History & Statistics</h5>
+                            
+                            <div class="history-stats" id="historyStats">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalSelections">0</div>
+                                    <div class="stat-label">Total Selections</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalWinners">0</div>
+                                    <div class="stat-label">Total Winners</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="averageWinners">0</div>
+                                    <div class="stat-label">Avg Winners/Selection</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="mostUsedPrize">-</div>
+                                    <div class="stat-label">Most Used Prize</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Filter by List</label>
+                                <select class="form-select" id="historyListFilter">
+                                    <option value="">All Lists</option>
+                                </select>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>List</th>
+                                            <th>Prize</th>
+                                            <th>Winners Count</th>
+                                            <th>Winners</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="historyTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Display Settings</h5>
+                                    <div class="mb-3">
+                                        <label class="form-label">Display Duration (seconds)</label>
+                                        <input type="number" class="form-control" id="displayDuration" value="3" min="1" max="30">
+                                        <small class="text-muted">Time to display each winner</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="preventDuplicates">
+                                            <label class="form-check-label" for="preventDuplicates">
+                                                Remove winners from source list (prevent duplicates)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Theme Colors</h5>
+                                    <div class="mb-3">
+                                        <label class="form-label">Primary Color</label>
+                                        <input type="color" class="form-control color-input" id="primaryColor" value="#6366f1">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Secondary Color</label>
+                                        <input type="color" class="form-control color-input" id="secondaryColor" value="#8b5cf6">
+                                    </div>
+                                    <button class="btn btn-primary" id="saveThemeBtn">Save Theme</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Prize Management</h5>
+                                    <div class="mb-3">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="prizeName" placeholder="Prize name">
+                                            <input type="number" class="form-control" id="prizeQuantity" placeholder="Quantity" min="1">
+                                            <button class="btn btn-primary" id="addPrizeBtn">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="prizesList">
+                                        <p class="text-muted">No prizes added yet</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-success btn-lg" id="saveSettingsBtn">
+                            <i class="bi bi-check-lg me-2"></i>Save All Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Overlay -->
+    <div id="progressOverlay" class="progress-overlay d-none">
+        <div class="progress-content">
+            <h5 id="progressTitle">Processing...</h5>
+            <div class="progress-bar-custom">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressText">Please wait...</p>
+        </div>
+    </div>
+
+    <!-- Fullscreen Winner Display -->
+    <div id="fullscreenDisplay" class="fullscreen-mode d-none">
+        <div class="fullscreen-winner">
+            <div class="winner-prize" id="fullscreenPrize"></div>
+            <div id="fullscreenWinnersList"></div>
+            <button class="btn btn-outline-light btn-lg mt-4" onclick="exitFullscreen()">
+                <i class="bi bi-fullscreen-exit me-2"></i>Exit Fullscreen
+            </button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Toastify JS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <!-- Custom JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
