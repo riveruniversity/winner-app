@@ -104,20 +104,26 @@
 ```
 winner-selection-app/
 ├── index.html          # Main HTML with enhanced UI
-├── styles.css          # Complete CSS with themes & animations
-├── app.js              # Full JavaScript with all features
-├── manifest.json       # PWA manifest with shortcuts
-├── sw.js               # Service worker with fixed caching
-├── favicon.ico         # Convert from favicon.svg
-└── favicon.svg         # Source for favicon generation
+├── css/
+│   └── styles.css      # Complete CSS with themes & animations
+├── js/
+│   ├── app.js          # Full JavaScript with all features
+│   └── sw.js           # Service worker with fixed caching
+├── images/
+│   ├── favicon.ico     # Convert from favicon.svg
+│   ├── favicon.png     # PNG version
+│   └── wheel.svg       # Wheel graphics
+├── icons/              # PWA icons
+├── docs/               # Documentation files
+└── manifest.json       # PWA manifest with shortcuts
 ```
 
 ## 🚀 **Deployment Guide**
 
 ### **Step 1: Generate Favicon**
-Convert `favicon.svg` to `favicon.ico`:
+Convert `favicon.svg` to `favicon.ico` and place in `images/` folder:
 - Use online tool: [realfavicongenerator.net](https://realfavicongenerator.net)
-- Or CLI: `convert favicon.svg -resize 32x32 favicon.ico`
+- Or CLI: `convert favicon.svg -resize 32x32 images/favicon.ico`
 
 ### **Step 2: Deploy Files**
 Upload all files to your web server ensuring HTTPS is enabled.

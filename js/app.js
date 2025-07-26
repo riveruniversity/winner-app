@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 // Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('./worker.js')
       .then((registration) => {
         console.log('SW registered: ', registration);
       })
@@ -1144,54 +1144,60 @@ async function undoLastSelection() {
     return;
   }
 
-  try {
-    showProgress('Undoing Selection', 'Reversing last selection...');
+  showConfirmationModal(
+    'Undo Last Selection',
+    'Are you sure you want to undo the last winner selection? This will delete the winners, restore prize quantities, and cannot be undone.',
+    async () => {
+      try {
+        showProgress('Undoing Selection', 'Reversing last selection...');
 
-    // Delete winners
-    for (const winner of lastAction.winners) {
-      await deleteWinner(winner.winnerId);
-    }
+        // Delete winners
+        for (const winner of lastAction.winners) {
+          await deleteWinner(winner.winnerId);
+        }
 
-    // Restore prize quantity
-    const prizes = await getAllPrizes();
-    const prize = prizes.find(p => p.prizeId === lastAction.prizeId);
-    if (prize) {
-      prize.quantity += lastAction.prizeCount;
-      await savePrize(prize);
-    }
+        // Restore prize quantity
+        const prizes = await getAllPrizes();
+        const prize = prizes.find(p => p.prizeId === lastAction.prizeId);
+        if (prize) {
+          prize.quantity += lastAction.prizeCount;
+          await savePrize(prize);
+        }
 
-    // Delete history entry
-    await deleteHistory(lastAction.historyId);
+        // Delete history entry
+        await deleteHistory(lastAction.historyId);
 
-    // Restore entries to list if they were removed
-    if (settings.preventDuplicates && currentList) {
-      currentList.entries.push(...lastAction.removedEntries);
-      // Ensure the list has the required listId at root level
-      if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
-        currentList.listId = currentList.metadata.listId;
+        // Restore entries to list if they were removed
+        if (settings.preventDuplicates && currentList) {
+          currentList.entries.push(...lastAction.removedEntries);
+          // Ensure the list has the required listId at root level
+          if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
+            currentList.listId = currentList.metadata.listId;
+          }
+          await saveList(currentList);
+        }
+
+        hideProgress();
+        showToast('Selection undone successfully', 'success');
+
+        // Update the winners list in management interface
+        loadWinners();
+        loadHistory();
+        updateHistoryStats();
+
+        // Reset interface
+        resetToSelectionMode();
+
+        // Clear last action
+        lastAction = null;
+
+      } catch (error) {
+        hideProgress();
+        console.error('Error undoing selection:', error);
+        showToast('Error undoing selection: ' + error.message, 'error');
       }
-      await saveList(currentList);
     }
-
-    hideProgress();
-    showToast('Selection undone successfully', 'success');
-
-    // Update the winners list in management interface
-    loadWinners();
-    loadHistory();
-    updateHistoryStats();
-
-    // Reset interface
-    resetToSelectionMode();
-
-    // Clear last action
-    lastAction = null;
-
-  } catch (error) {
-    hideProgress();
-    console.error('Error undoing selection:', error);
-    showToast('Error undoing selection: ' + error.message, 'error');
-  }
+  );
 }
 
 // Sound Effects

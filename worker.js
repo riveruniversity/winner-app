@@ -5,10 +5,10 @@ const DYNAMIC_CACHE_NAME = 'winner-app-dynamic-v1';
 // Files to cache immediately
 const STATIC_FILES = [
   './index.html',
-  './styles.css',
-  './app.js',
+  './css/styles.css',
+  './js/app.js',
   './manifest.json',
-  './favicon.ico',
+  './images/favicon.ico',
   './icons/icon-192x192.svg',
   './icons/icon-512x512.svg',
   // Bootstrap CSS
@@ -250,7 +250,7 @@ async function networkFirst(request) {
 // Helper functions
 function isStaticFile(url) {
   const staticExtensions = ['.html', '.css', '.js', '.json', '.ico'];
-  const staticFiles = ['./index.html', './styles.css', './app.js', './manifest.json', './favicon.ico'];
+  const staticFiles = ['./index.html', './css/styles.css', './js/app.js', './manifest.json', './images/favicon.ico'];
 
   return staticFiles.some(file => url.includes(file)) ||
     staticExtensions.some(ext => url.endsWith(ext));
@@ -331,8 +331,8 @@ self.addEventListener('push', (event) => {
   let notificationData = {
     title: 'Winner Selection App',
     body: 'You have a new notification',
-    icon: './favicon.ico',
-    badge: './favicon.ico',
+    icon: './images/favicon.ico',
+    badge: './images/favicon.ico',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -342,12 +342,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'open',
         title: 'Open App',
-        icon: './favicon.ico'
+        icon: './images/favicon.ico'
       },
       {
         action: 'close',
         title: 'Close',
-        icon: './favicon.ico'
+        icon: './images/favicon.ico'
       }
     ]
   };

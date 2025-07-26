@@ -32,10 +32,10 @@ vercel --prod
 ### **Minification (Optional)**
 ```bash
 # Minify CSS
-npx clean-css-cli styles.css -o styles.min.css
+npx clean-css-cli css/styles.css -o css/styles.min.css
 
 # Minify JavaScript
-npx terser app.js -o app.min.js
+npx terser js/app.js -o js/app.min.js
 
 # Update index.html references accordingly
 ```
@@ -116,7 +116,7 @@ Consider alternatives:
 ## 🔧 **Environment Configuration**
 
 ### **Development vs Production**
-Add to app.js:
+Add to js/app.js:
 ```javascript
 const ENV = {
     isDevelopment: location.hostname === 'localhost',
@@ -169,7 +169,7 @@ if (ENV.isDevelopment) {
 ### **Service Worker Not Registering**
 - Ensure HTTPS in production
 - Check browser developer tools for errors
-- Verify sw.js is accessible
+- Verify js/sw.js is accessible
 
 ### **PWA Not Installing**
 - Check manifest.json syntax
