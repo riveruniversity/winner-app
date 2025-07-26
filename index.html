@@ -321,11 +321,22 @@
           <div class="tab-pane fade" id="winners" role="tabpanel">
             <div class="card">
               <div class="card-body">
-                <h5 class="card-title">All Winners</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="card-title mb-0">All Winners</h5>
+                  <div class="btn-group">
+                    <button class="btn btn-outline-success" id="exportWinnersBtn">
+                      <i class="bi bi-download me-2"></i>Export CSV
+                    </button>
+                    <button class="btn btn-outline-danger" id="clearWinnersBtn">
+                      <i class="bi bi-trash me-2"></i>Clear All
+                    </button>
+                  </div>
+                </div>
                 <div class="table-responsive">
                   <table class="table table-striped">
                     <thead>
                       <tr>
+                        <th>ID</th>
                         <th>Name</th>
                         <th>Prize</th>
                         <th>Date</th>

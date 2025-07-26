@@ -12,7 +12,10 @@ let settings = {
   primaryColor: '#6366f1',
   secondaryColor: '#8b5cf6',
   backgroundType: 'gradient',
-  customBackgroundImage: null
+  customBackgroundImage: null,
+  selectedListId: '',
+  selectedPrizeId: '',
+  winnersCount: 1
 };
 
 // Initialize the application
@@ -315,6 +318,25 @@ async function loadSettings() {
   }
 }
 
+// Centralized UI Synchronization
+async function syncUI() {
+  try {
+    // 1. Repopulate dropdowns, which restores selections from the settings object
+    await populateQuickSelects();
+
+    // 2. Apply visibility settings (e.g., hide entry counts)
+    applyVisibilitySettings();
+
+    // 3. Update the public-facing info cards to match the current state
+    if (typeof updateSelectionInfo === 'function') {
+      updateSelectionInfo();
+    }
+  } catch (error) {
+    console.error('Error syncing UI:', error);
+    showToast('Failed to refresh the application interface.', 'error');
+  }
+}
+
 // Application initialization
 async function initializeApp() {
   await loadLists();
@@ -322,8 +344,7 @@ async function initializeApp() {
   await loadWinners();
   await loadHistory();
   await updateHistoryStats();
-  await populateQuickSelects();
-  applyVisibilitySettings();
+  await syncUI();
 }
 
 // Apply visibility settings to interface elements
@@ -427,12 +448,13 @@ async function loadWinners() {
     if (!tbody) return;
 
     if (winners.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No winners selected yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No winners selected yet.</td></tr>';
       return;
     }
 
     tbody.innerHTML = winners.map(winner => `
       <tr>
+        <td><span class="badge bg-primary">${winner.uniqueId || winner.winnerId.slice(0, 5).toUpperCase()}</span></td>
         <td>${winner.displayName}</td>
         <td>${winner.prize}</td>
         <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
@@ -492,6 +514,7 @@ async function populateQuickSelects() {
 
     const quickListSelect = document.getElementById('quickListSelect');
     const quickPrizeSelect = document.getElementById('quickPrizeSelect');
+    const quickWinnersCount = document.getElementById('quickWinnersCount');
 
     if (quickListSelect) {
       quickListSelect.innerHTML = '<option value="">Select List...</option>';
@@ -499,11 +522,14 @@ async function populateQuickSelects() {
         const listId = list.listId || list.metadata.listId;
         const option = document.createElement('option');
         option.value = listId;
-        option.textContent = settings.hideEntryCounts 
-          ? list.metadata.name
-          : `${list.metadata.name} (${list.entries.length} entries)`;
+        option.textContent = `${list.metadata.name} (${list.entries.length})`;
         quickListSelect.appendChild(option);
       });
+      
+      // Restore from settings
+      if (settings.selectedListId) {
+        quickListSelect.value = settings.selectedListId;
+      }
     }
 
     if (quickPrizeSelect) {
@@ -514,6 +540,20 @@ async function populateQuickSelects() {
         option.textContent = `${prize.name} (${prize.quantity} available)`;
         quickPrizeSelect.appendChild(option);
       });
+      
+      // Restore from settings
+      if (settings.selectedPrizeId) {
+        quickPrizeSelect.value = settings.selectedPrizeId;
+      }
+    }
+
+    if (quickWinnersCount && settings.winnersCount) {
+      quickWinnersCount.value = settings.winnersCount;
+    }
+
+    // Update the display after restoring selections
+    if (typeof updateSelectionInfo === 'function') {
+      updateSelectionInfo();
     }
   } catch (error) {
     console.error('Error populating quick selects:', error);
@@ -570,6 +610,11 @@ function setupEventListeners() {
     document.getElementById('currentListDisplay').textContent = listText;
     document.getElementById('currentPrizeDisplay').textContent = prizeText;
     document.getElementById('winnersCountDisplay').textContent = quickWinnersCount.value;
+
+    // Auto-save selections to settings
+    settings.selectedListId = quickListSelect.value;
+    settings.selectedPrizeId = quickPrizeSelect.value;
+    settings.winnersCount = parseInt(quickWinnersCount.value) || 1;
 
     // Update total entries when list changes
     if (quickListSelect.value) {
@@ -768,6 +813,7 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
     // Create winner records
     const winners = selectedEntries.map((entry, index) => ({
       winnerId: generateId(),
+      uniqueId: generateId(5).toUpperCase(), // 5-character unique ID as required
       ...entry.data,
       displayName: formatDisplayName(entry, currentList.metadata.nameConfig),
       prize: selectedPrize.name,
@@ -1259,6 +1305,24 @@ function setupManagementEventListeners() {
   if (saveConfigBtn) {
     saveConfigBtn.addEventListener('click', handleSaveNameConfig);
   }
+
+  // Winners management buttons
+  const exportWinnersBtn = document.getElementById('exportWinnersBtn');
+  const clearWinnersBtn = document.getElementById('clearWinnersBtn');
+
+  if (exportWinnersBtn) {
+    exportWinnersBtn.addEventListener('click', handleExportWinners);
+  }
+
+  if (clearWinnersBtn) {
+    clearWinnersBtn.addEventListener('click', handleClearWinners);
+  }
+
+  // Theme preset buttons
+  const themePresets = document.querySelectorAll('.theme-preset');
+  themePresets.forEach(button => {
+    button.addEventListener('click', handleThemePreset);
+  });
 }
 
 // Global variable to store parsed CSV data for preview
@@ -1530,8 +1594,15 @@ async function handleSaveSettings() {
       backgroundType: document.getElementById('backgroundType')?.value || settings.backgroundType
     };
 
+    // Collect current selection state from Quick Setup
+    const selectionState = {
+      selectedListId: document.getElementById('quickListSelect')?.value || settings.selectedListId,
+      selectedPrizeId: document.getElementById('quickPrizeSelect')?.value || settings.selectedPrizeId,
+      winnersCount: parseInt(document.getElementById('quickWinnersCount')?.value) || settings.winnersCount
+    };
+
     // Update global settings
-    Object.assign(settings, settingsForm);
+    Object.assign(settings, settingsForm, selectionState);
 
     // Save to database
     await saveSettings();
@@ -1593,6 +1664,21 @@ function loadSettingsToForm() {
         element.value = value;
       }
     }
+  }
+
+  // Also load quick selection settings
+  const quickListSelect = document.getElementById('quickListSelect');
+  const quickPrizeSelect = document.getElementById('quickPrizeSelect');
+  const quickWinnersCount = document.getElementById('quickWinnersCount');
+
+  if (quickListSelect && settings.selectedListId) {
+    quickListSelect.value = settings.selectedListId;
+  }
+  if (quickPrizeSelect && settings.selectedPrizeId) {
+    quickPrizeSelect.value = settings.selectedPrizeId;
+  }
+  if (quickWinnersCount && settings.winnersCount) {
+    quickWinnersCount.value = settings.winnersCount;
   }
 }
 
@@ -1721,6 +1807,173 @@ async function processRestoreFile(event) {
 
   // Clear the input
   event.target.value = '';
+}
+
+// Winners Export and Clear Functionality
+async function handleExportWinners() {
+  try {
+    const winners = await getAllWinners();
+    
+    if (winners.length === 0) {
+      showToast('No winners to export', 'warning');
+      return;
+    }
+
+    // Generate unique 5-character IDs for winners that don't have them
+    const winnersWithIds = winners.map(winner => ({
+      ...winner,
+      uniqueId: winner.uniqueId || generateId(5).toUpperCase()
+    }));
+
+    // Update winners with unique IDs if they didn't have them
+    for (const winner of winnersWithIds) {
+      if (!winner.uniqueId || winner.winnerId === winner.uniqueId) {
+        winner.uniqueId = generateId(5).toUpperCase();
+        await saveWinner(winner);
+      }
+    }
+
+    // Create CSV content
+    const headers = ['UniqueID', 'Name', 'Prize', 'Timestamp', 'ListId'];
+    
+    // Add all original record fields as headers
+    const allFields = new Set();
+    winnersWithIds.forEach(winner => {
+      if (winner.originalEntry && winner.originalEntry.data) {
+        Object.keys(winner.originalEntry.data).forEach(field => allFields.add(field));
+      }
+    });
+    
+    const fieldHeaders = Array.from(allFields);
+    const allHeaders = [...headers, ...fieldHeaders];
+
+    const csvContent = [
+      allHeaders.join(','),
+      ...winnersWithIds.map(winner => {
+        const baseData = [
+          winner.uniqueId || winner.winnerId,
+          `"${winner.displayName || 'Unknown'}"`,
+          `"${winner.prize || 'Unknown'}"`,
+          new Date(winner.timestamp).toISOString(),
+          winner.listId || 'Unknown'
+        ];
+
+        const fieldData = fieldHeaders.map(field => {
+          const value = winner.originalEntry?.data?.[field] || '';
+          return `"${value}"`;
+        });
+
+        return [...baseData, ...fieldData].join(',');
+      })
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `winners-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`Exported ${winners.length} winners to CSV`, 'success');
+
+  } catch (error) {
+    console.error('Error exporting winners:', error);
+    showToast('Error exporting winners: ' + error.message, 'error');
+  }
+}
+
+async function handleClearWinners() {
+  showConfirmationModal(
+    'Clear All Winners',
+    'Are you sure you want to delete ALL winner records? This action cannot be undone and will remove all winners from the database.',
+    async () => {
+      try {
+        showProgress('Clearing Winners', 'Removing all winner records...');
+        
+        const winners = await getAllWinners();
+        let deletedCount = 0;
+
+        for (const winner of winners) {
+          await deleteWinner(winner.winnerId);
+          deletedCount++;
+          updateProgress((deletedCount / winners.length) * 100, `Deleted ${deletedCount} of ${winners.length} winners...`);
+        }
+
+        hideProgress();
+        showToast(`Successfully cleared ${deletedCount} winner records`, 'success');
+        
+        // Refresh the winners display
+        await loadWinners();
+        await updateHistoryStats();
+
+      } catch (error) {
+        hideProgress();
+        console.error('Error clearing winners:', error);
+        showToast('Error clearing winners: ' + error.message, 'error');
+      }
+    }
+  );
+}
+
+// Theme Preset Functionality
+function handleThemePreset(event) {
+  const theme = event.currentTarget.getAttribute('data-theme');
+  
+  const themeConfigs = {
+    default: {
+      primaryColor: '#6366f1',
+      secondaryColor: '#8b5cf6',
+      fontFamily: 'Inter'
+    },
+    emerald: {
+      primaryColor: '#10b981',
+      secondaryColor: '#06d6a0',
+      fontFamily: 'Inter'
+    },
+    ruby: {
+      primaryColor: '#ef4444',
+      secondaryColor: '#f87171',
+      fontFamily: 'Poppins'
+    },
+    gold: {
+      primaryColor: '#f59e0b',
+      secondaryColor: '#fbbf24',
+      fontFamily: 'Poppins'
+    },
+    ocean: {
+      primaryColor: '#0ea5e9',
+      secondaryColor: '#06b6d4',
+      fontFamily: 'Open Sans'
+    },
+    corporate: {
+      primaryColor: '#374151',
+      secondaryColor: '#6b7280',
+      fontFamily: 'Roboto'
+    }
+  };
+
+  const config = themeConfigs[theme];
+  if (!config) return;
+
+  // Update settings
+  settings.primaryColor = config.primaryColor;
+  settings.secondaryColor = config.secondaryColor;
+  settings.fontFamily = config.fontFamily;
+
+  // Apply theme immediately
+  applyTheme();
+  
+  // Update form fields
+  loadSettingsToForm();
+
+  // Save settings
+  saveSettings();
+
+  showToast(`Applied ${theme.charAt(0).toUpperCase() + theme.slice(1)} theme`, 'success');
 }
 
 // History Stats
