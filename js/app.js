@@ -2,7 +2,7 @@
 let db;
 let appModal = null;
 let currentList = null;
-let animationFrameId = null;
+// animationFrameId is now declared in animations.js
 let lastAction = null;
 let settings = {
   preventDuplicates: false,
@@ -737,11 +737,13 @@ async function handleBigPlayClick() {
     // Set current list for global access
     currentList = list;
 
-    if (displayMode === 'countdown' || displayMode === 'animation') {
+    console.log('Big play clicked, display mode:', displayMode);
+    
+    if (displayMode === 'countdown' || displayMode === 'animation' || displayMode === 'swirl-animation') {
+      console.log('Calling showCountdown for mode:', displayMode);
       showCountdown(winnersCount, selectedPrize, 'all-at-once');
-    } else if (displayMode === 'animation') {
-      showAnimatedCountdown(winnersCount, selectedPrize, 'all-at-once');
     } else {
+      console.log('Calling selectWinners directly for mode:', displayMode);
       await selectWinners(winnersCount, selectedPrize, displayMode);
     }
   } catch (error) {
@@ -755,8 +757,19 @@ function showCountdown(winnersCount, selectedPrize, postCountdownDisplayMode = '
   const countdownNumber = document.getElementById('countdownNumber');
   const displayMode = document.getElementById('displayMode').value;
 
+  console.log('Display mode selected:', displayMode);
+  
   if (displayMode === 'animation') {
+    console.log('Starting particle animation');
     startParticleAnimation();
+  }
+  else if (displayMode === 'swirl-animation') {
+    console.log('Starting swirl animation');
+    if (typeof startSwirlAnimation === 'function') {
+      startSwirlAnimation();
+    } else {
+      console.error('startSwirlAnimation function not found');
+    }
   }
 
   let count = parseInt(document.getElementById('countdownDuration').value) || 5;
@@ -772,8 +785,13 @@ function showCountdown(winnersCount, selectedPrize, postCountdownDisplayMode = '
       }
     } else {
       clearInterval(interval);
-      if (displayMode === 'animation') {
-        stopParticleAnimation();
+      if (displayMode === 'animation' || displayMode === 'swirl-animation') {
+        console.log('Stopping animation for mode:', displayMode);
+        if (typeof stopAnimation === 'function') {
+          stopAnimation();
+        } else {
+          console.error('stopAnimation function not found');
+        }
       }
       countdownOverlay.classList.add('d-none');
       selectWinners(winnersCount, selectedPrize, postCountdownDisplayMode);
@@ -925,14 +943,19 @@ function displayAllWinnersAtOnce(winners, winnersGrid) {
 }
 
 function displayWinnersSequentially(winners, winnersGrid) {
+  const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
+  console.log('Sequential reveal with delay:', displayDuration, 'seconds');
+  
   winners.forEach((winner, index) => {
+    const delay = index * (displayDuration * 1000);
+    console.log(`Winner ${index + 1} will appear after ${delay}ms`);
+    
     setTimeout(() => {
       const winnerCard = createWinnerCard(winner, index);
       winnerCard.style.opacity = '0';
       winnerCard.style.transform = 'translateY(20px)';
       winnersGrid.appendChild(winnerCard);
       
-      const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
       // Animate in
       setTimeout(() => {
         winnerCard.style.transition = 'all 0.6s ease-out';
@@ -944,7 +967,7 @@ function displayWinnersSequentially(winners, winnersGrid) {
           playSound('winner');
         }
       }, 100);
-    }, index * (displayDuration * 1000));
+    }, delay);
   });
 }
 
@@ -1012,113 +1035,7 @@ function formatDisplayName(entry, nameConfig) {
 }
 
 
-// Particle Animation Functions
-function startParticleAnimation() {
-  const canvas = document.getElementById('animationCanvas');
-  const ctx = canvas.getContext('2d');
-  let particles = [];
-
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  // Convert hex to RGB
-  function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
-  }
-
-  const primaryRgb = hexToRgb(settings.primaryColor);
-  const secondaryRgb = hexToRgb(settings.secondaryColor);
-
-  class Particle {
-    constructor() {
-      this.x = canvas.width / 2;
-      this.y = canvas.height / 2;
-      this.radius = Math.random() * 3 + 1;
-      this.life = Math.random() * 50 + 50;
-      this.angle = Math.random() * Math.PI * 2;
-      this.speed = Math.random() * 5 + 2;
-      this.color = Math.random() > 0.5 ? primaryRgb : secondaryRgb;
-      this.opacity = 1;
-    }
-
-    update() {
-      this.x += Math.cos(this.angle) * this.speed;
-      this.y += Math.sin(this.angle) * this.speed;
-      this.angle += (Math.random() - 0.5) * 0.4; // Swirl effect
-      this.life--;
-      this.opacity = this.life / 100;
-    }
-
-    draw() {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.opacity})`;
-      ctx.fill();
-    }
-  }
-
-  function createBurst(x, y, count = 50) {
-    for (let i = 0; i < count; i++) {
-      const p = new Particle();
-      p.x = x;
-      p.y = y;
-      p.speed = Math.random() * 6 + 3;
-      particles.push(p);
-    }
-  }
-
-  let burstCounter = 0;
-
-  function animate() {
-    // Fading trail effect
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Create new particles for the "breeze"
-    for (let i = 0; i < 5; i++) {
-      particles.push(new Particle());
-    }
-
-    // Create a burst effect periodically
-    burstCounter++;
-    if (burstCounter % 60 === 0) { // Every second
-      createBurst(Math.random() * canvas.width, Math.random() * canvas.height);
-    }
-
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.update();
-      p.draw();
-      if (p.life <= 0) {
-        particles.splice(i, 1);
-      }
-    }
-
-    animationFrameId = requestAnimationFrame(animate);
-  }
-
-  animate();
-
-  window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  });
-}
-
-function stopParticleAnimation() {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-    const canvas = document.getElementById('animationCanvas');
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-}
+// Animation functions are now in animations.js
 
 function resetToSelectionMode() {
   // Show selection controls
