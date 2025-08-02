@@ -4,7 +4,7 @@
 
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
-import { Database } from './firestore-service.js';
+import { Database } from './firestore.js';
 
 let pendingCSVData = null;
 

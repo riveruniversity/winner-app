@@ -37,10 +37,17 @@
         <div class="prize-subtitle-header" id="displayPrizeSubtitle"></div>
       </div>
       <div class="d-flex gap-2">
+        <!-- Winner Action Buttons (Hidden initially) -->
+        <button class="btn btn-outline-warning d-none" id="undoSelectionBtn" title="Undo last selection">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button class="btn btn-outline-light d-none" id="newSelectionBtn" title="Start new selection">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
         <button class="btn btn-outline-light" id="themeToggle" title="Toggle theme">
           <i class="bi bi-moon-fill"></i>
         </button>
-        <button class="btn btn-outline-light" id="fullscreenToggle">
+        <button class="btn btn-outline-light" id="fullscreenToggle" title="Toggle fullscreen">
           <i class="bi bi-fullscreen"></i>
         </button>
         <button class="btn btn-outline-light" id="managementToggle">
@@ -81,15 +88,6 @@
       <!-- Winners Grid Display -->
       <div class="winners-grid d-none" id="winnersGrid">
         <!-- Winner cards will be inserted here dynamically -->
-      </div>
-      <!-- Action Buttons (Hidden initially) -->
-      <div class="d-none mt-4" id="actionButtons">
-        <button class="btn btn-outline-light btn-lg me-3" id="newSelectionBtn">
-          <i class="bi bi-arrow-repeat me-2"></i>New Selection
-        </button>
-        <button class="btn btn-outline-warning btn-lg" id="undoSelectionBtn">
-          <i class="bi bi-arrow-counterclockwise me-2"></i>Undo
-        </button>
       </div>
     </div>
   </div>

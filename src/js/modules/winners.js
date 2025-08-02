@@ -2,7 +2,7 @@
 // WINNER MANAGEMENT & FILTERING
 // ================================
 
-import { Database } from './firestore-service.js';
+import { Database } from './firestore.js';
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 import { settings } from './settings.js'; // Import settings directly
@@ -262,7 +262,9 @@ function resetToSelectionMode() {
   document.getElementById('selectionControls').classList.remove('d-none');
   document.getElementById('prizeDisplay').classList.add('d-none');
   document.getElementById('winnersGrid').classList.add('d-none');
-  document.getElementById('actionButtons').classList.add('d-none');
+  // Hide action buttons in header
+  document.getElementById('undoSelectionBtn').classList.add('d-none');
+  document.getElementById('newSelectionBtn').classList.add('d-none');
   UI.populateQuickSelects();
 }
 

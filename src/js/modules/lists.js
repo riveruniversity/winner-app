@@ -3,7 +3,7 @@
 // ================================
 
 // 1. Import dependencies
-import { Database } from './firestore-service.js';
+import { Database } from './firestore.js';
 import { UI } from './ui.js';
 
 // 2. Define functions as standalone, not inside a closure

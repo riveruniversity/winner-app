@@ -3,7 +3,7 @@
 // ================================
 
 import { UI } from './ui.js';
-import { Database } from './firestore-service.js';
+import { Database } from './firestore.js';
 import { Lists } from './lists.js';
 import { Winners } from './winners.js';
 import { settings } from './settings.js'; // Import settings directly
@@ -299,10 +299,10 @@ function displayWinnersPublicly(winners, prize, displayMode) {
   document.getElementById('displayPrizeSubtitle').textContent = `${winners.length} Winner${winners.length > 1 ? 's' : ''}`;
   prizeDisplay.classList.remove('d-none');
 
-  // Show winners with CSS-based responsive grid
+  // Show winners with CSS flexbox
   const winnersGrid = document.getElementById('winnersGrid');
   winnersGrid.innerHTML = '';
-  winnersGrid.className = 'winners-grid'; // Use CSS class
+  winnersGrid.className = 'winners-grid';
 
   if (displayMode === 'sequential') {
     displayWinnersSequential(winners, winnersGrid);
@@ -312,8 +312,9 @@ function displayWinnersPublicly(winners, prize, displayMode) {
 
   winnersGrid.classList.remove('d-none');
 
-  // Show action buttons
-  document.getElementById('actionButtons').classList.remove('d-none');
+  // Show action buttons in header
+  document.getElementById('undoSelectionBtn').classList.remove('d-none');
+  document.getElementById('newSelectionBtn').classList.remove('d-none');
 }
 
 // Display all winners at once using CSS grid

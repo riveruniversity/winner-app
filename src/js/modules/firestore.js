@@ -2,7 +2,7 @@
 // FIRESTORE SERVICE
 // ================================
 
-import { db } from './firebase-init.js';
+import { db } from './firebase.js';
 import { 
   collection, 
   doc, 

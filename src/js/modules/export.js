@@ -2,7 +2,7 @@
 // EXPORT FUNCTIONALITY
 // ================================
 
-import { Database } from './firestore-service.js';
+import { Database } from './firestore.js';
 import { UI } from './ui.js';
 import { Settings } from './settings.js';
 
