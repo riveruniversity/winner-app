@@ -8,63 +8,54 @@ import { UI } from './ui.js';
 
 // 2. Define functions as standalone, not inside a closure
 // Cache-first loading with real-time updates
-function loadLists() {
+async function loadLists() {
   const container = document.getElementById('listsContainer');
   if (!container) return;
 
   // Show loading state
   container.innerHTML = '<p class="text-muted">📦 Loading lists...</p>';
 
-  // Use cache-first approach with real-time updates
-  return Database.getAllFromStoreWithUpdates('lists', (lists, source) => {
-    try {
-      // Update loading message based on source
-      if (source === 'cache' && lists.length > 0) {
-        console.log('📦 Lists loaded from cache');
-      } else if (source === 'server') {
-        console.log('🔄 Lists updated from server');
+  try {
+    const lists = await Database.getFromStore('lists');
+
+    if (lists.length === 0) {
+      container.innerHTML = '<p class="text-muted">No lists uploaded yet.</p>';
+      return;
+    }
+
+    // Ensure backward compatibility
+    for (const list of lists) {
+      if (!list.listId && list.metadata && list.metadata.listId) {
+        list.listId = list.metadata.listId;
+        await Database.saveToStore('lists', list);
       }
+    }
 
-      if (lists.length === 0) {
-        container.innerHTML = '<p class="text-muted">No lists uploaded yet.</p>';
-        return;
-      }
-
-      // Ensure backward compatibility
-      lists.forEach(async (list) => {
-        if (!list.listId && list.metadata && list.metadata.listId) {
-          list.listId = list.metadata.listId;
-          await Database.saveToStore('lists', list);
-        }
-      });
-
-      container.innerHTML = lists.map(list => `
-        <div class="card mb-3">
-          <div class="card-body">
-            <h6 class="card-title">${list.metadata.name}</h6>
-            <p class="card-text">
-              <small class="text-muted">
-                ${list.entries.length} entries • 
-                Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
-                ${source === 'cache' ? '📦' : '🔄'}
-              </small>
-            </p>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.viewList(this.dataset.listId)">
-                <i class="bi bi-eye"></i> View
-              </button>
-              <button class="btn btn-outline-danger" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.deleteListConfirm(this.dataset.listId)">
-                <i class="bi bi-trash"></i> Delete
-              </button>
-            </div>
+    container.innerHTML = lists.map(list => `
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title">${list.metadata.name}</h6>
+          <p class="card-text">
+            <small class="text-muted">
+              ${list.entries.length} entries • 
+              Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
+            </small>
+          </p>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.viewList(this.dataset.listId)">
+              <i class="bi bi-eye"></i> View
+            </button>
+            <button class="btn btn-outline-danger" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.deleteListConfirm(this.dataset.listId)">
+              <i class="bi bi-trash"></i> Delete
+            </button>
           </div>
         </div>
-      `).join('');
-    } catch (error) {
-      console.error('Error rendering lists:', error);
-      UI.showToast('Error loading lists: ' + error.message, 'error');
-    }
-  });
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error rendering lists:', error);
+    UI.showToast('Error loading lists: ' + error.message, 'error');
+  }
 }
 
 // Alternative: Traditional async approach (still cache-first)
