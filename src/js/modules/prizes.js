@@ -2,9 +2,11 @@
 // PRIZES MANAGEMENT
 // ================================
 
-window.Prizes = (function() {
-  
-  async function loadPrizes() {
+import { Database } from './database.js';
+import { UI } from './ui.js';
+import { saveDocument, deleteDocument } from './firebase-sync.js';
+
+async function loadPrizes() {
     try {
       const prizes = await Database.getAllFromStore('prizes');
       const container = document.getElementById('prizesContainer');
@@ -25,10 +27,10 @@ window.Prizes = (function() {
               ${prize.description ? `<br><small class="text-muted">${prize.description}</small>` : ''}
             </p>
             <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="Prizes.editPrize('${prize.prizeId}')">
+              <button class="btn btn-outline-primary" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrize(this.dataset.prizeId)">
                 <i class="bi bi-pencil"></i> Edit
               </button>
-              <button class="btn btn-outline-danger" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
+              <button class="btn btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm(this.dataset.prizeId)">
                 <i class="bi bi-trash"></i> Delete
               </button>
             </div>
@@ -61,15 +63,19 @@ window.Prizes = (function() {
     }
 
     try {
+      const prizeId = UI.generateId();
       const prize = {
-        prizeId: UI.generateId(),
+        prizeId: prizeId,
         name: name,
         quantity: quantity,
         description: description,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        id: prizeId
       };
 
       await Database.saveToStore('prizes', prize);
+      saveDocument('prizes', prize);
+
       UI.showToast(`Prize "${name}" added successfully`, 'success');
 
       // Clear form
@@ -127,7 +133,10 @@ window.Prizes = (function() {
         prize.name = newName;
         prize.quantity = newQuantity;
         prize.description = newDescription;
+        prize.id = prize.prizeId;
         await Database.saveToStore('prizes', prize);
+        saveDocument('prizes', prize);
+
         UI.showToast('Prize updated successfully', 'success');
         await loadPrizes();
         await UI.populateQuickSelects();
@@ -143,16 +152,19 @@ window.Prizes = (function() {
   async function deletePrizeConfirm(prizeId) {
     UI.showConfirmationModal('Delete Prize', 'Are you sure you want to delete this prize?', async () => {
       await Database.deleteFromStore('prizes', prizeId);
+      deleteDocument('prizes', prizeId);
+
       UI.showToast('Prize deleted successfully', 'success');
       await loadPrizes();
       await UI.populateQuickSelects();
     });
   }
 
-  return {
-    loadPrizes,
-    handleAddPrize,
-    editPrize,
-    deletePrizeConfirm
-  };
-})();
+export const Prizes = {
+  loadPrizes,
+  handleAddPrize,
+  editPrize,
+  deletePrizeConfirm
+};
+
+window.Prizes = Prizes;

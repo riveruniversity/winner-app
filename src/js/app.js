@@ -1,88 +1,72 @@
 // ================================
-// MAIN APPLICATION INITIALIZATION
+// MAIN APPLICATION LOGIC
 // ================================
 
-// Global state variables
-let appModal = null;
-let currentList = null;
-let lastAction = null;
+import { Database } from './modules/database.js';
+import { Settings, settings } from './modules/settings.js';
+import { UI } from './modules/ui.js';
+import { Lists } from './modules/lists.js';
+import { Prizes } from './modules/prizes.js';
+import { Winners } from './modules/winners.js';
+import { Selection } from './modules/selection.js';
+import { CSVParser } from './modules/csv-parser.js';
+import { Export } from './modules/export.js';
+import { processSyncQueue, deleteDocument } from './modules/firebase-sync.js';
 
-// Application settings with defaults
-window.settings = {
-  preventDuplicates: false,
-  enableSoundEffects: false,
-  hideEntryCounts: false,
-  fontFamily: 'Open Sans',
-  primaryColor: '#6366f1',
-  secondaryColor: '#8b5cf6',
-  backgroundType: 'gradient',
-  customBackgroundImage: null,
-  selectedListId: '',
-  selectedPrizeId: '',
-  winnersCount: 1
-};
+// Global state variables (now truly central)
+export let appModal = null;
+let _currentList = null; // Internal variable
+let _lastAction = null; // Internal variable
 
-// Make globals available to modules
-window.db = null;
-window.appModal = null;
-window.currentList = null;
-window.lastAction = null;
+// Export functions to get/set these central state variables
+export function setCurrentList(list) {
+  _currentList = list;
+}
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', async function () {
+export function getCurrentList() {
+  return _currentList;
+}
+
+export function setLastAction(action) {
+  _lastAction = action;
+}
+
+export function getLastAction() {
+  return _lastAction;
+}
+
+// Application initialization
+export async function initializeApp() {
   try {
-    // Initialize database first
     await Database.initDB();
-    
-    // Load settings
     await Settings.loadSettings();
-    
-    // Initialize the app
-    await initializeApp();
-    
-    // Setup event listeners
-    setupEventListeners();
-    
-    // Setup theme
-    Settings.setupTheme();
-    
+    await Lists.loadLists();
+    await Prizes.loadPrizes();
+    await Winners.loadWinners();
+    await loadHistory();
+    await updateHistoryStats();
+    await UI.syncUI();
+
     // Initialize modal after everything else is ready
     setTimeout(() => {
       const modalElement = document.getElementById('appModal');
       if (modalElement) {
         appModal = new bootstrap.Modal(modalElement);
-        window.appModal = appModal;
+        // No need to assign to window.appModal here, as it's exported
       }
     }, 100);
-    
-    UI.showToast('Application loaded successfully!', 'success');
+
+    setupEventListeners();
+    Settings.setupTheme();
+
+    // Start background sync
+    processSyncQueue(); // Initial sync
+    setInterval(processSyncQueue, 30 * 1000); // Every 30 seconds
+
   } catch (error) {
     console.error('Initialization error:', error);
     UI.showToast('Failed to initialize application: ' + error.message, 'error');
   }
-});
-
-// Service Worker Registration
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./worker.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
-
-// Application initialization
-async function initializeApp() {
-  await Lists.loadLists();
-  await Prizes.loadPrizes();
-  await Winners.loadWinners();
-  await loadHistory();
-  await updateHistoryStats();
-  await UI.syncUI();
 }
 
 // Event Listeners Setup
@@ -218,7 +202,7 @@ function setupDisplayMode() {
 }
 
 // History Management (simplified for now)
-async function loadHistory() {
+export async function loadHistory() {
   try {
     const history = await Database.getAllFromStore('history');
     const tbody = document.getElementById('historyTableBody');
@@ -241,7 +225,7 @@ async function loadHistory() {
         <td>${entry.winners.length}</td>
         <td>${entry.winners.map(w => w.displayName).join(', ')}</td>
         <td>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteHistoryConfirm('${entry.historyId}')">
+          <button class="btn btn-sm btn-outline-danger" data-history-id="${entry.historyId}" onclick="deleteHistoryConfirm(this.dataset.historyId)">
             <i class="bi bi-trash"></i>
           </button>
         </td>
@@ -253,7 +237,7 @@ async function loadHistory() {
   }
 }
 
-async function updateHistoryStats() {
+export async function updateHistoryStats() {
   try {
     const history = await Database.getAllFromStore('history');
     const winners = await Winners.getAllWinners();
@@ -292,11 +276,17 @@ async function updateHistoryStats() {
   }
 }
 
-async function deleteHistoryConfirm(historyId) {
+export async function deleteHistoryConfirm(historyId) {
   UI.showConfirmationModal('Delete History Entry', 'Are you sure you want to delete this history entry?', async () => {
-    await Database.deleteFromStore('history', historyId);
-    UI.showToast('History entry deleted successfully', 'success');
-    await loadHistory();
-    await updateHistoryStats();
+    try {
+      await Database.deleteFromStore('history', historyId);
+      deleteDocument('history', historyId);
+      UI.showToast('History entry deleted successfully', 'success');
+      await loadHistory();
+      await updateHistoryStats();
+    } catch (error) {
+      console.error('Error deleting history entry:', error);
+      UI.showToast('Error deleting history entry: ' + error.message, 'error');
+    }
   });
 }

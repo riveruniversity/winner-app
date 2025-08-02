@@ -4,11 +4,12 @@ const DYNAMIC_CACHE_NAME = 'winner-app-dynamic-v1';
 
 // Files to cache immediately
 const STATIC_FILES = [
+  './favicon.ico',
   './index.html',
-  './css/styles.css',
+  './main.js',
   './js/app.js',
   './manifest.json',
-  './images/favicon.ico',
+  './css/styles.css',
   './icons/icon-192x192.svg',
   './icons/icon-512x512.svg',
   // Bootstrap CSS
@@ -106,9 +107,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Helper function to check if a request is for Firebase
+function isFirebaseRequest(url) {
+  return url.includes('firestore.googleapis.com') || url.includes('firebaseinstallations.googleapis.com');
+}
+
 // Fetch event - serve from cache with network fallback
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
+  // IMPORTANT: Bypass Firebase requests immediately
+  if (isFirebaseRequest(request.url)) {
+    console.log('[Service Worker] Bypassing Firebase request:', request.url);
+    return event.respondWith(fetch(request));
+  }
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
@@ -250,7 +262,32 @@ async function networkFirst(request) {
 // Helper functions
 function isStaticFile(url) {
   const staticExtensions = ['.html', '.css', '.js', '.json', '.ico'];
-  const staticFiles = ['./index.html', './css/styles.css', './js/app.js', './manifest.json', './images/favicon.ico'];
+  const staticFiles = [
+    './index.html',
+    './css/styles.css',
+    './js/app.js',
+    './manifest.json',
+    './images/favicon.ico',
+    // Add other static files that are now in src/ or public/
+    './js/modules/animations.js',
+    './js/modules/csv-parser.js',
+    './js/modules/database.js',
+    './js/modules/export.js',
+    './js/modules/firebase-init.js',
+    './js/modules/firebase-sync.js',
+    './js/modules/lists.js',
+    './js/modules/prizes.js',
+    './js/modules/selection.js',
+    './js/modules/settings.js',
+    './js/modules/ui.js',
+    './js/modules/winners.js',
+    './images/favicon.png',
+    './images/neon-magic-swirl-wind-effect-purple-twirl-light.png',
+    './images/wheel.svg',
+    './icons/icon-192x192.svg',
+    './icons/icon-512x512.svg',
+    './icons/icon-backup.svg'
+  ];
 
   return staticFiles.some(file => url.includes(file)) ||
     staticExtensions.some(ext => url.endsWith(ext));
