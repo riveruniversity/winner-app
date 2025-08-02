@@ -28,6 +28,8 @@ export default defineConfig({
     }
   },
   
+  envPrefix: 'VITE_',
+  
   // Development server configuration
   server: {
     port: 3000,
