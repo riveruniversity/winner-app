@@ -23,7 +23,7 @@
     "url": "https://github.com/riveruniversity/winner-app/issues"
   },
   "homepage": "https://github.com/riveruniversity/winner-app#readme",
-  "devDependencies": {
+  "dependencies": {
     "vite": "^7.0.6"
   }
 }
