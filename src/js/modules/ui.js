@@ -97,8 +97,8 @@ function readFileAsText(file) {
 async function populateQuickSelects(lists = null, prizes = null) {
   try {
     // Use passed data if available, otherwise fetch from database
-    const listsData = lists || await Database.getAllFromStore('lists');
-    const prizesData = prizes || await Database.getAllFromStore('prizes');
+    const listsData = lists || await Database.getFromStore('lists');
+    const prizesData = prizes || await Database.getFromStore('prizes');
 
     const quickListSelect = document.getElementById('quickListSelect');
     const quickPrizeSelect = document.getElementById('quickPrizeSelect');

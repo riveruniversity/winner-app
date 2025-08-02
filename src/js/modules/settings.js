@@ -29,7 +29,7 @@ async function saveSettings() {
 
 async function loadSettings() {
   try {
-    const savedSettings = await Database.getAllFromStore('settings');
+    const savedSettings = await Database.getFromStore('settings');
     for (const setting of savedSettings) {
       if (settings.hasOwnProperty(setting.key)) {
         settings[setting.key] = setting.value;

@@ -14,8 +14,8 @@ let lastAction = null; // This will eventually be managed by app.js
 
 async function loadWinners() {
   try {
-    const winners = await Database.getAllFromStore('winners');
-    const lists = await Database.getAllFromStore('lists');
+    const winners = await Database.getFromStore('winners');
+    const lists = await Database.getFromStore('lists');
     const tbody = document.getElementById('winnersTableBody');
 
     if (!tbody) return;
@@ -148,12 +148,12 @@ function updateWinnersCountDisplay(filteredCount, totalCount, filterPrize, filte
 }
 
 async function deleteWinnerConfirm(winnerId) {
-  UI.showConfirmationModal('Delete Winner', 'Are you sure you want to delete this winner record?', async () => {
+  UI.showConfirmationModal('Delete Winner', 'Are you sure you want to delete this winner record?', () => {
     try {
-      await Database.deleteFromStore('winners', winnerId);
+      Database.deleteFromStore('winners', winnerId); // Fire and forget
       UI.showToast('Winner deleted successfully', 'success');
-      await loadWinners();
-      loadHistory(); // Call from app.js
+      loadWinners(); // Fire and forget
+      loadHistory(); // Fire and forget
     } catch (error) {
       console.error('Error deleting winner:', error);
       UI.showToast('Error deleting winner: ' + error.message, 'error');
@@ -166,7 +166,7 @@ async function saveWinner(winner) {
 }
 
 async function getAllWinners() {
-  return Database.getAllFromStore('winners');
+  return Database.getFromStore('winners');
 }
 
 async function clearAllWinners() {
@@ -181,7 +181,7 @@ async function clearAllWinners() {
         let deletedCount = 0;
 
         for (const winner of winners) {
-          await Database.deleteFromStore('winners', winner.winnerId);
+          Database.deleteFromStore('winners', winner.winnerId); // Fire and forget
           deletedCount++;
           UI.updateProgress((deletedCount / winners.length) * 100, `Deleted ${deletedCount} of ${winners.length} winners...`);
         }
@@ -215,30 +215,31 @@ async function undoLastSelection() {
       try {
         UI.showProgress('Undoing Selection', 'Reversing last selection...');
 
-        // Delete winners
+        // Delete winners (fire and forget)
         for (const winner of currentLastAction.winners) {
-          await Database.deleteFromStore('winners', winner.winnerId);
+          Database.deleteFromStore('winners', winner.winnerId);
         }
 
-        // Restore prize quantity
-        const prizes = await Database.getAllFromStore('prizes');
-        const prize = prizes.find(p => p.prizeId === currentLastAction.prizeId);
-        if (prize) {
-          prize.quantity += currentLastAction.prizeCount;
-          await Database.saveToStore('prizes', prize);
-        }
+        // Restore prize quantity (fire and forget)
+        Database.getFromStore('prizes').then(prizes => {
+          const prize = prizes.find(p => p.prizeId === currentLastAction.prizeId);
+          if (prize) {
+            prize.quantity += currentLastAction.prizeCount;
+            Database.saveToStore('prizes', prize);
+          }
+        });
 
-        // Delete history entry
-        await Database.deleteFromStore('history', currentLastAction.historyId);
+        // Delete history entry (fire and forget)
+        Database.deleteFromStore('history', currentLastAction.historyId);
 
-        // Restore entries to list if they were removed
+        // Restore entries to list if they were removed (fire and forget)
         const currentList = getCurrentList(); // Get the currentList from app.js
         if (settings.preventDuplicates && currentList) {
           currentList.entries.push(...currentLastAction.removedEntries);
           if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
             currentList.listId = currentList.metadata.listId;
           }
-          await Database.saveToStore('lists', currentList);
+          Database.saveToStore('lists', currentList);
         }
 
         UI.hideProgress();

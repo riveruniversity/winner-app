@@ -70,7 +70,7 @@ function loadLists() {
 // Alternative: Traditional async approach (still cache-first)
 async function loadListsTraditional() {
   try {
-    const lists = await Database.getAllFromStore('lists');
+    const lists = await Database.getFromStore('lists');
     const container = document.getElementById('listsContainer');
 
     if (!container) return;
@@ -146,16 +146,16 @@ async function viewList(listId) {
   }
 }
 
-async function deleteListConfirm(listId) {
+function deleteListConfirm(listId) {
   UI.showConfirmationModal(
     'Delete List',
     'Are you sure you want to delete this list? This action cannot be undone.',
-    async () => {
+    () => {
       try {
-        await Database.deleteFromStore('lists', listId);
+        Database.deleteFromStore('lists', listId); // Fire and forget
         UI.showToast('List deleted successfully', 'success');
-        await loadLists();
-        await UI.populateQuickSelects();
+        loadLists(); // Fire and forget
+        UI.populateQuickSelects(); // Fire and forget
       } catch (error) {
         console.error('Error deleting list:', error);
         UI.showToast('Error deleting list: ' + error.message, 'error');

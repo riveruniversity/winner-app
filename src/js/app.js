@@ -215,7 +215,7 @@ function setupDisplayMode() {
 // History Management (simplified for now)
 export async function loadHistory() {
   try {
-    const history = await Database.getAllFromStore('history');
+    const history = await Database.getFromStore('history');
     const tbody = document.getElementById('historyTableBody');
 
     if (!tbody) return;
@@ -250,7 +250,7 @@ export async function loadHistory() {
 
 export async function updateHistoryStats() {
   try {
-    const history = await Database.getAllFromStore('history');
+    const history = await Database.getFromStore('history');
     const winners = await Winners.getAllWinners();
 
     const totalSelections = history.length;

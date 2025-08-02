@@ -7,7 +7,7 @@ import { UI } from './ui.js';
 
 async function loadPrizes() {
     try {
-      const prizes = await Database.getAllFromStore('prizes');
+      const prizes = await Database.getFromStore('prizes');
       const container = document.getElementById('prizesContainer');
 
       if (!container) return;
@@ -92,7 +92,7 @@ async function loadPrizes() {
   }
 
   async function editPrize(prizeId) {
-    const prizes = await Database.getAllFromStore('prizes');
+    const prizes = await Database.getFromStore('prizes');
     const prize = prizes.find(p => p.prizeId === prizeId);
     if (!prize) return;
 

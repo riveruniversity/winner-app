@@ -162,8 +162,13 @@ async function handleLargeListSharding(listData, onProgress = null) {
 // Get all entries from a potentially sharded list
 async function getListWithShards(listId) {
   try {
-    const mainList = await getFromStore('lists', listId);
-    if (!mainList) return null;
+    // Call Firestore directly to avoid recursion
+    const docRef = doc(db, 'lists', listId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) return null;
+    
+    const mainList = docSnap.data();
     
     // If not sharded, return as-is
     if (!mainList.isSharded) {
@@ -175,9 +180,15 @@ async function getListWithShards(listId) {
     const allEntries = [];
     
     for (const shardId of mainList.shardIds) {
-      const shard = await getFromStore('lists', shardId);
-      if (shard && shard.entries) {
-        allEntries.push(...shard.entries);
+      // Also call Firestore directly for shards to avoid recursion
+      const shardDocRef = doc(db, 'lists', shardId);
+      const shardSnap = await getDoc(shardDocRef);
+      
+      if (shardSnap.exists()) {
+        const shard = shardSnap.data();
+        if (shard && shard.entries) {
+          allEntries.push(...shard.entries);
+        }
       }
     }
     
@@ -196,33 +207,29 @@ async function getListWithShards(listId) {
   }
 }
 
-// Get single document from collection (automatically handles sharded lists)
-async function getFromStore(collectionName, key) {
+// Universal get function - handles single docs, all docs, and sharded lists automatically
+async function getFromStore(collectionName, key = null) {
   try {
-    // Special handling for lists - check if it's sharded
-    if (collectionName === 'lists') {
-      return await getListWithShards(key);
+    // If key provided, get single document
+    if (key) {
+      // Special handling for lists - check if it's sharded
+      if (collectionName === 'lists') {
+        return await getListWithShards(key);
+      }
+      
+      // Standard single document retrieval
+      const docRef = doc(db, collectionName, key);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+      return null;
     }
     
-    // Standard document retrieval for other collections
-    const docRef = doc(db, collectionName, key);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      return docSnap.data();
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error getting from ${collectionName}:`, error);
-    throw error;
-  }
-}
-
-// Get all documents from collection (cache-first approach, handles sharded lists)
-async function getAllFromStore(collectionName) {
-  try {
-    // First try to get from cache for instant loading
+    // If no key provided, get all documents (cache-first approach)
     try {
+      // First try to get from cache for instant loading
       const cacheSnapshot = await getDocsFromCache(collection(db, collectionName));
       const cacheResults = [];
       
@@ -268,11 +275,13 @@ async function getAllFromStore(collectionName) {
     }
     
     return results;
+    
   } catch (error) {
-    console.error(`Error getting all from ${collectionName}:`, error);
+    console.error(`Error getting from ${collectionName}:`, error);
     throw error;
   }
 }
+
 
 // Helper function to reconstruct sharded lists from raw documents
 async function reconstructShardedLists(rawDocuments) {
@@ -346,14 +355,26 @@ async function reconstructShardedLists(rawDocuments) {
   return reconstructedLists;
 }
 
-// Delete document from collection
-async function deleteFromStore(collectionName, key) {
+// Delete document from collection (fire-and-forget for local-first performance)
+function deleteFromStore(collectionName, key) {
   try {
+    console.log(`🗑️ Deleting ${collectionName}/${key} (fire-and-forget)...`);
+    
     const docRef = doc(db, collectionName, key);
-    await deleteDoc(docRef);
+    
+    // Fire and forget - don't await this!
+    deleteDoc(docRef).then(() => {
+      console.log(`✅ ${collectionName}/${key} deleted from server`);
+    }).catch(error => {
+      console.warn(`⚠️ Background delete failed for ${collectionName}/${key}:`, error);
+      // Could implement retry logic here
+    });
+    
+    // Return immediately
     return key;
+    
   } catch (error) {
-    console.error(`Error deleting from ${collectionName}:`, error);
+    console.error(`Error initiating delete for ${collectionName}:`, error);
     throw error;
   }
 }
@@ -432,28 +453,20 @@ async function migrateFromIndexedDB() {
   console.log('Migration helper available if needed');
 }
 
-// Export the same interface as the old Database module
+// Export the clean API - only the essentials
 export const Database = {
-  saveToStore, // Now handles everything: local-first, sharding, etc.
-  getFromStore,
-  getListWithShards,
-  getAllFromStore,
-  getAllFromStoreWithUpdates,
-  deleteFromStore,
-  listenToCollection,
-  queryStore,
-  migrateFromIndexedDB,
-  // Keep initDB for compatibility (now just returns resolved promise)
-  initDB: () => Promise.resolve(db)
+  saveToStore,     // Handles everything: local-first, sharding, fire-and-forget
+  getFromStore,    // Universal: single docs, all docs, sharded lists - handles everything
+  deleteFromStore, // Fire-and-forget deletes
+  listenToCollection, // Real-time updates
+  queryStore,      // Advanced queries
+  initDB: () => Promise.resolve(db) // Firebase initialization
 };
 
-// Also export individual functions for direct use
+// Export only the core functions for direct use
 export {
   saveToStore,
   getFromStore,
-  getListWithShards,
-  getAllFromStore,
-  getAllFromStoreWithUpdates,
   deleteFromStore,
   listenToCollection,
   queryStore,

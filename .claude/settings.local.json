@@ -17,7 +17,8 @@
       "Bash(done)",
       "Bash(pnpm dev:*)",
       "Bash(node_modules\\.bin\\vite:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

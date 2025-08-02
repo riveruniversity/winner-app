@@ -80,7 +80,7 @@ async function handleBigPlayClick() {
 
     // Load the selected list and prize
     const list = await Database.getFromStore('lists', listId);
-    const prizes = await Database.getAllFromStore('prizes');
+    const prizes = await Database.getFromStore('prizes');
     const selectedPrize = prizes.find(p => p.prizeId === prizeId);
 
     if (!list || !selectedPrize) {

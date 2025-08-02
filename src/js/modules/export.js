@@ -8,8 +8,8 @@ import { Settings } from './settings.js';
 
 async function handleExportWinners() {
   try {
-    const allWinners = await Database.getAllFromStore('winners');
-    const lists = await Database.getAllFromStore('lists');
+    const allWinners = await Database.getFromStore('winners');
+    const lists = await Database.getFromStore('lists');
     
     if (allWinners.length === 0) {
       UI.showToast('No winners to export', 'warning');
@@ -123,10 +123,10 @@ async function handleBackupData() {
     const backupData = {
       version: '1.0',
       timestamp: Date.now(),
-      lists: await Database.getAllFromStore('lists'),
-      prizes: await Database.getAllFromStore('prizes'),
-      winners: await Database.getAllFromStore('winners'),
-      history: await Database.getAllFromStore('history'),
+      lists: await Database.getFromStore('lists'),
+      prizes: await Database.getFromStore('prizes'),
+      winners: await Database.getFromStore('winners'),
+      history: await Database.getFromStore('history'),
       settings: Settings.settings // Use imported Settings
     };
 
