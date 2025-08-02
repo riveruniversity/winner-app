@@ -443,22 +443,50 @@ async function loadPrizes() {
 async function loadWinners() {
   try {
     const winners = await getAllWinners();
+    const lists = await getAllLists();
     const tbody = document.getElementById('winnersTableBody');
 
     if (!tbody) return;
 
-    if (winners.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No winners selected yet.</td></tr>';
+    // Create a map of listId to listName for quick lookup
+    const listNameMap = {};
+    lists.forEach(list => {
+      const listId = list.listId || list.metadata.listId;
+      listNameMap[listId] = list.metadata.name;
+    });
+
+    // Get current filter values BEFORE repopulating filters
+    const filterPrize = document.getElementById('filterPrize').value;
+    const filterList = document.getElementById('filterList').value;
+    const filterSelection = document.getElementById('filterSelection').value;
+
+    // Populate filters and restore selections
+    populateWinnerFilters(winners, lists, filterPrize, filterList, filterSelection);
+
+    // Filter winners
+    const filteredWinners = winners.filter(winner => {
+      const prizeMatch = !filterPrize || winner.prize === filterPrize;
+      const listName = listNameMap[winner.listId] || 'Unknown';
+      const listMatch = !filterList || listName === filterList;
+      const selectionMatch = !filterSelection || winner.historyId === filterSelection;
+      return prizeMatch && listMatch && selectionMatch;
+    });
+
+    // Update count displays
+    updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection);
+
+    if (filteredWinners.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No winners match the current filters.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = winners.map(winner => `
+    tbody.innerHTML = filteredWinners.map(winner => `
       <tr>
         <td><span class="badge bg-primary">${winner.uniqueId || winner.winnerId.slice(0, 5).toUpperCase()}</span></td>
         <td>${winner.displayName}</td>
         <td>${winner.prize}</td>
         <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
-        <td>${winner.listId || 'Unknown'}</td>
+        <td>${listNameMap[winner.listId] || 'Unknown'}</td>
         <td>
           <button class="btn btn-sm btn-outline-danger" onclick="deleteWinnerConfirm('${winner.winnerId}')">
             <i class="bi bi-trash"></i>
@@ -469,6 +497,92 @@ async function loadWinners() {
   } catch (error) {
     console.error('Error loading winners:', error);
     showToast('Error loading winners: ' + error.message, 'error');
+  }
+}
+
+function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList = '', selectedSelection = '') {
+  const prizeFilter = document.getElementById('filterPrize');
+  const listFilter = document.getElementById('filterList');
+  const selectionFilter = document.getElementById('filterSelection');
+
+  // Create a map of listId to listName for quick lookup
+  const listNameMap = {};
+  lists.forEach(list => {
+    const listId = list.listId || list.metadata.listId;
+    listNameMap[listId] = list.metadata.name;
+  });
+
+  // Get unique values
+  const prizes = [...new Set(winners.map(w => w.prize))].sort();
+  const listNames = [...new Set(winners.map(w => listNameMap[w.listId] || 'Unknown'))].sort();
+  const selections = [...new Set(winners.map(w => w.historyId).filter(Boolean))];
+
+  // Populate Prize Filter
+  prizeFilter.innerHTML = '<option value="">All Prizes</option>';
+  prizes.forEach(prize => {
+    const count = winners.filter(w => w.prize === prize).length;
+    prizeFilter.innerHTML += `<option value="${prize}">${prize} (${count})</option>`;
+  });
+  prizeFilter.value = selectedPrize;
+
+  // Populate List Filter with list names instead of IDs
+  listFilter.innerHTML = '<option value="">All Lists</option>';
+  listNames.forEach(listName => {
+    const count = winners.filter(w => (listNameMap[w.listId] || 'Unknown') === listName).length;
+    listFilter.innerHTML += `<option value="${listName}">${listName} (${count})</option>`;
+  });
+  listFilter.value = selectedList;
+
+  // Populate Selection ID Filter with more descriptive labels
+  selectionFilter.innerHTML = '<option value="">All Selections</option>';
+  
+  // Create selection entries with timestamps for better UX
+  const selectionEntries = selections.map(id => {
+    const winnersInSelection = winners.filter(w => w.historyId === id);
+    const timestamp = winnersInSelection[0]?.timestamp;
+    const prize = winnersInSelection[0]?.prize;
+    const count = winnersInSelection.length;
+    return {
+      id,
+      timestamp,
+      prize,
+      count,
+      label: `${new Date(timestamp).toLocaleDateString()} - ${prize} (${count} winner${count > 1 ? 's' : ''})`
+    };
+  });
+
+  // Sort by timestamp (newest first)
+  selectionEntries.sort((a, b) => b.timestamp - a.timestamp);
+  
+  selectionEntries.forEach(entry => {
+    selectionFilter.innerHTML += `<option value="${entry.id}">${entry.label}</option>`;
+  });
+  selectionFilter.value = selectedSelection;
+}
+
+function updateWinnersCountDisplay(filteredCount, totalCount, filterPrize, filterList, filterSelection) {
+  const winnersCountElement = document.getElementById('winnersCount');
+  const filterStatusElement = document.getElementById('filterStatus');
+  
+  if (!winnersCountElement || !filterStatusElement) return;
+
+  // Update count display
+  if (filteredCount === totalCount) {
+    winnersCountElement.textContent = `Showing ${totalCount} winners`;
+  } else {
+    winnersCountElement.textContent = `Showing ${filteredCount} of ${totalCount} winners`;
+  }
+
+  // Update filter status
+  const activeFilters = [];
+  if (filterPrize) activeFilters.push(`Prize: ${filterPrize}`);
+  if (filterList) activeFilters.push(`List: ${filterList}`);
+  if (filterSelection) activeFilters.push(`Selection: ${filterSelection}`);
+
+  if (activeFilters.length > 0) {
+    filterStatusElement.textContent = `Filtered by: ${activeFilters.join(', ')}`;
+  } else {
+    filterStatusElement.textContent = '';
   }
 }
 
@@ -829,6 +943,7 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
     updateProgress(50, 'Creating winner records...');
 
     // Create winner records
+    const historyId = generateId(8);
     const winners = selectedEntries.map((entry, index) => ({
       winnerId: generateId(),
       uniqueId: generateId(5).toUpperCase(), // 5-character unique ID as required
@@ -838,7 +953,8 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
       timestamp: Date.now(),
       originalEntry: entry,
       listId: currentList.listId || currentList.metadata.listId,
-      position: index + 1
+      position: index + 1,
+      historyId: historyId
     }));
 
     updateProgress(75, 'Saving winners...');
@@ -853,7 +969,6 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
     await savePrize(selectedPrize);
 
     // Save history
-    const historyId = generateId(8);
     const historyEntry = {
       historyId: historyId, // Key at root level for IndexedDB
       listId: currentList.listId || currentList.metadata.listId,
@@ -1246,6 +1361,21 @@ function setupManagementEventListeners() {
   themePresets.forEach(button => {
     button.addEventListener('click', handleThemePreset);
   });
+
+  // Winner filter event listeners
+  const prizeFilter = document.getElementById('filterPrize');
+  const listFilter = document.getElementById('filterList');
+  const selectionFilter = document.getElementById('filterSelection');
+
+  if (prizeFilter) {
+    prizeFilter.addEventListener('change', loadWinners);
+  }
+  if (listFilter) {
+    listFilter.addEventListener('change', loadWinners);
+  }
+  if (selectionFilter) {
+    selectionFilter.addEventListener('change', loadWinners);
+  }
 }
 
 // Global variable to store parsed CSV data for preview
@@ -1315,16 +1445,16 @@ function showCSVPreview(data, listName) {
   const headers = Object.keys(data[0]);
   
   // Create table headers
-  previewHeaders.innerHTML = '<tr>' + 
-    headers.map(header => `<th>${header}</th>`).join('') + 
+  previewHeaders.innerHTML = '<tr>' +
+    headers.map(header => `<th>${header}</th>`).join('') +
     '</tr>';
   
   // Show first 10 records (or less if fewer available)
   const previewData = data.slice(0, 10);
   
   previewBody.innerHTML = previewData.map(row => 
-    '<tr>' + 
-    headers.map(header => `<td>${row[header] || ''}</td>`).join('') + 
+    '<tr>' +
+    headers.map(header => `<td>${row[header] || ''}</td>`).join('') +
     '</tr>'
   ).join('');
   
@@ -1735,15 +1865,42 @@ async function processRestoreFile(event) {
 // Winners Export and Clear Functionality
 async function handleExportWinners() {
   try {
-    const winners = await getAllWinners();
+    const allWinners = await getAllWinners();
+    const lists = await getAllLists();
     
-    if (winners.length === 0) {
+    if (allWinners.length === 0) {
       showToast('No winners to export', 'warning');
       return;
     }
 
+    // Create a map of listId to listName for consistent filtering
+    const listNameMap = {};
+    lists.forEach(list => {
+      const listId = list.listId || list.metadata.listId;
+      listNameMap[listId] = list.metadata.name;
+    });
+
+    // Get current filter values to apply the same filtering as the table
+    const filterPrize = document.getElementById('filterPrize').value;
+    const filterList = document.getElementById('filterList').value;
+    const filterSelection = document.getElementById('filterSelection').value;
+
+    // Apply the same filters as the loadWinners function
+    const filteredWinners = allWinners.filter(winner => {
+      const prizeMatch = !filterPrize || winner.prize === filterPrize;
+      const listName = listNameMap[winner.listId] || 'Unknown';
+      const listMatch = !filterList || listName === filterList;
+      const selectionMatch = !filterSelection || winner.historyId === filterSelection;
+      return prizeMatch && listMatch && selectionMatch;
+    });
+
+    if (filteredWinners.length === 0) {
+      showToast('No winners match the current filters to export', 'warning');
+      return;
+    }
+
     // Generate unique 5-character IDs for winners that don't have them
-    const winnersWithIds = winners.map(winner => ({
+    const winnersWithIds = filteredWinners.map(winner => ({
       ...winner,
       uniqueId: winner.uniqueId || generateId(5).toUpperCase()
     }));
@@ -1757,7 +1914,7 @@ async function handleExportWinners() {
     }
 
     // Create CSV content
-    const headers = ['UniqueID', 'Name', 'Prize', 'Timestamp', 'ListId'];
+    const headers = ['UniqueID', 'Name', 'Prize', 'Timestamp', 'ListName'];
     
     // Add all original record fields as headers
     const allFields = new Set();
@@ -1778,7 +1935,7 @@ async function handleExportWinners() {
           `"${winner.displayName || 'Unknown'}"`,
           `"${winner.prize || 'Unknown'}"`,
           new Date(winner.timestamp).toISOString(),
-          winner.listId || 'Unknown'
+          `"${listNameMap[winner.listId] || 'Unknown'}"`
         ];
 
         const fieldData = fieldHeaders.map(field => {
@@ -1795,13 +1952,19 @@ async function handleExportWinners() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `winners-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `winner-app-export-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showToast(`Exported ${winners.length} winners to CSV`, 'success');
+    // Show appropriate message based on filtering status
+    const activeFilters = [filterPrize, filterList, filterSelection].filter(f => f).length;
+    const message = activeFilters > 0 
+      ? `Exported ${filteredWinners.length} filtered winners to CSV (${allWinners.length} total)`
+      : `Exported ${filteredWinners.length} winners to CSV`;
+    
+    showToast(message, 'success');
 
   } catch (error) {
     console.error('Error exporting winners:', error);
