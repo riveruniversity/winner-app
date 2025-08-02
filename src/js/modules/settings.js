@@ -132,9 +132,11 @@ function toggleTheme() {
   if (currentTheme === 'dark') {
     body.setAttribute('data-theme', 'light');
     themeToggle.innerHTML = '<i class="bi bi-moon-fill"></i>';
+    themeToggle.classList.remove('dark');
   } else {
     body.setAttribute('data-theme', 'dark');
     themeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+    themeToggle.classList.add('dark');
   }
 }
 

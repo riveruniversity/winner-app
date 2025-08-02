@@ -1,7 +1,7 @@
 /* CSS Custom Properties for Theming */
 :root {
-    --primary-color: #0A4f7B;
-    --secondary-color: #5FA1F7;
+  --primary-color: #0A4f7B;
+  --secondary-color: #5FA1F7;
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
@@ -37,12 +37,14 @@ body {
 /* Main Public Selection Interface */
 .public-selection-interface {
   min-height: 100vh;
-  height: 100vh; /* Fixed height for no scrolling */
+  height: 100vh;
+  /* Fixed height for no scrolling */
   background: var(--gradient-bg);
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden; /* Only prevent scrolling in selection interface */
+  overflow: hidden;
+  /* Only prevent scrolling in selection interface */
 }
 
 .selection-header {
@@ -80,7 +82,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem; /* Reduced padding */
+  padding: 1rem;
+  /* Reduced padding */
   text-align: center;
 }
 
@@ -89,7 +92,8 @@ body {
   backdrop-filter: blur(15px);
   border-radius: 20px;
   padding: 3rem;
-  margin-bottom: 0; /* Removed margin-bottom */
+  margin-bottom: 0;
+  /* Removed margin-bottom */
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   max-width: 800px;
   width: 100%;
@@ -178,14 +182,15 @@ body {
   height: calc(100vh - 200px);
   padding: clamp(0.25rem, 1vw, 1rem);
   box-sizing: border-box;
-  
+
   /* Fill the screen vertically */
-  align-content: stretch;
-  justify-content: flex-start;
-  
+  align-content: center;
+  justify-content: center;
+
   /* Allow number badges to overflow */
-  overflow: visible; /* No scrolling - everything must fit */
-  
+  overflow: visible;
+  /* No scrolling - everything must fit */
+
   /* Responsive behavior for different screen sizes */
   container-type: inline-size;
 }
@@ -198,22 +203,22 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #333;
   text-align: center;
-  
+
   /* Flex layout for centering content */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  
+
   /* Truly flexible with height constraint */
   flex: 1 1 auto;
   max-height: 150px;
-  
+
   /* Animation */
   transform: translateY(20px);
   opacity: 0;
   animation: slideInUp 0.6s ease-out forwards;
-  
+
   /* Allow number badge to overflow */
   position: relative;
   overflow: visible;
@@ -270,21 +275,23 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   /* Position outside the card */
   position: absolute;
   top: clamp(-8px, -5cqw, -10px);
   left: clamp(-8px, -5cqw, -10px);
   z-index: 10;
-  
+
   /* Enhanced styling */
   border: clamp(1px, 1cqw, 2px) solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .winner-info1 {
-  font-size: clamp(0.6rem, 3cqw, 1.0rem); /* Smaller - for small info at top */
-  font-weight: 500; /* Medium weight */
+  font-size: clamp(0.6rem, 3cqw, 1.0rem);
+  /* Smaller - for small info at top */
+  font-weight: 500;
+  /* Medium weight */
   color: #555;
   margin-bottom: clamp(0.05rem, 0.5cqw, 0.2rem);
   margin-top: 0;
@@ -294,8 +301,10 @@ body {
 }
 
 .winner-info2 {
-  font-size: clamp(0.7rem, 4cqw, 1.2rem); /* Larger - main name */
-  font-weight: 700; /* Bold for primary info */
+  font-size: clamp(0.7rem, 4cqw, 1.2rem);
+  /* Larger - main name */
+  font-weight: 700;
+  /* Bold for primary info */
   color: #333;
   margin-bottom: clamp(0.1rem, 1cqw, 0.3rem);
   line-height: 1.1;
@@ -304,8 +313,10 @@ body {
 }
 
 .winner-info3 {
-  font-size: clamp(0.5rem, 2.5cqw, 0.8rem); /* Smallest - smallest scaling */
-  font-weight: 400; /* Normal weight for tertiary info */
+  font-size: clamp(0.5rem, 2.5cqw, 0.8rem);
+  /* Smallest - smallest scaling */
+  font-weight: 400;
+  /* Normal weight for tertiary info */
   color: #666;
   line-height: 1.2;
   word-break: break-word;
@@ -316,8 +327,10 @@ body {
 .prize-display {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 15px;
-  padding: 1rem; /* Reduced padding */
-  margin-bottom: 1rem; /* Reduced margin */
+  padding: 1rem;
+  /* Reduced padding */
+  margin-bottom: 1rem;
+  /* Reduced margin */
   backdrop-filter: blur(10px);
   border: 1px solid var(--glass-border);
 }
@@ -356,7 +369,8 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1; /* Behind the number */
+  z-index: 1;
+  /* Behind the number */
 }
 
 .countdown-number {
@@ -367,7 +381,8 @@ body {
   /* A multi-layer shadow gives a nice glow effect that works with the theme color */
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 40px var(--primary-color);
   animation: pulse 1s ease-in-out;
-  z-index: 2; /* In front of the canvas */
+  z-index: 2;
+  /* In front of the canvas */
   position: relative;
 }
 
@@ -433,8 +448,14 @@ body {
 
 /* Theme Toggle Button */
 #themeToggle {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+
+  color: white;
+  transition: all 0.3s ease;
+}
+
+#themeToggle.dark {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
   color: white;
   transition: all 0.3s ease;
 }
@@ -726,15 +747,17 @@ body {
 /* Progressive info hiding on small cards */
 @container (max-width: 350px) {
   .winner-info3 {
-    display: none; /* Hide tertiary info first */
+    display: none;
+    /* Hide tertiary info first */
   }
 }
 
 @container (max-width: 280px) {
   .winner-info2 {
-    display: none; /* Hide secondary info on very small cards */
+    display: none;
+    /* Hide secondary info on very small cards */
   }
-  
+
   .winner-info1 {
     font-size: clamp(0.7rem, 12cqw, 1.1rem);
   }
@@ -892,7 +915,8 @@ body {
   overflow: hidden;
 }
 
-#previewTable th, #previewTable td {
+#previewTable th,
+#previewTable td {
   padding: 1rem;
   text-align: left;
 }
