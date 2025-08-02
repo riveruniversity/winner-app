@@ -169,21 +169,22 @@ body {
   box-shadow: 0 10px 20px rgba(108, 117, 125, 0.4);
 }
 
-/* Winners Display - Responsive CSS Grid */
+/* Winners Display - Flexbox with Wrap */
 .winners-grid {
-  display: grid;
-  gap: clamp(0.25rem, 1vw, 0.75rem); /* Smaller gaps for more content */
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.25rem, 1vw, 0.75rem);
   width: 100%;
-  height: calc(100vh - 200px); /* Fill available height */
-  padding: clamp(0.25rem, 1vw, 1rem); /* Smaller padding */
+  height: calc(100vh - 200px);
+  padding: clamp(0.25rem, 1vw, 1rem);
   box-sizing: border-box;
   
-  /* Dynamic grid that adapts to content - smaller minimum size */
-  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%/5), 1fr));
-  grid-auto-rows: minmax(80px, 1fr); /* Smaller minimum row height */
+  /* Fill the screen vertically */
+  align-content: stretch;
+  justify-content: flex-start;
   
   /* Allow number badges to overflow */
-  overflow: visible;
+  overflow: visible; /* No scrolling - everything must fit */
   
   /* Responsive behavior for different screen sizes */
   container-type: inline-size;
@@ -192,7 +193,7 @@ body {
 .winner-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: clamp(8px, 2vw, 15px);
-  padding: 10px; /* Fixed 10px padding instead of responsive */
+  padding: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #333;
@@ -204,12 +205,9 @@ body {
   justify-content: center;
   align-items: center;
   
-  /* Fill the grid cell */
-  height: 100%;
-  min-height: 80px; /* Smaller minimum viable size */
-  
-  /* Responsive text scaling */
-  font-size: clamp(0.8rem, 2.5vw, 1.2rem);
+  /* Truly flexible with height constraint */
+  flex: 1 1 auto;
+  max-height: 150px;
   
   /* Animation */
   transform: translateY(20px);
@@ -218,7 +216,7 @@ body {
   
   /* Allow number badge to overflow */
   position: relative;
-  overflow: visible; /* Changed from hidden to visible */
+  overflow: visible;
 }
 
 .winner-card:nth-child(1) {
@@ -285,31 +283,31 @@ body {
 }
 
 .winner-info1 {
-  font-size: clamp(0.8rem, 12cqw, 1.6rem); /* Largest - scales with container */
-  font-weight: 700; /* Bold for primary info */
-  color: #333;
-  margin-bottom: clamp(0.1rem, 2cqw, 0.4rem);
+  font-size: clamp(0.6rem, 3cqw, 1.0rem); /* Smaller - for small info at top */
+  font-weight: 500; /* Medium weight */
+  color: #555;
+  margin-bottom: clamp(0.05rem, 0.5cqw, 0.2rem);
   margin-top: 0;
-  line-height: 1.2;
+  line-height: 1.1;
   word-break: break-word;
   hyphens: auto;
 }
 
 .winner-info2 {
-  font-size: clamp(0.6rem, 9cqw, 1.2rem); /* Medium - scales with container */
-  font-weight: 500; /* Medium weight for secondary info */
-  color: #555;
-  margin-bottom: clamp(0.05rem, 1.5cqw, 0.3rem);
-  line-height: 1.2;
+  font-size: clamp(0.7rem, 4cqw, 1.2rem); /* Larger - main name */
+  font-weight: 700; /* Bold for primary info */
+  color: #333;
+  margin-bottom: clamp(0.1rem, 1cqw, 0.3rem);
+  line-height: 1.1;
   word-break: break-word;
   hyphens: auto;
 }
 
 .winner-info3 {
-  font-size: clamp(0.5rem, 7cqw, 0.9rem); /* Smallest - scales with container */
+  font-size: clamp(0.5rem, 2.5cqw, 0.8rem); /* Smallest - smallest scaling */
   font-weight: 400; /* Normal weight for tertiary info */
   color: #666;
-  line-height: 1.3;
+  line-height: 1.2;
   word-break: break-word;
   hyphens: auto;
 }
