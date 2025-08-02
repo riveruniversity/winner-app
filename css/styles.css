@@ -805,3 +805,13 @@ body {
 [data-theme="dark"] #previewTable tbody tr:hover {
   background-color: #475569;
 }
+
+.list-name {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.list-count {
+  font-style: italic;
+  color: #6c757d;
+}

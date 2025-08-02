@@ -132,7 +132,7 @@ window.CSVParser = (function () {
     ).join('');
 
     const previewTitle = document.querySelector('#dataPreviewCard .card-title');
-    previewTitle.textContent = `Data Preview - <span class="list-name">"${listName}"</span> <span class="list-count">(${data.length} total records, showing first ${previewData.length})</span>`;
+    previewTitle.innerHTML = `Data Preview - <span class="list-name">"${listName}"</span> <span class="list-count">(${data.length} total records, showing first ${previewData.length})</span>`;
 
     showNameConfiguration(headers, data[0]);
     previewCard.scrollIntoView({ behavior: 'smooth' });
