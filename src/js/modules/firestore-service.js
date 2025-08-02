@@ -294,11 +294,28 @@ async function reconstructShardedLists(rawDocuments) {
         // Find the shard in our raw documents or fetch it
         let shard = rawDocuments.find(d => d.listId === shardId);
         if (!shard) {
-          // Shard not in current batch, fetch it directly to avoid recursion
-          const docRef = doc(db, 'lists', shardId);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            shard = docSnap.data();
+          // Try cache first for missing shard
+          try {
+            const docRef = doc(db, 'lists', shardId);
+            const cachedSnap = await getDocFromCache(docRef);
+            if (cachedSnap.exists()) {
+              shard = cachedSnap.data();
+              
+              // Background sync for this shard (fire and forget)
+              getDoc(docRef).then(() => {
+                console.log(`🔄 Background sync complete for shard ${shardId}`);
+              }).catch(err => {
+                console.warn(`Background sync failed for shard ${shardId}:`, err);
+              });
+            }
+          } catch (cacheError) {
+            // If cache fails, fetch from server as last resort
+            console.log(`📡 Cache miss for shard ${shardId}, fetching from server...`);
+            const docRef = doc(db, 'lists', shardId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              shard = docSnap.data();
+            }
           }
         }
         

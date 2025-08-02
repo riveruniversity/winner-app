@@ -94,10 +94,11 @@ function readFileAsText(file) {
   });
 }
 
-async function populateQuickSelects() {
+async function populateQuickSelects(lists = null, prizes = null) {
   try {
-    const lists = await Database.getAllFromStore('lists');
-    const prizes = await Database.getAllFromStore('prizes');
+    // Use passed data if available, otherwise fetch from database
+    const listsData = lists || await Database.getAllFromStore('lists');
+    const prizesData = prizes || await Database.getAllFromStore('prizes');
 
     const quickListSelect = document.getElementById('quickListSelect');
     const quickPrizeSelect = document.getElementById('quickPrizeSelect');
@@ -105,7 +106,7 @@ async function populateQuickSelects() {
 
     if (quickListSelect) {
       quickListSelect.innerHTML = '<option value="">Select List...</option>';
-      lists.forEach(list => {
+      listsData.forEach(list => {
         const listId = list.listId || list.metadata.listId;
         const option = document.createElement('option');
         option.value = listId;
@@ -120,7 +121,7 @@ async function populateQuickSelects() {
 
     if (quickPrizeSelect) {
       quickPrizeSelect.innerHTML = '<option value="">Select Prize...</option>';
-      prizes.filter(prize => prize.quantity > 0).forEach(prize => {
+      prizesData.filter(prize => prize.quantity > 0).forEach(prize => {
         const option = document.createElement('option');
         option.value = prize.prizeId;
         option.textContent = `${prize.name} (${prize.quantity} available)`;
@@ -150,9 +151,9 @@ function applyVisibilitySettings() {
   }
 }
 
-async function syncUI() {
+async function syncUI(lists = null, prizes = null) {
   try {
-    await populateQuickSelects();
+    await populateQuickSelects(lists, prizes);
     applyVisibilitySettings();
     updateSelectionInfo();
   } catch (error) {

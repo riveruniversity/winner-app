@@ -34,17 +34,31 @@ export function getLastAction() {
   return _lastAction;
 }
 
+// Load data in background without blocking UI
+function loadDataInBackground() {
+  // Fire and forget - don't await these
+  Lists.loadLists();
+  Prizes.loadPrizes();
+  UI.syncUI();
+}
+
 // Application initialization
 export async function initializeApp() {
   try {
     await Database.initDB();
-    await Settings.loadSettings();
-    await Lists.loadLists();
-    await Prizes.loadPrizes();
-    await Winners.loadWinners();
-    await loadHistory();
-    await updateHistoryStats();
-    await UI.syncUI();
+    
+    // Load settings in background too - don't block UI
+    Settings.loadSettings().then(() => {
+      Settings.setupTheme(); // Apply theme once settings are loaded
+    });
+    
+    // Start loading everything in background, don't block UI
+    loadDataInBackground();
+    
+    // Load other data in background too (don't await)
+    Winners.loadWinners();
+    loadHistory();
+    updateHistoryStats();
 
     // Initialize modal after everything else is ready
     setTimeout(() => {
