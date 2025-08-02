@@ -2,14 +2,13 @@ const CACHE_NAME = 'winner-selection-app-v1.1.0';
 const STATIC_CACHE_NAME = 'winner-app-static-v1';
 const DYNAMIC_CACHE_NAME = 'winner-app-dynamic-v1';
 
-// Files to cache immediately
+// Files to cache immediately (production paths)
 const STATIC_FILES = [
-  './favicon.ico',
+  './',
   './index.html',
-  './main.js',
-  './js/app.js',
   './manifest.json',
-  './css/styles.css',
+  './favicon.ico',
+  './favicon.png',
   './icons/icon-192x192.svg',
   './icons/icon-512x512.svg',
   // Bootstrap CSS
@@ -57,14 +56,8 @@ self.addEventListener('install', (event) => {
         if (failed.length > 0) {
           console.warn('[Service Worker] Failed to cache:', failed.map(f => f.url));
 
-          // Only fail installation if critical local files failed
-          const criticalFailed = failed.filter(f =>
-            f.url.startsWith('./') || f.url.includes('index.html')
-          );
-
-          if (criticalFailed.length > 0) {
-            throw new Error(`Critical files failed to cache: ${criticalFailed.map(f => f.url).join(', ')}`);
-          }
+          // Don't fail installation for missing development files - they don't exist in production
+          console.log('[Service Worker] Some files failed to cache, but installation will continue');
         }
 
         return cache;
@@ -261,32 +254,15 @@ async function networkFirst(request) {
 
 // Helper functions
 function isStaticFile(url) {
-  const staticExtensions = ['.html', '.css', '.js', '.json', '.ico'];
+  const staticExtensions = ['.html', '.css', '.js', '.json', '.ico', '.png', '.svg'];
   const staticFiles = [
     './index.html',
-    './css/styles.css',
-    './js/app.js',
     './manifest.json',
-    './images/favicon.ico',
-    // Add other static files that are now in src/ or public/
-    './js/modules/animations.js',
-    './js/modules/csv-parser.js',
-    './js/modules/database.js',
-    './js/modules/export.js',
-    './js/modules/firebase-init.js',
-    './js/modules/firebase-sync.js',
-    './js/modules/lists.js',
-    './js/modules/prizes.js',
-    './js/modules/selection.js',
-    './js/modules/settings.js',
-    './js/modules/ui.js',
-    './js/modules/winners.js',
-    './images/favicon.png',
-    './images/neon-magic-swirl-wind-effect-purple-twirl-light.png',
-    './images/wheel.svg',
-    './icons/icon-192x192.svg',
-    './icons/icon-512x512.svg',
-    './icons/icon-backup.svg'
+    './favicon.ico',
+    './favicon.png',
+    // Assets folder (Vite builds JS/CSS here with hashes)
+    './assets/',
+    './icons/'
   ];
 
   return staticFiles.some(file => url.includes(file)) ||

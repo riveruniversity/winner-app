@@ -31,6 +31,11 @@
         <img src="/favicon.png" width="40" class="me-2">
         <h4 class="mb-0">River Winner</h4>
       </div>
+      <!-- Prize Display in Header (Hidden initially) -->
+      <div class="prize-display-header d-none" id="prizeDisplay">
+        <div class="prize-name-header" id="displayPrizeName"></div>
+        <div class="prize-subtitle-header" id="displayPrizeSubtitle"></div>
+      </div>
       <div class="d-flex gap-2">
         <button class="btn btn-outline-light" id="themeToggle" title="Toggle theme">
           <i class="bi bi-moon-fill"></i>
@@ -73,11 +78,6 @@
           <i class="bi bi-play-fill"></i>
         </button>
       </div>
-      <!-- Prize Display (Hidden initially) -->
-      <div class="prize-display d-none" id="prizeDisplay">
-        <div class="prize-name" id="displayPrizeName"></div>
-        <div class="prize-subtitle" id="displayPrizeSubtitle"></div>
-      </div>
       <!-- Winners Grid Display -->
       <div class="winners-grid d-none" id="winnersGrid">
         <!-- Winner cards will be inserted here dynamically -->
@@ -106,6 +106,8 @@
                 <i class="bi bi-gear"></i>
               </button>
               <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" id="undoLastSelection"><i class="bi bi-arrow-counterclockwise me-2"></i>Undo Last Selection</a></li>
+                <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" id="backupData"><i class="bi bi-download me-2"></i>Backup Data</a></li>
                 <li><a class="dropdown-item" href="#" id="restoreData"><i class="bi bi-upload me-2"></i>Restore Data</a></li>
               </ul>

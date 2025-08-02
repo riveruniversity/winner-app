@@ -267,6 +267,31 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
   }
 }
 
+function adjustWinnerCardFontSize(numWinners) {
+  const winnerCards = document.querySelectorAll('.winner-card');
+  if (winnerCards.length === 0) return;
+
+  // Base font sizes
+  let nameFontSize = 1.5; // rem
+  let detailsFontSize = 0.9; // rem
+
+  // Adjust based on number of winners
+  if (numWinners > 8) {
+    nameFontSize = 1.0;
+    detailsFontSize = 0.7;
+  } else if (numWinners > 4) {
+    nameFontSize = 1.2;
+    detailsFontSize = 0.8;
+  }
+
+  winnerCards.forEach(card => {
+    const nameElement = card.querySelector('.winner-name');
+    const detailsElement = card.querySelector('.winner-details');
+    if (nameElement) nameElement.style.fontSize = `${nameFontSize}rem`;
+    if (detailsElement) detailsElement.style.fontSize = `${detailsFontSize}rem`;
+  });
+}
+
 function displayWinnersPublicly(winners, prize, displayMode) {
   // Show prize display
   const prizeDisplay = document.getElementById('prizeDisplay');
@@ -274,14 +299,15 @@ function displayWinnersPublicly(winners, prize, displayMode) {
   document.getElementById('displayPrizeSubtitle').textContent = `${winners.length} Winner${winners.length > 1 ? 's' : ''}`;
   prizeDisplay.classList.remove('d-none');
 
-  // Show winners in grid
+  // Show winners with CSS-based responsive grid
   const winnersGrid = document.getElementById('winnersGrid');
   winnersGrid.innerHTML = '';
+  winnersGrid.className = 'winners-grid'; // Use CSS class
 
   if (displayMode === 'sequential') {
-    displayWinnersSequentially(winners, winnersGrid);
+    displayWinnersSequential(winners, winnersGrid);
   } else {
-    displayAllWinnersAtOnce(winners, winnersGrid);
+    displayWinnersAllAtOnce(winners, winnersGrid);
   }
 
   winnersGrid.classList.remove('d-none');
@@ -290,34 +316,44 @@ function displayWinnersPublicly(winners, prize, displayMode) {
   document.getElementById('actionButtons').classList.remove('d-none');
 }
 
-function displayAllWinnersAtOnce(winners, winnersGrid) {
+// Display all winners at once using CSS grid
+function displayWinnersAllAtOnce(winners, winnersGrid) {
   winners.forEach((winner, index) => {
     const winnerCard = createWinnerCard(winner, index);
     winnersGrid.appendChild(winnerCard);
   });
 }
 
-function displayWinnersSequentially(winners, winnersGrid) {
+// Display winners sequentially using CSS grid
+function displayWinnersSequential(winners, winnersGrid) {
   const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
-  console.log('Sequential reveal with delay:', displayDuration, 'seconds');
   
   winners.forEach((winner, index) => {
     const delay = index * (displayDuration * 1000);
-    console.log(`Winner ${index + 1} will appear after ${delay}ms`);
     
     setTimeout(() => {
       const winnerCard = createWinnerCard(winner, index);
+      
+      // More dynamic entrance animations
+      const animations = [
+        'translateX(-100%) rotateZ(-10deg)',
+        'translateY(-100%) rotateX(45deg)',
+        'scale(0) rotate(180deg)',
+        'translateX(100%) skewX(-15deg)',
+        'translateY(100%) rotateY(90deg)'
+      ];
+      
+      const randomAnimation = animations[index % animations.length];
       winnerCard.style.opacity = '0';
-      winnerCard.style.transform = 'translateY(20px)';
+      winnerCard.style.transform = randomAnimation;
       winnersGrid.appendChild(winnerCard);
       
-      // Animate in
+      // Animate to final position
       setTimeout(() => {
-        winnerCard.style.transition = 'all 0.6s ease-out';
+        winnerCard.style.transition = 'all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
         winnerCard.style.opacity = '1';
-        winnerCard.style.transform = 'translateY(0)';
+        winnerCard.style.transform = 'translateX(0) translateY(0) scale(1) rotate(0deg) skewX(0deg) rotateX(0deg) rotateY(0deg)';
         
-        // Play sound for each winner if enabled
         if (settings.enableSoundEffects) {
           playSound('winner');
         }
@@ -326,14 +362,18 @@ function displayWinnersSequentially(winners, winnersGrid) {
   });
 }
 
+// Create winner card using CSS styling
 function createWinnerCard(winner, index) {
   const winnerCard = document.createElement('div');
   winnerCard.className = 'winner-card';
   
+  const details = getWinnerDetails(winner);
+  const isFallback = details === 'Winner Selected';
+  
   winnerCard.innerHTML = `
     <div class="winner-number">${winner.position}</div>
     <div class="winner-name">${winner.displayName}</div>
-    <div class="winner-details">${getWinnerDetails(winner)}</div>
+    <div class="winner-details"${isFallback ? ' data-fallback="true"' : ''}>${details}</div>
   `;
   
   return winnerCard;
@@ -415,8 +455,8 @@ export const Selection = {
   showCountdown,
   selectWinners,
   displayWinnersPublicly,
-  displayAllWinnersAtOnce,
-  displayWinnersSequentially,
+  displayWinnersAllAtOnce,
+  displayWinnersSequential,
   createWinnerCard,
   getWinnerDetails,
   playSound

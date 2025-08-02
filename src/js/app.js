@@ -175,11 +175,13 @@ function setupManagementListeners() {
   const clearWinnersBtn = document.getElementById('clearWinnersBtn');
   const backupData = document.getElementById('backupData');
   const restoreData = document.getElementById('restoreData');
+  const undoLastSelection = document.getElementById('undoLastSelection');
 
   if (exportWinnersBtn) exportWinnersBtn.addEventListener('click', Export.handleExportWinners);
   if (clearWinnersBtn) clearWinnersBtn.addEventListener('click', Winners.clearAllWinners);
   if (backupData) backupData.addEventListener('click', Export.handleBackupData);
   if (restoreData) restoreData.addEventListener('click', Export.handleRestoreData);
+  if (undoLastSelection) undoLastSelection.addEventListener('click', Winners.undoLastSelection);
 }
 
 function setupWinnerFilters() {
