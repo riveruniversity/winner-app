@@ -222,7 +222,7 @@ async function handleConfirmUpload() {
   }
 
   try {
-    UI.showProgress('Uploading List', 'Validating data...');
+    UI.showProgress('Processing List', 'Validating data...');
 
     const nameConfig = getNameConfiguration();
     const idConfig = getIdConfiguration();
@@ -237,7 +237,7 @@ async function handleConfirmUpload() {
       }
     }
 
-    UI.updateProgress(50, 'Creating list...');
+    UI.updateProgress(25, 'Creating list structure...');
 
     const listId = UI.generateId();
     const listData = {
@@ -258,12 +258,27 @@ async function handleConfirmUpload() {
       }))
     };
 
-    UI.updateProgress(90, 'Saving list...');
-    await Database.saveToStore('lists', listData);
-    saveDocument('lists', listData);
-    UI.hideProgress();
+    UI.updateProgress(50, 'Saving locally...');
+    
+    // Save list (handles sharding automatically for large lists)
+    await Database.saveToStore('lists', listData, {
+      onProgress: (progress, message) => {
+        UI.updateProgress(50 + (progress * 0.4), message); // Scale progress to 50-90%
+      }
+    });
+    
+    UI.updateProgress(100, 'Complete! Syncing to cloud in background...');
+    
+    // Hide progress after a short delay to show completion
+    setTimeout(() => {
+      UI.hideProgress();
+    }, 1000);
 
-    UI.showToast(`List "${pendingCSVData.listName}" uploaded successfully with ${pendingCSVData.data.length} entries`, 'success');
+    const entriesText = pendingCSVData.data.length > 1000 ? 
+      `${pendingCSVData.data.length} entries (auto-sharded for optimal performance)` :
+      `${pendingCSVData.data.length} entries`;
+      
+    UI.showToast(`List "${pendingCSVData.listName}" processed successfully with ${entriesText}! 📦 Syncing to cloud...`, 'success');
 
     // Clear form and hide preview
     document.getElementById('listName').value = '';
