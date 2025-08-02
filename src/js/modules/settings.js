@@ -2,9 +2,8 @@
 // SETTINGS & THEMES
 // ================================
 
-import { Database } from './database.js';
+import { Database } from './firestore-service.js';
 import { UI } from './ui.js';
-import { saveDocument } from './firebase-sync.js';
 
 // Application settings with defaults
 export let settings = {
@@ -25,7 +24,6 @@ async function saveSettings() {
   for (const [key, value] of Object.entries(settings)) {
     const settingToSave = { key, value };
     await Database.saveToStore('settings', settingToSave);
-    saveDocument('settings', settingToSave);
   }
 }
 

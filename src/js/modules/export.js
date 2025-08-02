@@ -2,10 +2,9 @@
 // EXPORT FUNCTIONALITY
 // ================================
 
-import { Database } from './database.js';
+import { Database } from './firestore-service.js';
 import { UI } from './ui.js';
 import { Settings } from './settings.js';
-import { saveDocument } from './firebase-sync.js';
 
 async function handleExportWinners() {
   try {
@@ -179,7 +178,6 @@ async function processRestoreFile(event) {
     if (backupData.lists) {
       for (const list of backupData.lists) {
         await Database.saveToStore('lists', list);
-        saveDocument('lists', list);
       }
     }
 
@@ -187,7 +185,6 @@ async function processRestoreFile(event) {
     if (backupData.prizes) {
       for (const prize of backupData.prizes) {
         await Database.saveToStore('prizes', prize);
-        saveDocument('prizes', prize);
       }
     }
 
@@ -195,14 +192,12 @@ async function processRestoreFile(event) {
     if (backupData.winners) {
       for (const winner of backupData.winners) {
         await Database.saveToStore('winners', winner);
-        saveDocument('winners', winner);
       }
     }
 
     if (backupData.history) {
       for (const historyEntry of backupData.history) {
         await Database.saveToStore('history', historyEntry);
-        saveDocument('history', historyEntry);
       }
     }
 

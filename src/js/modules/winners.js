@@ -2,11 +2,10 @@
 // WINNER MANAGEMENT & FILTERING
 // ================================
 
-import { Database } from './database.js';
+import { Database } from './firestore-service.js';
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 import { settings } from './settings.js'; // Import settings directly
-import { saveDocument, deleteDocument } from './firebase-sync.js';
 import { getCurrentList, getLastAction, setLastAction } from '../app.js'; // Import central state
 import { loadHistory } from '../app.js'; // Import loadHistory from app.js
 
@@ -152,7 +151,6 @@ async function deleteWinnerConfirm(winnerId) {
   UI.showConfirmationModal('Delete Winner', 'Are you sure you want to delete this winner record?', async () => {
     try {
       await Database.deleteFromStore('winners', winnerId);
-      deleteDocument('winners', winnerId);
       UI.showToast('Winner deleted successfully', 'success');
       await loadWinners();
       loadHistory(); // Call from app.js
@@ -165,9 +163,6 @@ async function deleteWinnerConfirm(winnerId) {
 
 async function saveWinner(winner) {
   await Database.saveToStore('winners', winner);
-  // Add id property for Firebase sync (uses winnerId as the document ID)
-  const winnerWithId = { ...winner, id: winner.winnerId };
-  saveDocument('winners', winnerWithId);
 }
 
 async function getAllWinners() {
@@ -187,7 +182,6 @@ async function clearAllWinners() {
 
         for (const winner of winners) {
           await Database.deleteFromStore('winners', winner.winnerId);
-          deleteDocument('winners', winner.winnerId);
           deletedCount++;
           UI.updateProgress((deletedCount / winners.length) * 100, `Deleted ${deletedCount} of ${winners.length} winners...`);
         }
@@ -224,7 +218,6 @@ async function undoLastSelection() {
         // Delete winners
         for (const winner of currentLastAction.winners) {
           await Database.deleteFromStore('winners', winner.winnerId);
-          deleteDocument('winners', winner.winnerId);
         }
 
         // Restore prize quantity
@@ -233,12 +226,10 @@ async function undoLastSelection() {
         if (prize) {
           prize.quantity += currentLastAction.prizeCount;
           await Database.saveToStore('prizes', prize);
-          saveDocument('prizes', prize);
         }
 
         // Delete history entry
         await Database.deleteFromStore('history', currentLastAction.historyId);
-        deleteDocument('history', currentLastAction.historyId);
 
         // Restore entries to list if they were removed
         const currentList = getCurrentList(); // Get the currentList from app.js
@@ -248,7 +239,6 @@ async function undoLastSelection() {
             currentList.listId = currentList.metadata.listId;
           }
           await Database.saveToStore('lists', currentList);
-          saveDocument('lists', currentList);
         }
 
         UI.hideProgress();

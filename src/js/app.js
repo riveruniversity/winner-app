@@ -2,7 +2,7 @@
 // MAIN APPLICATION LOGIC
 // ================================
 
-import { Database } from './modules/database.js';
+import { Database } from './modules/firestore-service.js';
 import { Settings, settings } from './modules/settings.js';
 import { UI } from './modules/ui.js';
 import { Lists } from './modules/lists.js';
@@ -11,7 +11,6 @@ import { Winners } from './modules/winners.js';
 import { Selection } from './modules/selection.js';
 import { CSVParser } from './modules/csv-parser.js';
 import { Export } from './modules/export.js';
-import { processSyncQueue, deleteDocument } from './modules/firebase-sync.js';
 
 // Global state variables (now truly central)
 export let appModal = null;
@@ -59,9 +58,7 @@ export async function initializeApp() {
     setupEventListeners();
     Settings.setupTheme();
 
-    // Start background sync
-    processSyncQueue(); // Initial sync
-    setInterval(processSyncQueue, 30 * 1000); // Every 30 seconds
+    // Firestore handles sync automatically with offline persistence
 
   } catch (error) {
     console.error('Initialization error:', error);
@@ -280,7 +277,6 @@ export async function deleteHistoryConfirm(historyId) {
   UI.showConfirmationModal('Delete History Entry', 'Are you sure you want to delete this history entry?', async () => {
     try {
       await Database.deleteFromStore('history', historyId);
-      deleteDocument('history', historyId);
       UI.showToast('History entry deleted successfully', 'success');
       await loadHistory();
       await updateHistoryStats();

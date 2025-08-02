@@ -3,7 +3,7 @@
 // ================================
 
 import { UI } from './ui.js';
-import { Database } from './database.js';
+import { Database } from './firestore-service.js';
 import { Lists } from './lists.js';
 import { Winners } from './winners.js';
 import { settings } from './settings.js'; // Import settings directly

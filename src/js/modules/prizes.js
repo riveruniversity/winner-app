@@ -2,9 +2,8 @@
 // PRIZES MANAGEMENT
 // ================================
 
-import { Database } from './database.js';
+import { Database } from './firestore-service.js';
 import { UI } from './ui.js';
-import { saveDocument, deleteDocument } from './firebase-sync.js';
 
 async function loadPrizes() {
     try {
@@ -74,7 +73,6 @@ async function loadPrizes() {
       };
 
       await Database.saveToStore('prizes', prize);
-      saveDocument('prizes', prize);
 
       UI.showToast(`Prize "${name}" added successfully`, 'success');
 
@@ -133,9 +131,7 @@ async function loadPrizes() {
         prize.name = newName;
         prize.quantity = newQuantity;
         prize.description = newDescription;
-        prize.id = prize.prizeId;
         await Database.saveToStore('prizes', prize);
-        saveDocument('prizes', prize);
 
         UI.showToast('Prize updated successfully', 'success');
         await loadPrizes();
@@ -152,8 +148,6 @@ async function loadPrizes() {
   async function deletePrizeConfirm(prizeId) {
     UI.showConfirmationModal('Delete Prize', 'Are you sure you want to delete this prize?', async () => {
       await Database.deleteFromStore('prizes', prizeId);
-      deleteDocument('prizes', prizeId);
-
       UI.showToast('Prize deleted successfully', 'success');
       await loadPrizes();
       await UI.populateQuickSelects();

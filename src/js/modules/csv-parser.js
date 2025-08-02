@@ -4,8 +4,7 @@
 
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
-import { Database } from './database.js';
-// import { FirebaseSync } from './firebase-sync.js'; // No longer directly imported for operations
+import { Database } from './firestore-service.js';
 
 let pendingCSVData = null;
 
