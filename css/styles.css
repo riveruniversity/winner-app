@@ -770,3 +770,38 @@ body {
     color-adjust: exact;
   }
 }
+
+/* Data Preview Table Styles */
+#previewTable {
+  border-collapse: collapse;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#previewTable th, #previewTable td {
+  padding: 1rem;
+  text-align: left;
+}
+
+#previewTable thead {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 600;
+}
+
+#previewTable tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+#previewTable tbody tr:hover {
+  background-color: #e9ecef;
+}
+
+[data-theme="dark"] #previewTable tbody tr:nth-child(even) {
+  background-color: #334155;
+}
+
+[data-theme="dark"] #previewTable tbody tr:hover {
+  background-color: #475569;
+}

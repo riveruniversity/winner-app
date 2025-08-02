@@ -2,8 +2,8 @@
 // CSV PARSING & UPLOAD
 // ================================
 
-window.CSVParser = (function() {
-  
+window.CSVParser = (function () {
+
   let pendingCSVData = null;
 
   function parseCSV(csvText) {
@@ -67,12 +67,13 @@ window.CSVParser = (function() {
     const listNameInput = document.getElementById('listName');
     const csvFileInput = document.getElementById('csvFile');
 
-    const listName = listNameInput.value.trim();
     const csvFile = csvFileInput.files[0];
+    const fileName = csvFile.name.replace(/\.[^/.]+$/, "");
+    const listName = listNameInput.value.trim() || fileName;
 
     if (!listName) {
-      UI.showToast('Please enter a list name', 'warning');
-      return;
+      // UI.showToast('Please enter a list name', 'warning');
+      // return;
     }
 
     if (!csvFile) {
@@ -114,25 +115,25 @@ window.CSVParser = (function() {
     const previewCard = document.getElementById('dataPreviewCard');
     const previewHeaders = document.getElementById('previewHeaders');
     const previewBody = document.getElementById('previewBody');
-    
+
     previewCard.style.display = 'block';
     const headers = Object.keys(data[0]);
-    
+
     previewHeaders.innerHTML = '<tr>' +
       headers.map(header => `<th>${header}</th>`).join('') +
       '</tr>';
-    
+
     const previewData = data.slice(0, 10);
-    
-    previewBody.innerHTML = previewData.map(row => 
+
+    previewBody.innerHTML = previewData.map(row =>
       '<tr>' +
       headers.map(header => `<td>${row[header] || ''}</td>`).join('') +
       '</tr>'
     ).join('');
-    
+
     const previewTitle = document.querySelector('#dataPreviewCard .card-title');
     previewTitle.textContent = `Data Preview - "${listName}" (${data.length} total records, showing first ${previewData.length})`;
-    
+
     showNameConfiguration(headers, data[0]);
     previewCard.scrollIntoView({ behavior: 'smooth' });
     UI.showToast(`Preview ready! Showing first ${previewData.length} of ${data.length} records`, 'info');
@@ -143,10 +144,15 @@ window.CSVParser = (function() {
     const availableFields = document.getElementById('availableFields');
     const nameTemplateInput = document.getElementById('nameTemplate');
     const namePreview = document.getElementById('namePreview');
+    const idColumnSelect = document.getElementById('idColumnSelect');
+    const columnIdSection = document.getElementById('columnIdSection');
+    const autoGenerateId = document.getElementById('autoGenerateId');
+    const useColumnId = document.getElementById('useColumnId');
 
     nameConfigCard.style.display = 'block';
     availableFields.innerHTML = '';
 
+    // Populate available fields for name template
     headers.forEach(header => {
       const fieldBtn = document.createElement('button');
       fieldBtn.className = 'btn btn-sm btn-outline-secondary';
@@ -162,6 +168,16 @@ window.CSVParser = (function() {
       availableFields.appendChild(fieldBtn);
     });
 
+    // Populate ID column dropdown
+    idColumnSelect.innerHTML = '<option value="">Select a column...</option>';
+    headers.forEach(header => {
+      const option = document.createElement('option');
+      option.value = header;
+      option.textContent = header;
+      idColumnSelect.appendChild(option);
+    });
+
+    // Set default name template
     const defaultTemplate = headers.length > 1 ? `{${headers[0]}} {${headers[1]}}` : `{${headers[0]}}`;
     nameTemplateInput.value = defaultTemplate;
 
@@ -173,8 +189,28 @@ window.CSVParser = (function() {
       namePreview.textContent = previewText;
     }
 
-    updatePreview();
+    // Setup ID source radio button listeners
+    function toggleIdSection() {
+      if (useColumnId.checked) {
+        columnIdSection.style.display = 'block';
+      } else {
+        columnIdSection.style.display = 'none';
+      }
+    }
+
+    // Remove existing listeners to prevent conflicts
+    autoGenerateId.removeEventListener('change', toggleIdSection);
+    useColumnId.removeEventListener('change', toggleIdSection);
+    nameTemplateInput.removeEventListener('input', updatePreview);
+
+    // Add fresh listeners
+    autoGenerateId.addEventListener('change', toggleIdSection);
+    useColumnId.addEventListener('change', toggleIdSection);
     nameTemplateInput.addEventListener('input', updatePreview);
+
+    // Initial setup
+    updatePreview();
+    toggleIdSection();
   }
 
   async function handleConfirmUpload() {
@@ -184,9 +220,23 @@ window.CSVParser = (function() {
     }
 
     try {
-      UI.showProgress('Uploading List', 'Creating list...');
+      UI.showProgress('Uploading List', 'Validating data...');
 
       const nameConfig = getNameConfiguration();
+      const idConfig = getIdConfiguration();
+
+      // Validate ID configuration if using column-based IDs
+      if (idConfig.source === 'column') {
+        const validation = validateColumnIds(pendingCSVData.data, idConfig.column);
+        if (!validation.isValid) {
+          UI.hideProgress();
+          UI.showToast(`ID validation failed: ${validation.error}`, 'error');
+          return;
+        }
+      }
+
+      UI.updateProgress(50, 'Creating list...');
+
       const listId = UI.generateId();
       const listData = {
         listId: listId,
@@ -196,10 +246,11 @@ window.CSVParser = (function() {
           timestamp: Date.now(),
           originalFilename: pendingCSVData.fileName,
           entryCount: pendingCSVData.data.length,
-          nameConfig: nameConfig
+          nameConfig: nameConfig,
+          idConfig: idConfig
         },
         entries: pendingCSVData.data.map((row, index) => ({
-          id: UI.generateId(),
+          id: generateEntryId(row, index, idConfig),
           index: index,
           data: row
         }))
@@ -215,7 +266,7 @@ window.CSVParser = (function() {
       document.getElementById('listName').value = '';
       document.getElementById('csvFile').value = '';
       handleCancelUpload();
-      
+
       pendingCSVData = null;
 
       // Refresh displays
@@ -232,6 +283,84 @@ window.CSVParser = (function() {
   function getNameConfiguration() {
     const nameTemplateInput = document.getElementById('nameTemplate');
     return nameTemplateInput.value.trim();
+  }
+
+  function getIdConfiguration() {
+    const autoGenerateId = document.getElementById('autoGenerateId');
+    const useColumnId = document.getElementById('useColumnId');
+    const idColumnSelect = document.getElementById('idColumnSelect');
+
+    if (useColumnId.checked) {
+      const selectedColumn = idColumnSelect.value;
+      if (!selectedColumn) {
+        throw new Error('Please select a column for record IDs');
+      }
+      return {
+        source: 'column',
+        column: selectedColumn
+      };
+    } else {
+      return {
+        source: 'auto'
+      };
+    }
+  }
+
+  function validateColumnIds(data, columnName) {
+    const ids = [];
+    const duplicates = [];
+    const emptyValues = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const value = data[i][columnName];
+      const rowNum = i + 1;
+
+      // Check for empty values
+      if (!value || value.toString().trim() === '') {
+        emptyValues.push(rowNum);
+        continue;
+      }
+
+      const trimmedValue = value.toString().trim();
+
+      // Check for duplicates
+      if (ids.includes(trimmedValue)) {
+        duplicates.push({
+          value: trimmedValue,
+          row: rowNum
+        });
+      } else {
+        ids.push(trimmedValue);
+      }
+    }
+
+    if (emptyValues.length > 0) {
+      return {
+        isValid: false,
+        error: `Empty ID values found in rows: ${emptyValues.slice(0, 5).join(', ')}${emptyValues.length > 5 ? ` and ${emptyValues.length - 5} more` : ''}`
+      };
+    }
+
+    if (duplicates.length > 0) {
+      const duplicateList = duplicates.slice(0, 3).map(d => `"${d.value}" (row ${d.row})`).join(', ');
+      return {
+        isValid: false,
+        error: `Duplicate ID values found: ${duplicateList}${duplicates.length > 3 ? ` and ${duplicates.length - 3} more` : ''}`
+      };
+    }
+
+    return {
+      isValid: true
+    };
+  }
+
+  function generateEntryId(row, index, idConfig) {
+    if (idConfig.source === 'column') {
+      const value = row[idConfig.column];
+      return value ? value.toString().trim() : UI.generateId();
+    } else {
+      return UI.generateId();
+    }
   }
 
   function handleCancelUpload() {

@@ -221,51 +221,11 @@
                     </div>
                     <div class="mb-3">
                       <label class="form-label">CSV File</label>
-                      <input type="file" class="form-control" id="csvFile" accept=".csv">
+                      <input type="file" class="form-control" id="csvFile" accept=".csv" style="display: none;">
                     </div>
                     <button class="btn btn-primary" id="uploadBtn">
                       <i class="bi bi-upload me-2"></i>Upload List
                     </button>
-                  </div>
-                </div>
-                <!-- Data Preview Card -->
-                <div class="card mt-3" id="dataPreviewCard" style="display: none;">
-                  <div class="card-body">
-                    <h5 class="card-title">Data Preview</h5>
-                    <div class="table-responsive">
-                      <table class="table table-sm" id="previewTable">
-                        <thead id="previewHeaders"></thead>
-                        <tbody id="previewBody"></tbody>
-                      </table>
-                    </div>
-                    <div class="d-flex gap-2">
-                      <button class="btn btn-success" id="confirmUpload">
-                        <i class="bi bi-check-lg me-2"></i>Confirm Upload
-                      </button>
-                      <button class="btn btn-secondary" id="cancelUpload">
-                        <i class="bi bi-x-lg me-2"></i>Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="card" id="nameConfigCard" style="display: none;">
-                  <div class="card-body">
-                    <h5 class="card-title">Name Display Configuration</h5>
-                    <p class="text-muted small">Click on the fields below to build your name template.</p>
-                    <div class="mb-3">
-                      <label for="nameTemplate" class="form-label">Name Template</label>
-                      <input type="text" class="form-control" id="nameTemplate" placeholder="{LastName}, {FirstName}">
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Available Fields</label>
-                      <div id="availableFields" class="d-flex flex-wrap gap-2"></div>
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">Preview</label>
-                      <div class="p-2 bg-light border rounded" id="namePreview"></div>
-                    </div>
-                    <div id="noListMessage" class="text-muted">Upload a CSV file to configure name display</div>
                   </div>
                 </div>
               </div>
@@ -275,6 +235,85 @@
                     <h5 class="card-title">Manage Lists</h5>
                     <div id="listsContainer">
                       <!-- Lists will be displayed here -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Data Preview Card - Full Width -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card" id="dataPreviewCard" style="display: none;">
+                  <div class="card-body">
+                    <h5 class="card-title">Data Preview</h5>
+                    <div class="table-responsive">
+                      <table class="table table-sm" id="previewTable">
+                        <thead id="previewHeaders"></thead>
+                        <tbody id="previewBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Configuration Card - Full Width -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card" id="nameConfigCard" style="display: none;">
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-lg-6">
+                        <h5 class="card-subtitle mb-3 text-muted">Record ID Configuration</h5>
+                        <div class="mb-3">
+                          <label class="form-label">Record ID Source</label>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="idSource" id="autoGenerateId" value="auto" checked>
+                            <label class="form-check-label" for="autoGenerateId">
+                              Auto-generate unique IDs
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="radio" name="idSource" id="useColumnId" value="column">
+                            <label class="form-check-label" for="useColumnId">
+                              Use column as record ID
+                            </label>
+                          </div>
+                        </div>
+                        <div class="mb-3" id="columnIdSection" style="display: none;">
+                          <label for="idColumnSelect" class="form-label">Select ID Column</label>
+                          <select class="form-select" id="idColumnSelect">
+                            <option value="">Select a column...</option>
+                          </select>
+                          <div class="form-text">Selected column values must be unique for each record.</div>
+                        </div>
+                      </div>
+                      <div class="col-lg-6">
+                        <h5 class="card-title mb-3">Name Display Configuration</h5>
+                        <p class="text-muted small">Click on the fields below to build your name template.</p>
+                        <div class="mb-3">
+                          <label for="nameTemplate" class="form-label">Name Template</label>
+                          <input type="text" class="form-control" id="nameTemplate" placeholder="{LastName}, {FirstName}">
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label">Available Fields</label>
+                          <div id="availableFields" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                        <div class="mb-3">
+                          <label class="form-label">Preview</label>
+                          <div class="p-2 bg-light border rounded" id="namePreview"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex gap-2 justify-content-end">
+                      <button class="btn btn-success" id="confirmUpload">
+                        <i class="bi bi-check-lg me-2"></i>Confirm Upload
+                      </button>
+                      <button class="btn btn-secondary" id="cancelUpload">
+                        <i class="bi bi-x-lg me-2"></i>Cancel
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -613,6 +652,6 @@
   <script src="js/modules/export.js"></script>
   <script src="js/modules/selection.js"></script>
   <script src="js/modules/animations.js"></script>
-  <script src="js/app-new.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
