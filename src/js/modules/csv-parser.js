@@ -261,7 +261,7 @@ async function handleConfirmUpload() {
 
     UI.updateProgress(90, 'Saving list...');
     await Database.saveToStore('lists', listData);
-    await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'lists', data: listData });
+    saveDocument('lists', listData);
     UI.hideProgress();
 
     UI.showToast(`List "${pendingCSVData.listName}" uploaded successfully with ${pendingCSVData.data.length} entries`, 'success');

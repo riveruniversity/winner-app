@@ -2,10 +2,6 @@
 // DATABASE OPERATIONS
 // ================================
 
-// ================================
-// DATABASE OPERATIONS
-// ================================
-
 let dbInstance = null;
 
 async function initDB() {

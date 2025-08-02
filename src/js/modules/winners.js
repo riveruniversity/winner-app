@@ -6,7 +6,7 @@ import { Database } from './database.js';
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 import { settings } from './settings.js'; // Import settings directly
-// import { FirebaseSync } from './firebase-sync.js'; // No longer directly imported for operations
+import { saveDocument, deleteDocument } from './firebase-sync.js';
 import { getCurrentList, getLastAction, setLastAction } from '../app.js'; // Import central state
 import { loadHistory } from '../app.js'; // Import loadHistory from app.js
 
@@ -152,7 +152,7 @@ async function deleteWinnerConfirm(winnerId) {
   UI.showConfirmationModal('Delete Winner', 'Are you sure you want to delete this winner record?', async () => {
     try {
       await Database.deleteFromStore('winners', winnerId);
-      await Database.queueForSync({ id: UI.generateId(), type: 'delete', collection: 'winners', documentId: winnerId });
+      deleteDocument('winners', winnerId);
       UI.showToast('Winner deleted successfully', 'success');
       await loadWinners();
       loadHistory(); // Call from app.js
@@ -167,7 +167,7 @@ async function saveWinner(winner) {
   await Database.saveToStore('winners', winner);
   // Add id property for Firebase sync (uses winnerId as the document ID)
   const winnerWithId = { ...winner, id: winner.winnerId };
-  await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'winners', data: winnerWithId });
+  saveDocument('winners', winnerWithId);
 }
 
 async function getAllWinners() {
@@ -187,7 +187,7 @@ async function clearAllWinners() {
 
         for (const winner of winners) {
           await Database.deleteFromStore('winners', winner.winnerId);
-          await Database.queueForSync({ id: UI.generateId(), type: 'delete', collection: 'winners', documentId: winner.winnerId });
+          deleteDocument('winners', winner.winnerId);
           deletedCount++;
           UI.updateProgress((deletedCount / winners.length) * 100, `Deleted ${deletedCount} of ${winners.length} winners...`);
         }
@@ -224,7 +224,7 @@ async function undoLastSelection() {
         // Delete winners
         for (const winner of currentLastAction.winners) {
           await Database.deleteFromStore('winners', winner.winnerId);
-          await Database.queueForSync({ id: UI.generateId(), type: 'delete', collection: 'winners', documentId: winner.winnerId });
+          deleteDocument('winners', winner.winnerId);
         }
 
         // Restore prize quantity
@@ -233,12 +233,12 @@ async function undoLastSelection() {
         if (prize) {
           prize.quantity += currentLastAction.prizeCount;
           await Database.saveToStore('prizes', prize);
-          await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'prizes', data: prize });
+          saveDocument('prizes', prize);
         }
 
         // Delete history entry
         await Database.deleteFromStore('history', currentLastAction.historyId);
-        await Database.queueForSync({ id: UI.generateId(), type: 'delete', collection: 'history', documentId: currentLastAction.historyId });
+        deleteDocument('history', currentLastAction.historyId);
 
         // Restore entries to list if they were removed
         const currentList = getCurrentList(); // Get the currentList from app.js
@@ -248,7 +248,7 @@ async function undoLastSelection() {
             currentList.listId = currentList.metadata.listId;
           }
           await Database.saveToStore('lists', currentList);
-          await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'lists', data: currentList });
+          saveDocument('lists', currentList);
         }
 
         UI.hideProgress();

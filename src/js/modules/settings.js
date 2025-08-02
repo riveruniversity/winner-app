@@ -4,6 +4,7 @@
 
 import { Database } from './database.js';
 import { UI } from './ui.js';
+import { saveDocument } from './firebase-sync.js';
 
 // Application settings with defaults
 export let settings = {
@@ -24,7 +25,7 @@ async function saveSettings() {
   for (const [key, value] of Object.entries(settings)) {
     const settingToSave = { key, value };
     await Database.saveToStore('settings', settingToSave);
-    await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'settings', data: settingToSave });
+    saveDocument('settings', settingToSave);
   }
 }
 

@@ -5,7 +5,7 @@
 // 1. Import dependencies
 import { Database } from './database.js';
 import { UI } from './ui.js';
-// import { FirebaseSync } from './firebase-sync.js'; // No longer directly imported for operations
+import { deleteDocument } from './firebase-sync.js';
 
 // 2. Define functions as standalone, not inside a closure
 async function loadLists() {
@@ -94,7 +94,7 @@ async function deleteListConfirm(listId) {
       try {
         await Database.deleteFromStore('lists', listId);
         // Queue for Firebase sync
-        await Database.queueForSync({ id: UI.generateId(), type: 'delete', collection: 'lists', documentId: listId });
+        deleteDocument('lists', listId);
 
         UI.showToast('List deleted successfully', 'success');
         await loadLists();

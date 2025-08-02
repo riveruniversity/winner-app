@@ -5,6 +5,7 @@
 import { Database } from './database.js';
 import { UI } from './ui.js';
 import { Settings } from './settings.js';
+import { saveDocument } from './firebase-sync.js';
 
 async function handleExportWinners() {
   try {
@@ -178,7 +179,7 @@ async function processRestoreFile(event) {
     if (backupData.lists) {
       for (const list of backupData.lists) {
         await Database.saveToStore('lists', list);
-        await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'lists', data: list });
+        saveDocument('lists', list);
       }
     }
 
@@ -186,7 +187,7 @@ async function processRestoreFile(event) {
     if (backupData.prizes) {
       for (const prize of backupData.prizes) {
         await Database.saveToStore('prizes', prize);
-        await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'prizes', data: prize });
+        saveDocument('prizes', prize);
       }
     }
 
@@ -194,14 +195,14 @@ async function processRestoreFile(event) {
     if (backupData.winners) {
       for (const winner of backupData.winners) {
         await Database.saveToStore('winners', winner);
-        await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'winners', data: winner });
+        saveDocument('winners', winner);
       }
     }
 
     if (backupData.history) {
       for (const historyEntry of backupData.history) {
         await Database.saveToStore('history', historyEntry);
-        await Database.queueForSync({ id: UI.generateId(), type: 'add_update', collection: 'history', data: historyEntry });
+        saveDocument('history', historyEntry);
       }
     }
 
