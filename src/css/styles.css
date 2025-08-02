@@ -172,15 +172,15 @@ body {
 /* Winners Display - Responsive CSS Grid */
 .winners-grid {
   display: grid;
-  gap: clamp(0.5rem, 2vw, 1.5rem); /* Responsive gap */
+  gap: clamp(0.25rem, 1vw, 0.75rem); /* Smaller gaps for more content */
   width: 100%;
   height: calc(100vh - 200px); /* Fill available height */
-  padding: clamp(0.5rem, 2vw, 2rem);
+  padding: clamp(0.25rem, 1vw, 1rem); /* Smaller padding */
   box-sizing: border-box;
   
-  /* Dynamic grid that adapts to content */
-  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%/3), 1fr));
-  grid-auto-rows: 1fr;
+  /* Dynamic grid that adapts to content - smaller minimum size */
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%/5), 1fr));
+  grid-auto-rows: minmax(80px, 1fr); /* Smaller minimum row height */
   
   /* Allow number badges to overflow */
   overflow: visible;
@@ -192,7 +192,7 @@ body {
 .winner-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: clamp(8px, 2vw, 15px);
-  padding: clamp(0.5rem, 3vw, 2rem);
+  padding: 10px; /* Fixed 10px padding instead of responsive */
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #333;
@@ -206,7 +206,7 @@ body {
   
   /* Fill the grid cell */
   height: 100%;
-  min-height: 120px; /* Minimum viable size */
+  min-height: 80px; /* Smaller minimum viable size */
   
   /* Responsive text scaling */
   font-size: clamp(0.8rem, 2.5vw, 1.2rem);
@@ -261,45 +261,57 @@ body {
 }
 
 .winner-number {
-  /* Responsive size based on container width percentage */
-  width: clamp(35px, 15cqw, 70px);
-  height: clamp(35px, 15cqw, 70px);
+  /* Much smaller circles */
+  width: clamp(25px, 8cqw, 40px);
+  height: clamp(25px, 8cqw, 40px);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   color: white;
   font-weight: bold;
-  font-size: clamp(0.9rem, 8cqw, 1.8rem);
+  font-size: clamp(0.7rem, 5cqw, 1.2rem);
   display: flex;
   align-items: center;
   justify-content: center;
   
   /* Position outside the card */
   position: absolute;
-  top: clamp(-12px, -8cqw, -15px);
-  left: clamp(-12px, -8cqw, -15px);
+  top: clamp(-8px, -5cqw, -10px);
+  left: clamp(-8px, -5cqw, -10px);
   z-index: 10;
   
   /* Enhanced styling */
-  border: clamp(2px, 1.5cqw, 3px) solid white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: clamp(1px, 1cqw, 2px) solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.winner-name {
-  font-size: clamp(0.8rem, 2.5vw, 1.5rem); /* Reduced font scaling */
-  font-weight: 600;
+.winner-info1 {
+  font-size: clamp(0.8rem, 12cqw, 1.6rem); /* Largest - scales with container */
+  font-weight: 700; /* Bold for primary info */
   color: #333;
-  margin-bottom: clamp(0.25rem, 1vw, 0.5rem);
-  margin-top: 0; /* Remove top margin since number is now positioned outside */
+  margin-bottom: clamp(0.1rem, 2cqw, 0.4rem);
+  margin-top: 0;
   line-height: 1.2;
   word-break: break-word;
   hyphens: auto;
 }
 
-.winner-details {
+.winner-info2 {
+  font-size: clamp(0.6rem, 9cqw, 1.2rem); /* Medium - scales with container */
+  font-weight: 500; /* Medium weight for secondary info */
+  color: #555;
+  margin-bottom: clamp(0.05rem, 1.5cqw, 0.3rem);
+  line-height: 1.2;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.winner-info3 {
+  font-size: clamp(0.5rem, 7cqw, 0.9rem); /* Smallest - scales with container */
+  font-weight: 400; /* Normal weight for tertiary info */
   color: #666;
-  font-size: clamp(0.6rem, 1.5vw, 0.9rem); /* Reduced font scaling */
   line-height: 1.3;
   word-break: break-word;
+  hyphens: auto;
 }
 
 /* Prize Display */
@@ -713,13 +725,19 @@ body {
   }
 }
 
-/* Hide details on small cards */
-@container (max-width: 320px) {
-  .winner-details {
-    display: none !important;
+/* Progressive info hiding on small cards */
+@container (max-width: 350px) {
+  .winner-info3 {
+    display: none; /* Hide tertiary info first */
+  }
+}
+
+@container (max-width: 280px) {
+  .winner-info2 {
+    display: none; /* Hide secondary info on very small cards */
   }
   
-  .winner-name {
+  .winner-info1 {
     font-size: clamp(0.7rem, 12cqw, 1.1rem);
   }
 }

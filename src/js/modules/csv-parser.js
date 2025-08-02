@@ -170,6 +170,42 @@ function showNameConfiguration(headers, firstRow) {
     availableFields.appendChild(fieldBtn);
   });
 
+  // Populate available fields for info templates
+  const infoAvailableFields = document.getElementById('infoAvailableFields');
+  const info1Template = document.getElementById('info1Template');
+  const info2Template = document.getElementById('info2Template');
+  const info3Template = document.getElementById('info3Template');
+  
+  // Track which info field was last focused
+  let lastFocusedInfoField = info1Template;
+  
+  info1Template.addEventListener('focus', () => lastFocusedInfoField = info1Template);
+  info2Template.addEventListener('focus', () => lastFocusedInfoField = info2Template);
+  info3Template.addEventListener('focus', () => lastFocusedInfoField = info3Template);
+  
+  infoAvailableFields.innerHTML = '';
+  headers.forEach(header => {
+    const fieldBtn = document.createElement('button');
+    fieldBtn.className = 'btn btn-sm btn-outline-primary';
+    fieldBtn.textContent = header;
+    fieldBtn.onclick = (e) => {
+      e.preventDefault();
+      
+      // Add field to the last focused info template
+      const targetInput = lastFocusedInfoField;
+      const cursorPos = targetInput.selectionStart || targetInput.value.length;
+      const text = targetInput.value;
+      const placeholder = `{${header}}`;
+      targetInput.value = text.slice(0, cursorPos) + placeholder + text.slice(cursorPos);
+      targetInput.focus();
+      // Set cursor position after the inserted placeholder
+      const newCursorPos = cursorPos + placeholder.length;
+      targetInput.setSelectionRange(newCursorPos, newCursorPos);
+      updateInfoPreviews();
+    };
+    infoAvailableFields.appendChild(fieldBtn);
+  });
+
   // Populate ID column dropdown
   idColumnSelect.innerHTML = '<option value="">Select a column...</option>';
   headers.forEach(header => {
@@ -183,12 +219,42 @@ function showNameConfiguration(headers, firstRow) {
   const defaultTemplate = headers.length > 1 ? `{${headers[0]}} {${headers[1]}}` : `{${headers[0]}}`;
   nameTemplateInput.value = defaultTemplate;
 
+  // Set default info templates
+  if (headers.length >= 1) info1Template.value = headers.length > 1 ? `{${headers[0]}} {${headers[1]}}` : `{${headers[0]}}`;
+  if (headers.length >= 3) info2Template.value = `{${headers[2]}}`;
+  if (headers.length >= 4) info3Template.value = `{${headers[3]}}`;
+
   function updatePreview() {
     const template = nameTemplateInput.value;
     const previewText = template.replace(/\{([^}]+)\}/g, (match, key) => {
       return firstRow[key] || '';
     });
     namePreview.textContent = previewText;
+  }
+
+  function updateInfoPreviews() {
+    const info1Preview = document.getElementById('info1Preview');
+    const info2Preview = document.getElementById('info2Preview');
+    const info3Preview = document.getElementById('info3Preview');
+    
+    const info1Text = info1Template.value.replace(/\{([^}]+)\}/g, (match, key) => {
+      return firstRow[key] || '';
+    });
+    const info2Text = info2Template.value.replace(/\{([^}]+)\}/g, (match, key) => {
+      return firstRow[key] || '';
+    });
+    const info3Text = info3Template.value.replace(/\{([^}]+)\}/g, (match, key) => {
+      return firstRow[key] || '';
+    });
+    
+    info1Preview.textContent = info1Text || 'Info 1 preview';
+    info2Preview.textContent = info2Text || 'Info 2 preview';
+    info3Preview.textContent = info3Text || 'Info 3 preview';
+    
+    // Hide empty previews
+    info1Preview.style.display = info1Text ? 'block' : 'none';
+    info2Preview.style.display = info2Text ? 'block' : 'none';
+    info3Preview.style.display = info3Text ? 'block' : 'none';
   }
 
   // Setup ID source radio button listeners
@@ -204,14 +270,21 @@ function showNameConfiguration(headers, firstRow) {
   autoGenerateId.removeEventListener('change', toggleIdSection);
   useColumnId.removeEventListener('change', toggleIdSection);
   nameTemplateInput.removeEventListener('input', updatePreview);
+  info1Template.removeEventListener('input', updateInfoPreviews);
+  info2Template.removeEventListener('input', updateInfoPreviews);
+  info3Template.removeEventListener('input', updateInfoPreviews);
 
   // Add fresh listeners
   autoGenerateId.addEventListener('change', toggleIdSection);
   useColumnId.addEventListener('change', toggleIdSection);
   nameTemplateInput.addEventListener('input', updatePreview);
+  info1Template.addEventListener('input', updateInfoPreviews);
+  info2Template.addEventListener('input', updateInfoPreviews);
+  info3Template.addEventListener('input', updateInfoPreviews);
 
   // Initial setup
   updatePreview();
+  updateInfoPreviews();
   toggleIdSection();
 }
 
@@ -225,6 +298,7 @@ async function handleConfirmUpload() {
     UI.showProgress('Processing List', 'Validating data...');
 
     const nameConfig = getNameConfiguration();
+    const infoConfig = getInfoConfiguration();
     const idConfig = getIdConfiguration();
 
     // Validate ID configuration if using column-based IDs
@@ -249,6 +323,7 @@ async function handleConfirmUpload() {
         originalFilename: pendingCSVData.fileName,
         entryCount: pendingCSVData.data.length,
         nameConfig: nameConfig,
+        infoConfig: infoConfig,
         idConfig: idConfig
       },
       entries: pendingCSVData.data.map((row, index) => ({
@@ -301,6 +376,18 @@ async function handleConfirmUpload() {
 function getNameConfiguration() {
   const nameTemplateInput = document.getElementById('nameTemplate');
   return nameTemplateInput.value.trim();
+}
+
+function getInfoConfiguration() {
+  const info1Template = document.getElementById('info1Template');
+  const info2Template = document.getElementById('info2Template');
+  const info3Template = document.getElementById('info3Template');
+  
+  return {
+    info1: info1Template.value.trim(),
+    info2: info2Template.value.trim(), 
+    info3: info3Template.value.trim()
+  };
 }
 
 function getIdConfiguration() {

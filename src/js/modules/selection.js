@@ -362,23 +362,95 @@ function displayWinnersSequential(winners, winnersGrid) {
   });
 }
 
-// Create winner card using CSS styling
+// Create winner card using CSS styling with new info field structure
 function createWinnerCard(winner, index) {
   const winnerCard = document.createElement('div');
   winnerCard.className = 'winner-card';
   
-  const details = getWinnerDetails(winner);
-  const isFallback = details === 'Winner Selected';
+  // Get info fields from winner data
+  const info1 = getWinnerInfo1(winner);
+  const info2 = getWinnerInfo2(winner);
+  const info3 = getWinnerInfo3(winner);
   
-  winnerCard.innerHTML = `
-    <div class="winner-number">${winner.position}</div>
-    <div class="winner-name">${winner.displayName}</div>
-    <div class="winner-details"${isFallback ? ' data-fallback="true"' : ''}>${details}</div>
-  `;
+  let cardHTML = `<div class="winner-number">${winner.position}</div>`;
   
+  if (info1) {
+    cardHTML += `<div class="winner-info1">${info1}</div>`;
+  }
+  
+  if (info2) {
+    cardHTML += `<div class="winner-info2">${info2}</div>`;
+  }
+  
+  if (info3) {
+    cardHTML += `<div class="winner-info3">${info3}</div>`;
+  }
+  
+  winnerCard.innerHTML = cardHTML;
   return winnerCard;
 }
 
+// New info field extraction functions using configured templates
+function getWinnerInfo1(winner) {
+  const currentList = getCurrentList();
+  const infoConfig = currentList?.metadata?.infoConfig;
+  
+  if (infoConfig?.info1) {
+    return formatInfoTemplate(infoConfig.info1, winner);
+  }
+  
+  // Fallback to displayName if no configuration
+  return winner.displayName || '';
+}
+
+function getWinnerInfo2(winner) {
+  const currentList = getCurrentList();
+  const infoConfig = currentList?.metadata?.infoConfig;
+  
+  if (infoConfig?.info2) {
+    return formatInfoTemplate(infoConfig.info2, winner);
+  }
+  
+  // Fallback to searching common secondary fields
+  const secondaryFields = ['email', 'department', 'title', 'position'];
+  for (const field of secondaryFields) {
+    if (winner[field]) {
+      return winner[field];
+    }
+  }
+  
+  return '';
+}
+
+function getWinnerInfo3(winner) {
+  const currentList = getCurrentList();
+  const infoConfig = currentList?.metadata?.infoConfig;
+  
+  if (infoConfig?.info3) {
+    return formatInfoTemplate(infoConfig.info3, winner);
+  }
+  
+  // Fallback to searching common tertiary fields  
+  const tertiaryFields = ['phone', 'id', 'employee_id', 'member_id'];
+  for (const field of tertiaryFields) {
+    if (winner[field]) {
+      return winner[field];
+    }
+  }
+  
+  return '';
+}
+
+// Helper function to format info templates
+function formatInfoTemplate(template, winner) {
+  if (!template) return '';
+  
+  return template.replace(/\{([^}]+)\}/g, (match, key) => {
+    return winner[key.trim()] || '';
+  }).trim();
+}
+
+// Legacy function - will be removed once info system is fully implemented
 function getWinnerDetails(winner) {
   const details = [];
   const fieldsToShow = ['email', 'phone', 'department', 'id', 'employee_id', 'member_id'];
