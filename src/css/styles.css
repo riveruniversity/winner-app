@@ -408,21 +408,21 @@ body {
 }
 
 .winner-number {
-  width: clamp(25px, 8cqw, 40px);
-  height: clamp(25px, 8cqw, 40px);
+  width: clamp(16px, 4cqw, 35px);
+  height: clamp(16px, 4cqw, 35px);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   color: white;
   font-weight: bold;
-  font-size: clamp(0.7rem, 5cqw, 1.2rem);
+  font-size: clamp(0.5rem, 3cqw, 1.2rem);
   display: flex;
   align-items: center;
   justify-content: center;
 
   /* Position outside the card */
   position: absolute;
-  top: clamp(-15px, -5cqw, -10px);
-  left: clamp(-10px, -5cqw, -10px);
+  top: clamp(-8px, -2cqw, -17px);
+  left: clamp(-8px, -2cqw, -17px);
   z-index: 10;
 
   /* Enhanced styling */
@@ -430,11 +430,11 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Scale winner numbers based on winner count */
+/* Keep only the very large winner overrides for dramatic effect */
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-number {
   width: clamp(60px, 10vw, 100px);
   height: clamp(60px, 10vw, 100px);
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(2rem, 6vw, 3.5rem);
   top: clamp(-30px, -5vw, -50px);
   left: clamp(-30px, -5vw, -50px);
 }
@@ -442,40 +442,15 @@ body {
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-number,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-number,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-number {
-  width: clamp(50px, 8vw, 70px);
-  height: clamp(50px, 8vw, 70px);
-  font-size: clamp(1.5rem, 4vw, 2.2rem);
-  top: clamp(-25px, -4vw, -35px);
-  left: clamp(-25px, -4vw, -35px);
-}
-
-/* For 5+ winners, use container-based scaling */
-.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-number {
-  width: clamp(30px, 8cqw, 50px);
-  height: clamp(30px, 8cqw, 50px);
-  font-size: clamp(0.8rem, 5cqw, 1.5rem);
-  top: clamp(-15px, -4cqw, -25px);
-  left: clamp(-15px, -4cqw, -25px);
-}
-
-.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-number {
-  width: clamp(25px, 6cqw, 40px);
-  height: clamp(25px, 6cqw, 40px);
-  font-size: clamp(0.7rem, 4cqw, 1.2rem);
-  top: clamp(-12px, -3cqw, -20px);
-  left: clamp(-12px, -3cqw, -20px);
-}
-
-.winners-grid:has(.winner-card:nth-child(n+50)) .winner-number {
-  width: clamp(20px, 5cqw, 35px);
-  height: clamp(20px, 5cqw, 35px);
-  font-size: clamp(0.6rem, 3cqw, 1rem);
-  top: clamp(-10px, -2.5cqw, -17px);
-  left: clamp(-10px, -2.5cqw, -17px);
+  width: clamp(50px, 8vw, 80px);
+  height: clamp(50px, 8vw, 80px);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  top: clamp(-25px, -4vw, -40px);
+  left: clamp(-25px, -4vw, -40px);
 }
 
 .winner-info1 {
-  font-size: clamp(0.6rem, 3cqw, 1.0rem);
+  font-size: clamp(0.3rem, 2cqw, 1rem);
   font-weight: 500;
   color: #555;
   margin-bottom: clamp(0.05rem, 0.5cqw, 0.2rem);
@@ -486,7 +461,7 @@ body {
 }
 
 .winner-info2 {
-  font-size: clamp(0.7rem, 4cqw, 1.2rem);
+  font-size: clamp(0.4rem, 3cqw, 1.3rem);
   font-weight: 700;
   color: #333;
   margin-bottom: clamp(0.1rem, 1cqw, 0.3rem);
@@ -496,7 +471,7 @@ body {
 }
 
 .winner-info3 {
-  font-size: clamp(0.5rem, 2.5cqw, 0.8rem);
+  font-size: clamp(0.25rem, 1.8cqw, 0.8rem);
   font-weight: 400;
   color: #666;
   line-height: 1.2;
@@ -504,62 +479,31 @@ body {
   hyphens: auto;
 }
 
-/* Scale fonts based on winner count - simplified approach */
+/* Keep only dramatic scaling for very few winners */
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info1 {
-  font-size: clamp(1.5rem, 5vw, 3rem);
+  font-size: clamp(1.5rem, 8cqw, 3rem);
 }
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(2rem, 8vw, 4rem);
+  font-size: clamp(2rem, 12cqw, 4rem);
 }
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info3 {
-  font-size: clamp(1.2rem, 4vw, 2rem);
+  font-size: clamp(1rem, 6cqw, 2rem);
 }
 
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info1,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info1,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info1 {
-  font-size: clamp(1rem, 4vw, 2rem);
+  font-size: clamp(1rem, 6cqw, 2rem);
 }
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  font-size: clamp(1.3rem, 8cqw, 2.5rem);
 }
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info3,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info3,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info3 {
-  font-size: clamp(0.8rem, 3vw, 1.5rem);
-}
-
-/* Font scaling for different winner count ranges */
-.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-info1 {
-  font-size: clamp(0.7rem, 4cqw, 1.2rem);
-}
-.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-info2 {
-  font-size: clamp(0.9rem, 6cqw, 1.6rem);
-}
-.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-info3 {
-  font-size: clamp(0.6rem, 3cqw, 1rem);
-}
-
-.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info1 {
-  font-size: clamp(0.6rem, 3.5cqw, 1rem);
-}
-.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info2 {
-  font-size: clamp(0.8rem, 5cqw, 1.3rem);
-}
-.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info3 {
-  font-size: clamp(0.5rem, 2.5cqw, 0.8rem);
-}
-
-.winners-grid:has(.winner-card:nth-child(n+50)) .winner-info1 {
-  font-size: clamp(0.5rem, 3cqw, 0.9rem);
-}
-.winners-grid:has(.winner-card:nth-child(n+50)) .winner-info2 {
-  font-size: clamp(0.7rem, 4cqw, 1.1rem);
-}
-.winners-grid:has(.winner-card:nth-child(n+50)) .winner-info3 {
-  font-size: clamp(0.4rem, 2cqw, 0.7rem);
+  font-size: clamp(0.8rem, 5cqw, 1.5rem);
 }
 
 /* Prize Display */
