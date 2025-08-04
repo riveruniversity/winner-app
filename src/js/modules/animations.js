@@ -289,6 +289,197 @@ function startConfettiAnimation() {
   animate();
 }
 
+// Time Machine Animation - Tunnel/warp effect
+function startTimeMachineAnimation() {
+  if (Settings && Settings.debugLog) Settings.debugLog('startTimeMachineAnimation called');
+  const canvas = document.getElementById('animationCanvas');
+  const ctx = canvas.getContext('2d');
+  let rings = [];
+  let time = 0;
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+
+  // Convert hex to RGB
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  const primaryRgb = hexToRgb(settings.primaryColor);
+  const secondaryRgb = hexToRgb(settings.secondaryColor);
+
+  class TimeRing {
+    constructor(startRadius = 0) {
+      this.radius = startRadius;
+      this.maxRadius = Math.max(canvas.width, canvas.height);
+      this.speed = 3 + Math.random() * 2;
+      this.thickness = 2 + Math.random() * 3;
+      this.color = Math.random() > 0.5 ? primaryRgb : secondaryRgb;
+      this.opacity = 1;
+      this.pulseOffset = Math.random() * Math.PI * 2;
+    }
+
+    update() {
+      this.radius += this.speed;
+      this.opacity = 1 - (this.radius / this.maxRadius);
+      this.speed *= 1.02; // Accelerate as it moves away
+    }
+
+    draw() {
+      const pulse = Math.sin(time * 0.1 + this.pulseOffset) * 0.2 + 0.8;
+      const glowOpacity = this.opacity * pulse;
+      
+      // Draw outer glow
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${glowOpacity * 0.3})`;
+      ctx.lineWidth = this.thickness * 3;
+      ctx.stroke();
+
+      // Draw main ring
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${glowOpacity})`;
+      ctx.lineWidth = this.thickness;
+      ctx.stroke();
+    }
+
+    isDead() {
+      return this.opacity <= 0;
+    }
+  }
+
+  // Create grid lines for tunnel effect
+  function drawTunnelGrid() {
+    const gridLines = 8;
+    const angleStep = (Math.PI * 2) / gridLines;
+    
+    for (let i = 0; i < gridLines; i++) {
+      const angle = i * angleStep + time * 0.02;
+      const startX = centerX + Math.cos(angle) * 50;
+      const startY = centerY + Math.sin(angle) * 50;
+      const endX = centerX + Math.cos(angle) * Math.max(canvas.width, canvas.height);
+      const endY = centerY + Math.sin(angle) * Math.max(canvas.width, canvas.height);
+      
+      const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+      gradient.addColorStop(0, `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.4)`);
+      gradient.addColorStop(1, `rgba(${secondaryRgb.r}, ${secondaryRgb.g}, ${secondaryRgb.b}, 0.1)`);
+      
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  // Create energy particles
+  class EnergyParticle {
+    constructor() {
+      this.angle = Math.random() * Math.PI * 2;
+      this.distance = 20 + Math.random() * 50;
+      this.speed = 2 + Math.random() * 3;
+      this.size = 1 + Math.random() * 2;
+      this.color = Math.random() > 0.5 ? primaryRgb : secondaryRgb;
+      this.life = 1;
+    }
+
+    update() {
+      this.distance += this.speed;
+      this.speed *= 1.05;
+      this.life = Math.max(0, 1 - this.distance / 800);
+    }
+
+    draw() {
+      const x = centerX + Math.cos(this.angle) * this.distance;
+      const y = centerY + Math.sin(this.angle) * this.distance;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.life})`;
+      ctx.fill();
+    }
+
+    isDead() {
+      return this.life <= 0;
+    }
+  }
+
+  let energyParticles = [];
+
+  function animate() {
+    time++;
+    
+    // Create dark tunnel background with radial gradient
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(canvas.width, canvas.height) / 2);
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+    gradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.95)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw tunnel grid
+    drawTunnelGrid();
+
+    // Create new rings periodically
+    if (time % 20 === 0) {
+      rings.push(new TimeRing());
+    }
+
+    // Update and draw rings
+    for (let i = rings.length - 1; i >= 0; i--) {
+      const ring = rings[i];
+      ring.update();
+      ring.draw();
+      
+      if (ring.isDead()) {
+        rings.splice(i, 1);
+      }
+    }
+
+    // Create energy particles
+    if (time % 3 === 0) {
+      energyParticles.push(new EnergyParticle());
+    }
+
+    // Update and draw energy particles
+    for (let i = energyParticles.length - 1; i >= 0; i--) {
+      const particle = energyParticles[i];
+      particle.update();
+      particle.draw();
+      
+      if (particle.isDead()) {
+        energyParticles.splice(i, 1);
+      }
+    }
+
+    // Add some screen flash effects
+    if (time % 60 === 0) {
+      ctx.fillStyle = `rgba(${primaryRgb.r}, ${primaryRgb.g}, ${primaryRgb.b}, 0.1)`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    animationFrameId = requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  animate();
+}
+
 // Stop animation function
 function stopAnimation() {
   if (animationFrameId) {
@@ -302,6 +493,7 @@ export const Animations = {
   startSwirlAnimation,
   startParticleAnimation,
   startConfettiAnimation,
+  startTimeMachineAnimation,
   stopAnimation
 };
 

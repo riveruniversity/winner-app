@@ -131,7 +131,7 @@ async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, 
         playSound('drum-roll');
       }
       
-      if (delayVisualType === 'countdown' || delayVisualType === 'animation' || delayVisualType === 'swirl-animation') {
+      if (delayVisualType === 'countdown' || delayVisualType === 'animation' || delayVisualType === 'swirl-animation' || delayVisualType === 'time-machine') {
         delayPromise = showCountdown(preSelectionDelay, delayVisualType);
       } else {
         delayPromise = Settings.showDelayDisplay(preSelectionDelay, delayVisualType);
@@ -302,6 +302,10 @@ function showCountdown(delaySeconds, visualType) {
       Settings.debugLog('Starting swirl animation');
       Animations.startSwirlAnimation();
     }
+    else if (visualType === 'time-machine') {
+      Settings.debugLog('Starting time machine animation');
+      Animations.startTimeMachineAnimation();
+    }
 
     let count = Math.ceil(delaySeconds);
     
@@ -321,7 +325,7 @@ function showCountdown(delaySeconds, visualType) {
         }
       } else {
         clearInterval(interval);
-        if (visualType === 'animation' || visualType === 'swirl-animation') {
+        if (visualType === 'animation' || visualType === 'swirl-animation' || visualType === 'time-machine') {
           Settings.debugLog('Stopping animation for type:', visualType);
           Animations.stopAnimation();
         }
