@@ -145,41 +145,81 @@ export class QRScannerModule {
     // Display winner name
     winnerNameDiv.textContent = winner.displayName || 'Unknown Winner';
     
-    // Display winner details
+    // Display winner details in public display style
     const ticketCode = winner.originalEntry?.id || winner.entryId || winner.winnerId;
-    const detailsHtml = `
-      <div class="winner-detail-item">
-        <strong>Ticket Code:</strong> ${ticketCode}
-      </div>
-      ${winner.info2 ? `<div class="winner-detail-item"><strong>Info:</strong> ${winner.info2}</div>` : ''}
-      ${winner.info3 ? `<div class="winner-detail-item"><strong>Additional:</strong> ${winner.info3}</div>` : ''}
-    `;
-    winnerDetailsDiv.innerHTML = detailsHtml;
+    const metaItems = [];
     
-    // Display prizes
-    const prizesHtml = prizes.map((prize, index) => `
-      <div class="prize-item ${prize.pickedUp ? 'picked-up' : ''}" data-winner-id="${prize.winnerId}">
-        <div class="prize-info">
-          <div class="prize-name">${prize.prize}</div>
-          <div class="prize-date">Won: ${new Date(prize.timestamp).toLocaleString()}</div>
-          ${prize.pickedUp ? `<div class="pickup-date">Picked up: ${new Date(prize.pickupTimestamp).toLocaleString()}</div>` : ''}
+    metaItems.push(`
+      <div class="winner-meta-item">
+        <i class="bi bi-ticket-perforated"></i>
+        <span>Ticket: ${ticketCode}</span>
+      </div>
+    `);
+    
+    if (winner.info2) {
+      metaItems.push(`
+        <div class="winner-meta-item">
+          <i class="bi bi-building"></i>
+          <span>${winner.info2}</span>
         </div>
-        <div class="prize-actions">
-          ${!prize.pickedUp ? `
-            <div class="d-flex flex-column gap-2">
+      `);
+    }
+    
+    if (winner.info3) {
+      metaItems.push(`
+        <div class="winner-meta-item">
+          <i class="bi bi-telephone"></i>
+          <span>${winner.info3}</span>
+        </div>
+      `);
+    }
+    
+    winnerDetailsDiv.innerHTML = metaItems.join('');
+    
+    // Display prizes with public display style
+    const prizesHtml = prizes.map((prize, index) => `
+      <div class="prize-card-display ${prize.pickedUp ? 'picked-up' : ''}" data-winner-id="${prize.winnerId}">
+        <div class="prize-display-header">
+          <h3 class="prize-display-title">${prize.prize}</h3>
+          <div class="prize-status-badge">
+            ${!prize.pickedUp ? `
               <span class="badge bg-warning">
                 <i class="bi bi-clock"></i> Pending
               </span>
-              <button class="btn btn-success btn-sm pickup-btn" data-winner-id="${prize.winnerId}">
-                <i class="bi bi-check-circle"></i> Mark as Picked Up
-              </button>
-            </div>
-          ` : `
-            <span class="badge bg-success">
-              <i class="bi bi-check-circle-fill"></i> Picked Up
-            </span>
-          `}
+            ` : `
+              <span class="badge bg-success">
+                <i class="bi bi-check-circle-fill"></i> Picked Up
+              </span>
+            `}
+          </div>
         </div>
+        
+        <div class="prize-display-meta">
+          <div class="prize-display-meta-item">
+            <i class="bi bi-calendar-event"></i>
+            Won: ${new Date(prize.timestamp).toLocaleDateString('en-US', { 
+              year: 'numeric', month: 'long', day: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            })}
+          </div>
+          ${prize.pickedUp ? `
+            <div class="prize-display-meta-item">
+              <i class="bi bi-check-circle"></i>
+              Picked up: ${new Date(prize.pickupTimestamp).toLocaleDateString('en-US', { 
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              })}
+            </div>
+          ` : ''}
+        </div>
+        
+        ${!prize.pickedUp ? `
+          <div class="prize-actions-display">
+            <button class="btn pickup-btn" data-winner-id="${prize.winnerId}">
+              <i class="bi bi-check-circle me-2"></i>Mark as Picked Up
+            </button>
+          </div>
+        ` : ''}
       </div>
     `).join('');
     
@@ -212,10 +252,16 @@ export class QRScannerModule {
       
       UI.showToast('Prize marked as picked up!', 'success');
       
-      // Refresh the display
+      // Refresh the display with updated data
       if (this.currentWinnerData) {
-        const updatedData = await this.findWinnerByTicketCode(this.currentWinnerData.winner.winnerId);
-        await this.displayWinnerInfo(updatedData);
+        const ticketCode = this.currentWinnerData.winner.originalEntry?.id || 
+                          this.currentWinnerData.winner.entryId || 
+                          this.currentWinnerData.winner.winnerId;
+        const updatedData = await this.findWinnerByTicketCode(ticketCode);
+        if (updatedData) {
+          this.currentWinnerData = updatedData;
+          await this.displayWinnerInfo(updatedData);
+        }
       }
     } catch (error) {
       console.error('Error marking as picked up:', error);
