@@ -166,9 +166,14 @@ export class QRScannerModule {
         </div>
         <div class="prize-actions">
           ${!prize.pickedUp ? `
-            <button class="btn btn-success btn-sm pickup-btn" data-winner-id="${prize.winnerId}">
-              <i class="bi bi-check-circle"></i> Mark as Picked Up
-            </button>
+            <div class="d-flex flex-column gap-2">
+              <span class="badge bg-warning">
+                <i class="bi bi-clock"></i> Pending
+              </span>
+              <button class="btn btn-success btn-sm pickup-btn" data-winner-id="${prize.winnerId}">
+                <i class="bi bi-check-circle"></i> Mark as Picked Up
+              </button>
+            </div>
           ` : `
             <span class="badge bg-success">
               <i class="bi bi-check-circle-fill"></i> Picked Up
