@@ -648,25 +648,6 @@ function getWinnerDetails(winner) {
 // MP3 Sound Effects
 let currentAudio = null; // Track currently playing audio for stopping
 
-// Audio cache to prevent loading the same file multiple times
-const audioCache = new Map();
-
-function loadAudio(filename) {
-  if (audioCache.has(filename)) {
-    return Promise.resolve(audioCache.get(filename));
-  }
-  
-  return new Promise((resolve, reject) => {
-    const audio = new Audio(`/sounds/${filename}.mp3`);
-    audio.addEventListener('canplaythrough', () => {
-      audioCache.set(filename, audio);
-      resolve(audio);
-    });
-    audio.addEventListener('error', reject);
-    audio.load();
-  });
-}
-
 function playSound(type) {
   try {
     if (type === 'countdown') {
@@ -680,34 +661,47 @@ function playSound(type) {
       stopCurrentAudio();
     } else if (type === 'final-beat' || type === 'sting-rimshot') {
       playMp3Sound('sting-rimshot-drum-roll');
+    } else {
+      // Handle custom sound IDs directly
+      playMp3Sound(type);
     }
   } catch (error) {
     console.warn('Could not play sound:', error);
   }
 }
 
-function playMp3Sound(filename) {
-  loadAudio(filename).then(audio => {
+function playMp3Sound(soundId) {
+  // Import Sounds module dynamically to avoid circular imports
+  import('./sounds.js').then(({ Sounds }) => {
+    const soundUrl = Sounds.getSoundUrl(soundId);
+    if (!soundUrl) {
+      console.warn('Sound not found:', soundId);
+      return;
+    }
+    
     // Stop any currently playing audio
     stopCurrentAudio();
     
-    // Clone the audio to allow multiple simultaneous plays if needed
-    const audioClone = audio.cloneNode();
-    audioClone.volume = 0.7; // Set reasonable volume
-    currentAudio = audioClone;
+    const audio = new Audio(soundUrl);
+    audio.volume = 0.7; // Set reasonable volume
+    currentAudio = audio;
     
-    audioClone.play().catch(error => {
+    audio.play().catch(error => {
       console.warn('Could not play MP3 sound:', error);
     });
     
     // Clear reference when audio ends
-    audioClone.addEventListener('ended', () => {
-      if (currentAudio === audioClone) {
+    audio.addEventListener('ended', () => {
+      if (currentAudio === audio) {
         currentAudio = null;
+      }
+      // Clean up blob URL if it's a custom sound
+      if (soundUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(soundUrl);
       }
     });
   }).catch(error => {
-    console.warn('Could not load MP3 sound:', filename, error);
+    console.warn('Could not load sound module:', error);
   });
 }
 

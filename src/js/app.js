@@ -11,6 +11,7 @@ import { Winners } from './modules/winners.js';
 import { Selection } from './modules/selection.js';
 import { CSVParser } from './modules/csv-parser.js';
 import { Export } from './modules/export.js';
+import { Sounds } from './modules/sounds.js';
 
 // Global state variables (now truly central)
 export let appModal = null;
@@ -60,6 +61,9 @@ export async function initializeApp() {
     Winners.loadWinners();
     loadHistory();
     updateHistoryStats();
+    
+    // Initialize sound system
+    Sounds.initSounds();
 
     // Initialize modal after everything else is ready
     setTimeout(() => {

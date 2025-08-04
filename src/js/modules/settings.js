@@ -9,6 +9,7 @@ import { UI } from './ui.js';
 export let settings = {
   preventDuplicates: false,
   hideEntryCounts: false,
+  enableDebugLogs: false,
   fontFamily: 'Open Sans',
   primaryColor: '#6366f1',
   secondaryColor: '#8b5cf6',
@@ -92,6 +93,7 @@ async function handleSaveSettings() {
     const settingsForm = {
       preventDuplicates: document.getElementById('preventDuplicates')?.checked || settings.preventDuplicates,
       hideEntryCounts: document.getElementById('hideEntryCounts')?.checked || settings.hideEntryCounts,
+      enableDebugLogs: document.getElementById('enableDebugLogs')?.checked || settings.enableDebugLogs,
       fontFamily: document.getElementById('fontFamily')?.value || settings.fontFamily,
       primaryColor: document.getElementById('primaryColor')?.value || settings.primaryColor,
       secondaryColor: document.getElementById('secondaryColor')?.value || settings.secondaryColor,
@@ -131,6 +133,13 @@ function setupTheme() {
   applyTheme();
   loadSettingsToForm();
   setupSoundTestButtons();
+  
+  // Initialize sound dropdowns when available
+  setTimeout(() => {
+    if (window.Sounds) {
+      window.Sounds.updateSoundDropdowns();
+    }
+  }, 100);
 }
 
 function applyTheme() {
@@ -149,6 +158,7 @@ function loadSettingsToForm() {
   const settingsFields = {
     'preventDuplicates': settings.preventDuplicates,
     'hideEntryCounts': settings.hideEntryCounts,
+    'enableDebugLogs': settings.enableDebugLogs,
     'fontFamily': settings.fontFamily,
     'primaryColor': settings.primaryColor,
     'secondaryColor': settings.secondaryColor,
@@ -543,7 +553,8 @@ async function autoSaveIndividualSetting(fieldId) {
     // Map field ID to setting key
     const fieldToSettingMap = {
       'preventDuplicates': 'preventDuplicates',
-      'hideEntryCounts': 'hideEntryCounts', 
+      'hideEntryCounts': 'hideEntryCounts',
+      'enableDebugLogs': 'enableDebugLogs',
       'fontFamily': 'fontFamily',
       'primaryColor': 'primaryColor',
       'secondaryColor': 'secondaryColor',
@@ -607,30 +618,40 @@ function setupSoundTestButtons() {
 
 // Test sound effects based on current dropdown selections
 function testSoundEffect(phase) {
-  // Import and use the Selection module's playSound function
-  import('./selection.js').then(({ Selection }) => {
-    if (phase === 'delay') {
-      const soundType = document.getElementById('soundDuringDelay')?.value || 'none';
-      if (soundType === 'drum-roll') {
-        Selection.playSound('drum-roll');
-        setTimeout(() => {
-          Selection.playSound('drumroll-stop'); // Stop after 3 seconds for testing
-        }, 3000);
-      }
-    } else if (phase === 'end') {
-      const soundType = document.getElementById('soundEndOfDelay')?.value || 'none';
-      if (soundType === 'sting-rimshot-drum-roll') {
-        Selection.playSound('sting-rimshot');
-      }
-    } else if (phase === 'reveal') {
-      const soundType = document.getElementById('soundDuringReveal')?.value || 'none';
-      if (soundType === 'applause') {
-        Selection.playSound('applause');
-      }
+  if (phase === 'delay') {
+    const soundType = document.getElementById('soundDuringDelay')?.value || 'none';
+    if (soundType !== 'none') {
+      // Import and use the Selection module's playSound function
+      import('./selection.js').then(({ Selection }) => {
+        Selection.playSound(soundType);
+        if (soundType.includes('drum')) {
+          setTimeout(() => {
+            Selection.playSound('drumroll-stop'); // Stop after 3 seconds for testing
+          }, 3000);
+        }
+      }).catch(error => {
+        console.warn('Could not test sound:', error);
+      });
     }
-  }).catch(error => {
-    console.warn('Could not test sound:', error);
-  });
+  } else if (phase === 'end') {
+    const soundType = document.getElementById('soundEndOfDelay')?.value || 'none';
+    if (soundType !== 'none') {
+      import('./selection.js').then(({ Selection }) => {
+        Selection.playSound(soundType);
+      }).catch(error => {
+        console.warn('Could not test sound:', error);
+      });
+    }
+  } else if (phase === 'reveal') {
+    const soundType = document.getElementById('soundDuringReveal')?.value || 'none';
+    if (soundType !== 'none') {
+      import('./selection.js').then(({ Selection }) => {
+        Selection.playSound(soundType);
+      }).catch(error => {
+        console.warn('Could not test sound:', error);
+      });
+    }
+  }
 }
 
 // Setup auto-save listeners for quick setup fields
@@ -679,6 +700,7 @@ function setupAllSettingsAutoSave() {
   const allSettingsFields = [
     'preventDuplicates',
     'hideEntryCounts',
+    'enableDebugLogs',
     'fontFamily',
     'primaryColor',
     'secondaryColor',
@@ -718,6 +740,13 @@ function debounce(func, wait) {
   };
 }
 
+// Debug logging utility function
+function debugLog(message, ...args) {
+  if (settings.enableDebugLogs) {
+    console.log(`[DEBUG] ${message}`, ...args);
+  }
+}
+
 export const Settings = {
   saveSettings,
   saveSingleSetting,
@@ -741,7 +770,8 @@ export const Settings = {
   autoSaveAllSettings,
   setupQuickSetupAutoSave,
   setupAllSettingsAutoSave,
-  updateSettings: function(newSettings) { Object.assign(settings, newSettings); } // Added for external updates
+  updateSettings: function(newSettings) { Object.assign(settings, newSettings); }, // Added for external updates
+  debugLog // Export debug logging function
 };
 
 window.Settings = Settings;

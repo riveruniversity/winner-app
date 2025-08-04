@@ -25,7 +25,8 @@ const COLLECTIONS = {
   winners: 'winners', 
   prizes: 'prizes',
   history: 'history',
-  settings: 'settings'
+  settings: 'settings',
+  sounds: 'sounds'
 };
 
 // Get key field for each collection (matches current schema)
@@ -35,7 +36,8 @@ function getKeyField(collectionName) {
     winners: 'winnerId', 
     prizes: 'prizeId',
     history: 'historyId',
-    settings: 'key'
+    settings: 'key',
+    sounds: 'soundId'
   };
   return keyFields[collectionName] || 'id';
 }

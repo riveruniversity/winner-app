@@ -119,7 +119,7 @@
         <ul class="nav nav-tabs mt-3" id="managementTabs" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link active" id="quicksetup-tab" data-bs-toggle="tab" data-bs-target="#quicksetup" type="button" role="tab">
-              <i class="bi bi-play-circle me-2"></i>Quick Setup
+              <i class="bi bi-play-circle me-2"></i>Setup
             </button>
           </li>
           <li class="nav-item" role="presentation">
@@ -150,7 +150,7 @@
         </ul>
         <!-- Tab Content -->
         <div class="tab-content mt-3" id="managementTabContent">
-          <!-- Quick Setup Tab -->
+          <!-- Setup Tab -->
           <div class="tab-pane fade show active" id="quicksetup" role="tabpanel">
             <div class="card">
               <div class="card-body">
@@ -635,6 +635,15 @@
                         </label>
                       </div>
                     </div>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableDebugLogs">
+                        <label class="form-check-label" for="enableDebugLogs">
+                          Enable Debug Logs
+                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Show detailed console logs for debugging"></i>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <!-- Webhook Settings -->
@@ -657,6 +666,26 @@
                       </label>
                       <input type="url" class="form-control" id="webhookUrl" placeholder="https://example.com/webhook" disabled>
                       <div class="form-text">Winners data will be sent as JSON in the request body</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Sound Files Settings -->
+                <div class="card mt-3">
+                  <div class="card-body">
+                    <h5 class="card-title">Sound Files</h5>
+                    <div class="mb-3">
+                      <label class="form-label">Upload Sound Files</label>
+                      <input type="file" class="form-control" id="soundFileInput" accept=".mp3" multiple style="display: none;">
+                      <div class="form-text">Click the button below to select and upload MP3 files. Files will be available in sound selection dropdowns.</div>
+                    </div>
+                    <button class="btn btn-primary" id="uploadSoundFilesBtn">
+                      <i class="bi bi-upload me-2"></i>Upload Sound Files
+                    </button>
+                    <div class="mb-3 mt-3">
+                      <label class="form-label">Available Sound Files</label>
+                      <div id="soundFilesList" class="d-flex flex-column gap-2">
+                        <!-- Sound files will be listed here -->
+                      </div>
                     </div>
                   </div>
                 </div>
