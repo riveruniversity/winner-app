@@ -484,8 +484,8 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   
   if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
-    if (celebrationEffect === 'confetti' && window.Animations && window.Animations.startConfettiAnimation) {
-      window.Animations.startConfettiAnimation();
+    if (celebrationEffect === 'confetti' && Animations && Animations.startConfettiAnimation) {
+      Animations.startConfettiAnimation();
     }
   }
 

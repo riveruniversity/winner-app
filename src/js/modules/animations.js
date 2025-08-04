@@ -13,7 +13,7 @@ let animationFrameId = null;
 // Enhanced startParticleAnimation function for Swirl Animation
 function startSwirlAnimation() {
   if (Settings && Settings.debugLog) Settings.debugLog('startSwirlAnimation called');
-  const canvas = document.getElementById('animationCanvas');
+  const canvas = document.getElementById('countdownCanvas');
   const ctx = canvas.getContext('2d');
   let particles = [];
 
@@ -123,7 +123,7 @@ function startSwirlAnimation() {
 
 // Basic particle animation (for 'animation' mode)
 function startParticleAnimation() {
-  const canvas = document.getElementById('animationCanvas');
+  const canvas = document.getElementById('countdownCanvas');
   const ctx = canvas.getContext('2d');
   let particles = [];
 
@@ -192,8 +192,12 @@ function startParticleAnimation() {
 
 // Confetti Celebration Animation
 function startConfettiAnimation() {
-  if (Settings && Settings.debugLog) Settings.debugLog('startConfettiAnimation called');
   const canvas = document.getElementById('animationCanvas');
+  if (!canvas) {
+    console.error('❌ Canvas element not found!');
+    return;
+  }
+  
   const ctx = canvas.getContext('2d');
   let confettiPieces = [];
 
@@ -292,7 +296,7 @@ function startConfettiAnimation() {
 // Time Machine Animation - Tunnel/warp effect
 function startTimeMachineAnimation() {
   if (Settings && Settings.debugLog) Settings.debugLog('startTimeMachineAnimation called');
-  const canvas = document.getElementById('animationCanvas');
+  const canvas = document.getElementById('countdownCanvas');
   const ctx = canvas.getContext('2d');
   let rings = [];
   let time = 0;
