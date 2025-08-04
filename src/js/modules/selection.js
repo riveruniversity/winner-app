@@ -6,7 +6,7 @@ import { UI } from './ui.js';
 import { Database } from './firestore.js';
 import { Lists } from './lists.js';
 import { Winners } from './winners.js';
-import { settings } from './settings.js'; // Import settings directly
+import { settings, Settings } from './settings.js'; // Import settings and Settings module
 import { Animations } from './animations.js';
 import { getCurrentList, setCurrentList, getLastAction, setLastAction, loadHistory, updateHistoryStats } from '../app.js'; // Import central state and history functions
 
@@ -66,7 +66,8 @@ async function handleBigPlayClick() {
     const listId = document.getElementById('quickListSelect').value;
     const prizeId = document.getElementById('quickPrizeSelect').value;
     const winnersCount = parseInt(document.getElementById('quickWinnersCount').value);
-    const displayMode = document.getElementById('displayMode').value;
+    const selectionMode = document.getElementById('selectionMode').value;
+    const delayVisualType = document.getElementById('delayVisualType').value;
 
     if (!listId || !prizeId) {
       UI.showToast('Please select both a list and a prize', 'warning');
@@ -101,61 +102,228 @@ async function handleBigPlayClick() {
     // Set current list for global access
     setCurrentList(list);
 
-    console.log('Big play clicked, display mode:', displayMode);
+    console.log('Big play clicked, selection mode:', selectionMode, 'delay visual:', delayVisualType);
     
-    if (displayMode === 'countdown' || displayMode === 'animation' || displayMode === 'swirl-animation') {
-      console.log('Calling showCountdown for mode:', displayMode);
-      showCountdown(winnersCount, selectedPrize, 'all-at-once');
-    } else {
-      console.log('Calling selectWinners directly for mode:', displayMode);
-      await selectWinners(winnersCount, selectedPrize, displayMode);
-    }
+    // Start the delay and selection process in parallel
+    await selectWinnersWithDelay(winnersCount, selectedPrize, selectionMode, delayVisualType);
   } catch (error) {
     console.error('Error in big play click:', error);
     UI.showToast('Error selecting winners: ' + error.message, 'error');
   }
 }
 
-function showCountdown(winnersCount, selectedPrize, postCountdownDisplayMode = 'all-at-once') {
-  const countdownOverlay = document.getElementById('countdownOverlay');
-  const countdownNumber = document.getElementById('countdownNumber');
-  const displayMode = document.getElementById('displayMode').value;
-
-  console.log('Display mode selected:', displayMode);
-  
-  if (displayMode === 'animation') {
-    console.log('Starting particle animation');
-    Animations.startParticleAnimation();
-  }
-  else if (displayMode === 'swirl-animation') {
-    console.log('Starting swirl animation');
-    Animations.startSwirlAnimation();
-  }
-
-  let count = parseInt(document.getElementById('countdownDuration').value) || 5;
-  countdownOverlay.classList.remove('d-none');
-  countdownNumber.textContent = count;
-
-  const interval = setInterval(() => {
-    count--;
-    if (count > 0) {
-      countdownNumber.textContent = count;
-      if (settings.enableSoundEffects) {
-        playSound('countdown');
+async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, delayVisualType) {
+  try {
+    console.log('Starting parallel selection and delay process');
+    
+    // Get delay settings
+    const preSelectionDelay = parseFloat(document.getElementById('preSelectionDelay')?.value) || 0;
+    
+    let winnersResult = null;
+    let delayPromise = Promise.resolve();
+    
+    // Start pre-selection delay if configured
+    if (preSelectionDelay > 0) {
+      console.log('Starting pre-selection delay:', preSelectionDelay, 'seconds with visual:', delayVisualType);
+      
+      // Start sound during delay if configured
+      if (settings.soundDuringDelay === 'drum-roll' && preSelectionDelay > 1) {
+        playSound('drum-roll');
       }
-    } else {
-      clearInterval(interval);
-      if (displayMode === 'animation' || displayMode === 'swirl-animation') {
-        console.log('Stopping animation for mode:', displayMode);
-        Animations.stopAnimation();
+      
+      if (delayVisualType === 'countdown' || delayVisualType === 'animation' || delayVisualType === 'swirl-animation') {
+        delayPromise = showCountdown(preSelectionDelay, delayVisualType);
+      } else {
+        delayPromise = Settings.showDelayDisplay(preSelectionDelay, delayVisualType);
       }
-      countdownOverlay.classList.add('d-none');
-      selectWinners(winnersCount, selectedPrize, postCountdownDisplayMode);
+      
+      // Stop delay sound and play end-of-delay sound
+      delayPromise = delayPromise.then(() => {
+        if (settings.soundDuringDelay === 'drum-roll' && preSelectionDelay > 1) {
+          playSound('drumroll-stop'); // This will stop the drumroll
+        }
+        if (settings.soundEndOfDelay === 'sting-rimshot-drum-roll') {
+          playSound('sting-rimshot');
+        }
+      });
     }
-  }, 1000);
+    
+    // Start winner selection in background immediately
+    const selectionPromise = performWinnerSelection(numWinners, selectedPrize, selectionMode);
+    
+    // Wait for both delay and selection to complete
+    const [winners] = await Promise.all([selectionPromise, delayPromise]);
+    winnersResult = winners;
+    
+    console.log('Selection and delay completed, starting display process');
+    
+    // Display winners instantly (they're already selected and saved)
+    await displayWinnersPublicly(winnersResult, selectedPrize, selectionMode);
+    
+    // Update UI and trigger webhook
+    Winners.loadWinners();
+    loadHistory();
+    
+    // Trigger webhook notification
+    try {
+      await Settings.triggerWebhook({
+        event: 'winners_selected',
+        winners: winnersResult,
+        prize: selectedPrize,
+        listId: getCurrentList().listId || getCurrentList().metadata.listId,
+        listName: getCurrentList().metadata.name,
+        selectionId: winnersResult[0]?.historyId
+      });
+    } catch (error) {
+      console.error('Error triggering webhook:', error);
+    }
+    
+  } catch (error) {
+    console.error('Error in selectWinnersWithDelay:', error);
+    UI.showToast('Error selecting winners: ' + error.message, 'error');
+  }
 }
 
-async function selectWinners(numWinners, selectedPrize, displayMode) {
+async function performWinnerSelection(numWinners, selectedPrize, selectionMode) {
+  console.log('Starting background winner selection');
+  UI.showProgress('Selecting Winners', 'Preparing random selection...');
+
+  // Hide selection controls
+  document.getElementById('selectionControls').classList.add('d-none');
+
+  // Create and use random worker
+  const randomWorker = createRandomWorker();
+
+  const selectedEntries = await new Promise((resolve, reject) => {
+    randomWorker.onmessage = function (e) {
+      if (e.data.type === 'complete') {
+        resolve(e.data.result);
+      } else if (e.data.type === 'error') {
+        reject(new Error(e.data.error));
+      }
+    };
+
+    randomWorker.postMessage({
+      type: 'select',
+      entries: getCurrentList().entries,
+      numWinners: numWinners,
+      seed: Date.now()
+    });
+  });
+
+  UI.updateProgress(50, 'Creating winner records...');
+
+  // Create winner records
+  const historyId = UI.generateId(8);
+  const winners = selectedEntries.map((entry, index) => ({
+    winnerId: UI.generateId(),
+    uniqueId: UI.generateId(5).toUpperCase(),
+    ...entry.data,
+    displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
+    prize: selectedPrize.name,
+    timestamp: Date.now(),
+    originalEntry: entry,
+    listId: getCurrentList().listId || getCurrentList().metadata.listId,
+    position: index + 1,
+    historyId: historyId
+  }));
+
+  UI.updateProgress(75, 'Saving winners...');
+
+  // Save winners in background
+  const savePromises = [];
+  for (const winner of winners) {
+    savePromises.push(Winners.saveWinner(winner));
+  }
+
+  // Update prize quantity
+  selectedPrize.quantity -= numWinners;
+  savePromises.push(Database.saveToStore('prizes', selectedPrize));
+
+  // Save history
+  const historyEntry = {
+    historyId: historyId,
+    listId: getCurrentList().listId || getCurrentList().metadata.listId,
+    listName: getCurrentList().metadata.name,
+    prize: selectedPrize.name,
+    winners: winners.map(w => ({ winnerId: w.winnerId, displayName: w.displayName })),
+    timestamp: Date.now()
+  };
+  savePromises.push(Database.saveToStore('history', historyEntry));
+
+  // Store last action for undo
+  setLastAction({
+    type: 'selectWinners',
+    winners: winners,
+    removedEntries: selectedEntries,
+    prizeId: selectedPrize.prizeId,
+    prizeCount: numWinners,
+    historyId: historyEntry.historyId
+  });
+
+  // Remove winners from list if setting is enabled
+  if (settings.preventDuplicates) {
+    const updatedList = getCurrentList();
+    updatedList.entries = updatedList.entries.filter(entry =>
+      !selectedEntries.some(selected => selected.id === entry.id)
+    );
+    if (!updatedList.listId && updatedList.metadata && updatedList.metadata.listId) {
+      updatedList.listId = updatedList.metadata.listId;
+    }
+    setCurrentList(updatedList);
+    savePromises.push(Database.saveToStore('lists', updatedList));
+  }
+
+  // Wait for all saves to complete in background
+  await Promise.all(savePromises);
+
+  UI.updateProgress(100, 'Winners selected!');
+  UI.hideProgress();
+  
+  console.log('Background winner selection completed');
+  return winners;
+}
+
+function showCountdown(delaySeconds, visualType) {
+  return new Promise((resolve) => {
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const countdownNumber = document.getElementById('countdownNumber');
+
+    console.log('Starting countdown with visual type:', visualType);
+    
+    if (visualType === 'animation') {
+      console.log('Starting particle animation');
+      Animations.startParticleAnimation();
+    }
+    else if (visualType === 'swirl-animation') {
+      console.log('Starting swirl animation');
+      Animations.startSwirlAnimation();
+    }
+
+    let count = Math.ceil(delaySeconds);
+    countdownOverlay.classList.remove('d-none');
+    countdownNumber.textContent = count;
+
+    const interval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        countdownNumber.textContent = count;
+        // Countdown beeps are part of the countdown visual, not configurable separately
+        playSound('countdown');
+      } else {
+        clearInterval(interval);
+        if (visualType === 'animation' || visualType === 'swirl-animation') {
+          console.log('Stopping animation for type:', visualType);
+          Animations.stopAnimation();
+        }
+        countdownOverlay.classList.add('d-none');
+        resolve();
+      }
+    }, 1000);
+  });
+}
+
+async function selectWinners(numWinners, selectedPrize, selectionMode) {
   try {
     UI.showProgress('Selecting Winners', 'Preparing random selection...');
 
@@ -246,16 +414,27 @@ async function selectWinners(numWinners, selectedPrize, displayMode) {
 
     UI.updateProgress(100, 'Winners selected!');
 
-    setTimeout(() => {
+    setTimeout(async () => {
       UI.hideProgress();
-      displayWinnersPublicly(winners, selectedPrize, displayMode);
+      
+      await displayWinnersPublicly(winners, selectedPrize, selectionMode);
 
       // Update the winners list in management interface
       Winners.loadWinners();
       loadHistory(); // Call from app.js
 
-      if (settings.enableSoundEffects) {
-        playSound('winner');
+      // Trigger webhook notification
+      try {
+        await Settings.triggerWebhook({
+          event: 'winners_selected',
+          winners: winners,
+          prize: selectedPrize,
+          listId: getCurrentList().listId || getCurrentList().metadata.listId,
+          listName: getCurrentList().metadata.name,
+          selectionId: historyId
+        });
+      } catch (error) {
+        console.error('Error triggering webhook:', error);
       }
     }, 500);
 
@@ -292,22 +471,27 @@ function adjustWinnerCardFontSize(numWinners) {
   });
 }
 
-function displayWinnersPublicly(winners, prize, displayMode) {
+async function displayWinnersPublicly(winners, prize, selectionMode) {
   // Show prize display
   const prizeDisplay = document.getElementById('prizeDisplay');
   document.getElementById('displayPrizeName').textContent = prize.name;
   document.getElementById('displayPrizeSubtitle').textContent = `${winners.length} Winner${winners.length > 1 ? 's' : ''}`;
   prizeDisplay.classList.remove('d-none');
 
+  // Play applause sound once at the start of winner reveal
+  if (settings.soundDuringReveal === 'applause') {
+    playSound('applause');
+  }
+
   // Show winners with CSS flexbox
   const winnersGrid = document.getElementById('winnersGrid');
   winnersGrid.innerHTML = '';
   winnersGrid.className = 'winners-grid';
 
-  if (displayMode === 'sequential') {
-    displayWinnersSequential(winners, winnersGrid);
+  if (selectionMode === 'sequential' || selectionMode === 'individual') {
+    await displayWinnersSequential(winners, winnersGrid);
   } else {
-    displayWinnersAllAtOnce(winners, winnersGrid);
+    await displayWinnersAllAtOnce(winners, winnersGrid);
   }
 
   winnersGrid.classList.remove('d-none');
@@ -318,48 +502,43 @@ function displayWinnersPublicly(winners, prize, displayMode) {
 }
 
 // Display all winners at once using CSS grid
-function displayWinnersAllAtOnce(winners, winnersGrid) {
+async function displayWinnersAllAtOnce(winners, winnersGrid) {
+  const displayEffect = document.getElementById('displayEffect')?.value || 'fade-in';
+  
   winners.forEach((winner, index) => {
     const winnerCard = createWinnerCard(winner, index);
+    // Apply the selected display effect
+    winnerCard.classList.add(displayEffect);
     winnersGrid.appendChild(winnerCard);
   });
 }
 
 // Display winners sequentially using CSS grid
-function displayWinnersSequential(winners, winnersGrid) {
+async function displayWinnersSequential(winners, winnersGrid) {
   const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
+  const displayEffect = document.getElementById('displayEffect')?.value || 'fade-in';
   
-  winners.forEach((winner, index) => {
-    const delay = index * (displayDuration * 1000);
+  return new Promise((resolve) => {
+    let completedWinners = 0;
     
-    setTimeout(() => {
-      const winnerCard = createWinnerCard(winner, index);
+    winners.forEach((winner, index) => {
+      const delay = index * (displayDuration * 1000);
       
-      // More dynamic entrance animations
-      const animations = [
-        'translateX(-100%) rotateZ(-10deg)',
-        'translateY(-100%) rotateX(45deg)',
-        'scale(0) rotate(180deg)',
-        'translateX(100%) skewX(-15deg)',
-        'translateY(100%) rotateY(90deg)'
-      ];
-      
-      const randomAnimation = animations[index % animations.length];
-      winnerCard.style.opacity = '0';
-      winnerCard.style.transform = randomAnimation;
-      winnersGrid.appendChild(winnerCard);
-      
-      // Animate to final position
       setTimeout(() => {
-        winnerCard.style.transition = 'all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-        winnerCard.style.opacity = '1';
-        winnerCard.style.transform = 'translateX(0) translateY(0) scale(1) rotate(0deg) skewX(0deg) rotateX(0deg) rotateY(0deg)';
+        const winnerCard = createWinnerCard(winner, index);
+        // Apply the selected display effect
+        winnerCard.classList.add(displayEffect);
+        winnersGrid.appendChild(winnerCard);
         
-        if (settings.enableSoundEffects) {
-          playSound('winner');
-        }
-      }, 100);
-    }, delay);
+        // Listen for animation end to track completion
+        winnerCard.addEventListener('animationend', () => {
+          completedWinners++;
+          if (completedWinners === winners.length) {
+            resolve();
+          }
+        });
+      }, delay);
+    });
   });
 }
 
@@ -466,61 +645,103 @@ function getWinnerDetails(winner) {
   return details.length > 0 ? details[0] : 'Winner Selected';
 }
 
-// Sound Effects
+// MP3 Sound Effects
+let currentAudio = null; // Track currently playing audio for stopping
+
+// Audio cache to prevent loading the same file multiple times
+const audioCache = new Map();
+
+function loadAudio(filename) {
+  if (audioCache.has(filename)) {
+    return Promise.resolve(audioCache.get(filename));
+  }
+  
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(`/sounds/${filename}.mp3`);
+    audio.addEventListener('canplaythrough', () => {
+      audioCache.set(filename, audio);
+      resolve(audio);
+    });
+    audio.addEventListener('error', reject);
+    audio.load();
+  });
+}
+
 function playSound(type) {
-  if (!settings.enableSoundEffects) return;
-
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
     if (type === 'countdown') {
-      playBeep(audioContext, 800, 100);
-    } else if (type === 'winner') {
-      playChord(audioContext);
+      // Keep programmatic beep for countdown as it's quick and simple
+      playBeep(800, 100);
+    } else if (type === 'winner' || type === 'applause') {
+      playMp3Sound('applause');
+    } else if (type === 'drumroll-start' || type === 'drum-roll') {
+      playMp3Sound('drum-roll');
+    } else if (type === 'drumroll-stop') {
+      stopCurrentAudio();
+    } else if (type === 'final-beat' || type === 'sting-rimshot') {
+      playMp3Sound('sting-rimshot-drum-roll');
     }
   } catch (error) {
     console.warn('Could not play sound:', error);
   }
 }
 
-function playBeep(audioContext, frequency, duration) {
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-  oscillator.type = 'sine';
-
-  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
-
-  oscillator.start(audioContext.currentTime);
-  oscillator.stop(audioContext.currentTime + duration / 1000);
+function playMp3Sound(filename) {
+  loadAudio(filename).then(audio => {
+    // Stop any currently playing audio
+    stopCurrentAudio();
+    
+    // Clone the audio to allow multiple simultaneous plays if needed
+    const audioClone = audio.cloneNode();
+    audioClone.volume = 0.7; // Set reasonable volume
+    currentAudio = audioClone;
+    
+    audioClone.play().catch(error => {
+      console.warn('Could not play MP3 sound:', error);
+    });
+    
+    // Clear reference when audio ends
+    audioClone.addEventListener('ended', () => {
+      if (currentAudio === audioClone) {
+        currentAudio = null;
+      }
+    });
+  }).catch(error => {
+    console.warn('Could not load MP3 sound:', filename, error);
+  });
 }
 
-function playChord(audioContext) {
-  const frequencies = [523.25, 659.25, 783.99]; // C, E, G
-  const duration = 1000;
+function stopCurrentAudio() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
+}
 
-  frequencies.forEach(freq => {
+// Simple beep for countdown (keep programmatic for responsiveness)
+function playBeep(frequency, duration) {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
     oscillator.type = 'sine';
 
-    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
 
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + duration / 1000);
-  });
+  } catch (error) {
+    console.warn('Could not play beep:', error);
+  }
 }
+
 
 export const Selection = {
   createRandomWorker,

@@ -19,7 +19,9 @@
       "Bash(node_modules\\.bin\\vite:*)",
       "Bash(npx vite:*)",
       "Bash(rg:*)",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Bash(taskkill:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

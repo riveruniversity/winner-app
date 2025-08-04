@@ -61,8 +61,11 @@ async function saveToStore(collectionName, data, options = {}) {
     
     const docRef = doc(db, collectionName, docId);
     
+    // Use merge for settings to prevent overwrites, false for others
+    const mergeOption = collectionName === 'settings' ? { merge: true } : { merge: false };
+    
     // Save in background - don't await this!
-    setDoc(docRef, data, { merge: false }).then(() => {
+    setDoc(docRef, data, mergeOption).then(() => {
       console.log(`🔄 ${collectionName}/${docId} synced to server in background`);
     }).catch(error => {
       console.warn(`⚠️ Background sync failed for ${collectionName}/${docId}:`, error);

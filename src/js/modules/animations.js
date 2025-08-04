@@ -6,7 +6,7 @@
 // VISUAL ANIMATIONS
 // ================================
 
-import { Settings } from './settings.js';
+import { Settings, settings } from './settings.js';
 
 let animationFrameId = null;
 
@@ -30,8 +30,8 @@ function startSwirlAnimation() {
     } : null;
   }
 
-  const primaryRgb = hexToRgb(Settings.settings.primaryColor);
-  const secondaryRgb = hexToRgb(Settings.settings.secondaryColor);
+  const primaryRgb = hexToRgb(settings.primaryColor);
+  const secondaryRgb = hexToRgb(settings.secondaryColor);
 
   class Particle {
     constructor(isStar = false) {
@@ -140,8 +140,8 @@ function startParticleAnimation() {
     } : null;
   }
 
-  const primaryRgb = hexToRgb(Settings.settings.primaryColor);
-  const secondaryRgb = hexToRgb(Settings.settings.secondaryColor);
+  const primaryRgb = hexToRgb(settings.primaryColor);
+  const secondaryRgb = hexToRgb(settings.secondaryColor);
 
   class SimpleParticle {
     constructor() {

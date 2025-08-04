@@ -50,6 +50,7 @@ export async function initializeApp() {
     // Load settings in background too - don't block UI
     Settings.loadSettings().then(() => {
       Settings.setupTheme(); // Apply theme once settings are loaded
+      console.log('Settings loaded:', settings);
     });
     
     // Start loading everything in background, don't block UI
@@ -157,9 +158,20 @@ function setupManagementListeners() {
   const addPrizeBtn = document.getElementById('addPrizeBtn');
   if (addPrizeBtn) addPrizeBtn.addEventListener('click', Prizes.handleAddPrize);
 
-  // Settings
-  const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-  if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', Settings.handleSaveSettings);
+  // Settings are now auto-saved, no manual save button needed
+  
+  // Preview delay button
+  const previewDelayBtn = document.getElementById('previewDelayBtn');
+  if (previewDelayBtn) previewDelayBtn.addEventListener('click', Settings.testDelay);
+  
+  // Setup webhook toggle functionality
+  Settings.setupWebhookToggle();
+  
+  // Setup auto-save for quick setup fields
+  Settings.setupQuickSetupAutoSave();
+  
+  // Setup auto-save for all settings fields
+  Settings.setupAllSettingsAutoSave();
 
   // Theme
   const themeToggle = document.getElementById('themeToggle');
@@ -195,23 +207,8 @@ function setupWinnerFilters() {
 }
 
 function setupDisplayMode() {
-  const displayModeSelect = document.getElementById('displayMode');
-  if (displayModeSelect) {
-    const durationSettings = document.getElementById('durationSettings');
-    const countdownSettings = document.getElementById('countdownSettings');
-
-    const toggleDisplaySettings = () => {
-      const mode = displayModeSelect.value;
-      const showSequential = mode === 'sequential';
-      const showCountdown = mode === 'countdown' || mode === 'animation';
-
-      if (durationSettings) durationSettings.style.display = showSequential ? 'block' : 'none';
-      if (countdownSettings) countdownSettings.style.display = showCountdown ? 'block' : 'none';
-    };
-
-    displayModeSelect.addEventListener('change', toggleDisplaySettings);
-    toggleDisplaySettings(); // Initial check
-  }
+  // Sequential settings are now always visible in the Winner Display Effects section
+  // No need to toggle visibility based on selection mode
 }
 
 // History Management (simplified for now)

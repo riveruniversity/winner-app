@@ -172,38 +172,133 @@
                 </div>
                 <hr class="my-4">
                 <h6 class="card-subtitle mb-3 text-muted">Selection & Presentation Settings</h6>
-                <div class="row g-3">
+                
+                <!-- Basic Settings -->
+                <div class="row g-3 mb-4">
                   <div class="col-md-6">
                     <label class="form-label">Number of Winners</label>
                     <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" placeholder="Winners Count">
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">
-                      Winner Display Mode
-                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose how winners are revealed in presentation mode"></i>
+                      Selection Mode
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="How winners are selected and revealed"></i>
                     </label>
-                    <select class="form-select form-select-lg" id="displayMode">
+                    <select class="form-select form-select-lg" id="selectionMode">
                       <option value="all-at-once">All at Once</option>
                       <option value="sequential">Sequential Reveal</option>
+                      <option value="individual">Individual Selection</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Pre-Selection Delay -->
+                <div class="row g-3 mb-4">
+                  <div class="col-12">
+                    <h6 class="text-muted mb-3">Pre-Selection Delay</h6>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">
+                      Delay Duration (seconds)
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Delay before selection begins"></i>
+                    </label>
+                    <input type="number" class="form-control form-control-lg" id="preSelectionDelay" value="0" min="0" max="30" step="0.5">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">
+                      Delay Visual
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="What to show during the delay"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="delayVisualType">
+                      <option value="none">No Visual (Silent)</option>
                       <option value="countdown">Countdown Timer</option>
-                      <option value="animation">Countdown Animation</option>
+                      <option value="animation">Particle Animation</option>
                       <option value="swirl-animation">Swirl Animation</option>
                     </select>
                   </div>
-                  <div class="col-md-6" id="durationSettings" style="display: none;">
-                    <label class="form-label" for="displayDuration">
-                      Sequential Delay (seconds)
-                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Delay between each winner being revealed in 'Sequential Reveal' mode."></i>
+                </div>
+
+                <!-- Winner Display Effects -->
+                <div class="row g-3 mb-4">
+                  <div class="col-12">
+                    <h6 class="text-muted mb-3">Winner Display Effects</h6>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">
+                      Display Effect
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="How winners appear on screen"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="displayEffect">
+                      <option value="fade-in">Fade In</option>
+                      <option value="fly-in">Fly In</option>
+                      <option value="zoom-in">Zoom In</option>
+                      <option value="slide-in">Slide In</option>
+                      <option value="bounce-in">Bounce In</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">
+                      Time Between Winners (seconds)
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Delay between each winner being revealed (sequential mode only)"></i>
                     </label>
                     <input type="number" class="form-control form-control-lg" id="displayDuration" value="0.5" min="0.1" max="5" step="0.1">
                   </div>
-                  <div class="col-md-6" id="countdownSettings" style="display: none;">
-                    <label class="form-label">
-                      Countdown Duration (seconds)
-                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Countdown time before revealing winners"></i>
-                    </label>
-                    <input type="number" class="form-control form-control-lg" id="countdownDuration" value="5" min="3" max="10">
+                </div>
+
+                <!-- Sound Settings -->
+                <div class="row g-3 mb-4">
+                  <div class="col-12">
+                    <h6 class="text-muted mb-3">Sound Effects</h6>
                   </div>
+                  <div class="col-md-4">
+                    <label class="form-label">
+                      Sound During Delay
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Sound effect played during pre-selection delay"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="soundDuringDelay">
+                      <option value="none">No Sound</option>
+                      <option value="drum-roll">Drumroll</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">
+                      Sound at End of Delay
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Sound effect when delay completes"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="soundEndOfDelay">
+                      <option value="none">No Sound</option>
+                      <option value="sting-rimshot-drum-roll">Sting Rimshot</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">
+                      Sound During Reveal
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Sound effect when winners are revealed"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="soundDuringReveal">
+                      <option value="none">No Sound</option>
+                      <option value="applause">Applause</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <div class="d-flex gap-2 mt-2">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" id="testSoundDuringDelay">
+                        <i class="bi bi-play-fill me-1"></i>Test Delay Sound
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" id="testSoundEndOfDelay">
+                        <i class="bi bi-play-fill me-1"></i>Test End Sound
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" id="testSoundDuringReveal">
+                        <i class="bi bi-play-fill me-1"></i>Test Reveal Sound
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="text-center mt-3">
+                  <button class="btn btn-outline-info" id="previewDelayBtn">
+                    <i class="bi bi-eye me-2"></i>Preview Delay
+                  </button>
                 </div>
               </div>
             </div>
@@ -533,21 +628,35 @@
                     </div>
                     <div class="mb-3">
                       <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="enableSoundEffects">
-                        <label class="form-check-label" for="enableSoundEffects">
-                          Enable Sound Effects
-                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Play sound when winners are selected"></i>
-                        </label>
-                      </div>
-                    </div>
-                    <div class="mb-3">
-                      <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="hideEntryCounts">
                         <label class="form-check-label" for="hideEntryCounts">
                           Hide Entry Counts
                           <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of participants in public view"></i>
                         </label>
                       </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Webhook Settings -->
+                <div class="card mt-3">
+                  <div class="card-body">
+                    <h5 class="card-title">Webhook Settings</h5>
+                    <div class="mb-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableWebhook">
+                        <label class="form-check-label" for="enableWebhook">
+                          Enable Webhook Notifications
+                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Send HTTP POST requests when winners are selected"></i>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="mb-3" id="webhookUrlSection">
+                      <label class="form-label" for="webhookUrl">
+                        Webhook URL
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="URL where winner selection notifications will be sent via POST request"></i>
+                      </label>
+                      <input type="url" class="form-control" id="webhookUrl" placeholder="https://example.com/webhook" disabled>
+                      <div class="form-text">Winners data will be sent as JSON in the request body</div>
                     </div>
                   </div>
                 </div>
@@ -637,11 +746,6 @@
                 </div>
               </div>
             </div>
-            <div class="text-center mt-4">
-              <button class="btn btn-success btn-lg" id="saveSettingsBtn">
-                <i class="bi bi-check-lg me-2"></i>Save
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -661,6 +765,37 @@
   <div class="countdown-animation d-none" id="countdownOverlay">
     <div class="countdown-number" id="countdownNumber">3</div>
     <canvas id="animationCanvas"></canvas>
+  </div>
+  <!-- Pre-Display Delay Overlay -->
+  <div class="delay-overlay d-none" id="delayOverlay">
+    <div class="delay-content">
+      <div id="delaySpinner" class="delay-spinner d-none">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-3 text-light">Preparing winners...</div>
+      </div>
+      <div id="delayCountdown" class="delay-countdown d-none">
+        <div class="countdown-circle">
+          <span id="delayCountdownNumber">5</span>
+        </div>
+        <div class="mt-3 text-light">Winners in...</div>
+      </div>
+      <div id="delayProgress" class="delay-progress d-none">
+        <div class="progress-container">
+          <div class="progress-bar-delay" id="delayProgressBar"></div>
+        </div>
+        <div class="mt-3 text-light">Finalizing selection...</div>
+      </div>
+      <div id="delayDots" class="delay-dots d-none">
+        <div class="dots-container">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <div class="mt-3 text-light">Getting ready...</div>
+      </div>
+    </div>
   </div>
   <!-- Hidden file input for restore -->
   <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
