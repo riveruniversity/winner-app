@@ -479,13 +479,24 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   winnersGrid.innerHTML = '';
   winnersGrid.className = 'winners-grid';
 
+  // Clear any existing animations before starting new ones
+  if (Animations && Animations.clearAllAnimations) {
+    Animations.clearAllAnimations();
+  }
+
   // Trigger celebration animation immediately when reveal starts
   const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   
+  console.log('🎉 Celebration settings:', { celebrationAutoTrigger, celebrationEffect });
+  
   if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
-    if (celebrationEffect === 'confetti' && Animations && Animations.startConfettiAnimation) {
+    // Only trigger confetti if confetti is selected (not for coins-only)
+    if ((celebrationEffect === 'confetti' || celebrationEffect === 'both') && Animations && Animations.startConfettiAnimation) {
+      console.log('🎊 Starting confetti animation');
       Animations.startConfettiAnimation();
+    } else {
+      console.log('🚫 Confetti NOT started - effect is:', celebrationEffect);
     }
   }
 
@@ -505,12 +516,29 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
 // Display all winners at once using CSS grid
 async function displayWinnersAllAtOnce(winners, winnersGrid) {
   const displayEffect = document.getElementById('displayEffect')?.value || 'fade-in';
+  const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
+  const celebrationEffect = document.getElementById('celebrationEffect')?.value;
+  const shouldShowCoins = celebrationAutoTrigger && (celebrationEffect === 'coins' || celebrationEffect === 'both');
+  
+  console.log('🪙 Coin settings:', { celebrationAutoTrigger, celebrationEffect, shouldShowCoins });
   
   winners.forEach((winner, index) => {
     const winnerCard = createWinnerCard(winner, index);
     // Apply the selected display effect
     winnerCard.classList.add(displayEffect);
     winnersGrid.appendChild(winnerCard);
+    
+    // Trigger coin burst from card position after a short delay (only if coins are enabled)
+    if (shouldShowCoins) {
+      setTimeout(() => {
+        const rect = winnerCard.getBoundingClientRect();
+        const cardCenterX = rect.left + rect.width / 2;
+        const cardCenterY = rect.top + rect.height / 2;
+        if (Animations && Animations.createCoinBurst) {
+          Animations.createCoinBurst(cardCenterX, cardCenterY);
+        }
+      }, 200 + index * 50); // Stagger the coin bursts
+    }
   });
 }
 
@@ -518,6 +546,9 @@ async function displayWinnersAllAtOnce(winners, winnersGrid) {
 async function displayWinnersSequential(winners, winnersGrid) {
   const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
   const displayEffect = document.getElementById('displayEffect')?.value || 'fade-in';
+  const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
+  const celebrationEffect = document.getElementById('celebrationEffect')?.value;
+  const shouldShowCoins = celebrationAutoTrigger && (celebrationEffect === 'coins' || celebrationEffect === 'both');
   
   return new Promise((resolve) => {
     let completedWinners = 0;
@@ -530,6 +561,18 @@ async function displayWinnersSequential(winners, winnersGrid) {
         // Apply the selected display effect
         winnerCard.classList.add(displayEffect);
         winnersGrid.appendChild(winnerCard);
+        
+        // Trigger coin burst from card position after a short delay (only if coins are enabled)
+        if (shouldShowCoins) {
+          setTimeout(() => {
+            const rect = winnerCard.getBoundingClientRect();
+            const cardCenterX = rect.left + rect.width / 2;
+            const cardCenterY = rect.top + rect.height / 2;
+            if (Animations && Animations.createCoinBurst) {
+              Animations.createCoinBurst(cardCenterX, cardCenterY);
+            }
+          }, 300); // Delay to ensure card animation has started
+        }
         
         // Listen for animation end to track completion
         winnerCard.addEventListener('animationend', () => {

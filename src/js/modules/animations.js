@@ -190,8 +190,12 @@ function startParticleAnimation() {
 }
 
 
-// Confetti Celebration Animation
-function startConfettiAnimation() {
+// Shared animation variables
+let confettiPieces = [];
+let frameCount = 0;
+
+// Generic animation loop that handles both confetti and coins
+function startAnimation() {
   const canvas = document.getElementById('animationCanvas');
   if (!canvas) {
     console.error('❌ Canvas element not found!');
@@ -199,10 +203,55 @@ function startConfettiAnimation() {
   }
   
   const ctx = canvas.getContext('2d');
-  let confettiPieces = [];
-
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Update and draw confetti (if any exist)
+    for (let i = confettiPieces.length - 1; i >= 0; i--) {
+      const piece = confettiPieces[i];
+      piece.update();
+      piece.draw(ctx);
+      
+      if (piece.y > canvas.height + 10 || piece.life <= 0) {
+        confettiPieces.splice(i, 1);
+      }
+    }
+    
+    // Update and draw coins (if any exist)
+    for (let i = coinParticles.length - 1; i >= 0; i--) {
+      const coin = coinParticles[i];
+      coin.update();
+      coin.draw(ctx);
+      
+      if (coin.life <= 0) {
+        coinParticles.splice(i, 1);
+      }
+    }
+    
+    frameCount++;
+    
+    // Continue animation if there are still pieces
+    if (confettiPieces.length > 0 || coinParticles.length > 0) {
+      animationFrameId = requestAnimationFrame(animate);
+    } else {
+      // Reset frame count when animation stops
+      frameCount = 0;
+    }
+  }
+
+  animate();
+}
+
+// Confetti Celebration Animation
+function startConfettiAnimation() {
+  const canvas = document.getElementById('animationCanvas');
+  if (!canvas) {
+    console.error('❌ Canvas element not found!');
+    return;
+  }
 
   // Convert hex to RGB
   function hexToRgb(hex) {
@@ -245,7 +294,7 @@ function startConfettiAnimation() {
       this.vy *= 0.999;
     }
 
-    draw() {
+    draw(ctx) {
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.rotation);
@@ -261,36 +310,15 @@ function startConfettiAnimation() {
     }
   }
 
-  let frameCount = 0;
-  
-  function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Create new confetti pieces periodically
-    if (frameCount % 3 === 0 && frameCount < 120) {
-      createConfetti();
-    }
-    
-    // Update and draw confetti
-    for (let i = confettiPieces.length - 1; i >= 0; i--) {
-      const piece = confettiPieces[i];
-      piece.update();
-      piece.draw();
-      
-      if (piece.y > canvas.height + 10 || piece.life <= 0) {
-        confettiPieces.splice(i, 1);
-      }
-    }
-    
-    frameCount++;
-    
-    // Continue animation if there are still pieces or we're still creating them
-    if (confettiPieces.length > 0 || frameCount < 120) {
-      animationFrameId = requestAnimationFrame(animate);
-    }
+  // Create initial burst of confetti
+  for (let i = 0; i < 24; i++) { // 4 * 5 + 4 extra pieces for initial burst
+    setTimeout(() => createConfetti(), i * 50); // Create over 1.2 seconds
   }
 
-  animate();
+  // Start the shared animation loop if not already running
+  if (!animationFrameId) {
+    startAnimation();
+  }
 }
 
 // Time Machine Animation - Tunnel/warp effect
@@ -492,13 +520,118 @@ function stopAnimation() {
   }
 }
 
+// Clear all animation particles
+function clearAllAnimations() {
+  confettiPieces = [];
+  coinParticles = [];
+  frameCount = 0;
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  
+  // Clear the canvas
+  const canvas = document.getElementById('animationCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+// Golden coin burst animation from specific position
+let coinParticles = [];
+
+function createCoinBurst(x, y) {
+  console.log('🪙 Creating coin burst at:', x, y);
+  const canvas = document.getElementById('animationCanvas');
+  if (!canvas) return;
+  
+  const numCoins = 8 + Math.floor(Math.random() * 5); // 8-12 coins
+  
+  for (let i = 0; i < numCoins; i++) {
+    coinParticles.push(new CoinParticle(x, y));
+  }
+  
+  // Start the generic animation loop if not already running (coins only, no confetti)
+  if (!animationFrameId) {
+    startAnimation();
+  }
+}
+
+class CoinParticle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 8; // Random horizontal velocity
+    this.vy = -Math.random() * 8 - 3; // Upward velocity
+    this.gravity = 0.3;
+    this.size = Math.random() * 8 + 6; // 6-14px coins
+    this.rotation = 0;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.3;
+    this.life = 120; // frames
+    this.maxLife = 120;
+    this.bounce = 0.6;
+  }
+  
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    this.rotation += this.rotationSpeed;
+    this.life--;
+    
+    // Bounce off screen edges
+    if (this.x < 0 || this.x > window.innerWidth) {
+      this.vx *= -this.bounce;
+      this.x = Math.max(0, Math.min(window.innerWidth, this.x));
+    }
+    
+    // Bounce off ground
+    if (this.y > window.innerHeight - this.size) {
+      this.vy *= -this.bounce;
+      this.y = window.innerHeight - this.size;
+      this.vx *= 0.8; // Friction
+    }
+  }
+  
+  draw(ctx) {
+    const opacity = Math.max(0, this.life / this.maxLife);
+    
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+    ctx.globalAlpha = opacity;
+    
+    // Draw simple golden coin
+    ctx.beginPath();
+    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFD700'; // Gold color
+    ctx.fill();
+    ctx.strokeStyle = '#FFA500'; // Orange border
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Add simple shine effect
+    ctx.beginPath();
+    ctx.arc(-this.size * 0.3, -this.size * 0.3, this.size * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFF99'; // Light gold
+    ctx.fill();
+    
+    ctx.restore();
+  }
+}
+
+
 // Export the functions you want to be public
 export const Animations = {
   startSwirlAnimation,
   startParticleAnimation,
+  startAnimation,
   startConfettiAnimation,
   startTimeMachineAnimation,
-  stopAnimation
+  stopAnimation,
+  clearAllAnimations,
+  createCoinBurst
 };
 
 // Assign to window for legacy inline `onclick` handlers to work during transition

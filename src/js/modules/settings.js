@@ -261,6 +261,21 @@ function loadSettingsToForm() {
   if (soundDuringReveal && settings.soundDuringReveal) {
     soundDuringReveal.value = settings.soundDuringReveal;
   }
+  
+  // Load celebration settings
+  const celebrationEffect = document.getElementById('celebrationEffect');
+  const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger');
+  const celebrationDuration = document.getElementById('celebrationDuration');
+  
+  if (celebrationEffect && settings.celebrationEffect) {
+    celebrationEffect.value = settings.celebrationEffect;
+  }
+  if (celebrationAutoTrigger && settings.celebrationAutoTrigger !== undefined) {
+    celebrationAutoTrigger.checked = settings.celebrationAutoTrigger;
+  }
+  if (celebrationDuration && settings.celebrationDuration !== undefined) {
+    celebrationDuration.value = settings.celebrationDuration;
+  }
 }
 
 function toggleTheme() {
