@@ -10,13 +10,17 @@ import { Settings } from './settings.js';
 let availableSounds = {
   'drum-roll': { name: 'Drum Roll', filename: 'drum-roll.mp3', type: 'default' },
   'applause': { name: 'Applause', filename: 'applause.mp3', type: 'default' },
-  'sting-rimshot-drum-roll': { name: 'Sting Rimshot', filename: 'sting-rimshot-drum-roll.mp3', type: 'default' }
+  'applause-winner': { name: 'Applause Winner', filename: 'applause-winner.mp3', type: 'default' },
+  'electronic-build-up': { name: 'Electronic Build-up', filename: 'electronic_build-up.mp3', type: 'default' },
+  'sting-rimshot-drum-roll': { name: 'Sting Rimshot', filename: 'sting-rimshot-drum-roll.mp3', type: 'default' },
+  'tada-fanfare': { name: 'Tada Fanfare', filename: 'tada-fanfare.mp3', type: 'default' }
 };
 
 // Initialize sound file management
 async function initSounds() {
   await loadCustomSounds();
   updateSoundFilesList();
+  updateSoundDropdowns();
   setupSoundUploadHandlers();
 }
 
@@ -27,16 +31,26 @@ async function loadCustomSounds() {
     if (customSounds && Array.isArray(customSounds)) {
       customSounds.forEach(sound => {
         if (sound.soundId && sound.name && sound.filename) {
-          availableSounds[sound.soundId] = {
-            name: sound.name,
-            filename: sound.filename,
-            type: 'custom',
-            data: sound.data
-          };
+          if (sound.type === 'uploaded') {
+            // Uploaded sounds (look for file in public/sounds)
+            availableSounds[sound.soundId] = {
+              name: sound.name,
+              filename: sound.filename,
+              type: 'uploaded'
+            };
+          } else {
+            // Legacy custom sounds with base64 data
+            availableSounds[sound.soundId] = {
+              name: sound.name,
+              filename: sound.filename,
+              type: 'custom',
+              data: sound.data
+            };
+          }
         }
       });
     }
-    Settings.debugLog('Loaded custom sounds:', Object.keys(availableSounds).filter(id => availableSounds[id].type === 'custom'));
+    Settings.debugLog('Loaded custom sounds:', Object.keys(availableSounds).filter(id => availableSounds[id].type === 'custom' || availableSounds[id].type === 'uploaded'));
   } catch (error) {
     console.error('Error loading custom sounds:', error);
   }
@@ -71,8 +85,8 @@ function updateSoundFilesList() {
     
     soundActions.appendChild(testBtn);
     
-    // Delete button for custom sounds
-    if (sound.type === 'custom') {
+    // Delete button for custom and uploaded sounds
+    if (sound.type === 'custom' || sound.type === 'uploaded') {
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'btn btn-sm btn-outline-danger';
       deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
@@ -150,7 +164,7 @@ async function handleSoundUpload(event) {
     
     // Show results
     if (uploadedCount > 0) {
-      UI.showToast(`Successfully uploaded ${uploadedCount} sound file${uploadedCount > 1 ? 's' : ''}`, 'success');
+      UI.showToast(`Downloaded ${uploadedCount} sound file${uploadedCount > 1 ? 's' : ''}. Please place ${uploadedCount > 1 ? 'them' : 'it'} in the public/sounds directory.`, 'info');
       updateSoundFilesList();
       updateSoundDropdowns();
       
@@ -173,50 +187,51 @@ async function handleSoundUpload(event) {
 
 // Upload a single sound file
 async function uploadSoundFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+  try {
+    // Create a download link for the user to manually save the file
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     
-    reader.onload = async (e) => {
-      try {
-        const arrayBuffer = e.target.result;
-        const base64Data = arrayBufferToBase64(arrayBuffer);
-        
-        // Create sound record
-        const soundId = generateSoundId(file.name);
-        const soundName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
-        
-        const soundRecord = {
-          soundId,
-          name: soundName,
-          filename: file.name,
-          data: base64Data,
-          uploadDate: Date.now(),
-          size: file.size,
-          type: 'custom'
-        };
-        
-        // Save to database
-        await Database.saveToStore('sounds', soundRecord);
-        
-        // Add to available sounds
-        availableSounds[soundId] = {
-          name: soundName,
-          filename: file.name,
-          type: 'custom',
-          data: base64Data
-        };
-        
-        Settings.debugLog('Sound file saved to database:', soundId);
-        resolve(soundRecord);
-        
-      } catch (error) {
-        reject(error);
-      }
+    // Create sound record with file reference (no base64 data)
+    const soundId = generateSoundId(file.name);
+    const soundName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+    
+    const soundRecord = {
+      soundId,
+      name: soundName,
+      filename: file.name,
+      uploadDate: Date.now(),
+      size: file.size,
+      type: 'uploaded'
     };
     
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsArrayBuffer(file);
-  });
+    // Save metadata to database
+    await Database.saveToStore('sounds', soundRecord);
+    
+    // Add to available sounds as uploaded type (will look for file in public/sounds)
+    availableSounds[soundId] = {
+      name: soundName,
+      filename: file.name,
+      type: 'uploaded'
+    };
+    
+    Settings.debugLog('Sound file metadata saved:', soundId);
+    
+    // Show instructions to user
+    UI.showToast(`File "${file.name}" downloaded. Please place it in the public/sounds directory and refresh the page.`, 'info');
+    
+    return soundRecord;
+    
+  } catch (error) {
+    throw error;
+  }
 }
 
 // Generate unique sound ID
@@ -261,8 +276,8 @@ function testSound(soundId) {
   try {
     let audioUrl;
     
-    if (sound.type === 'default') {
-      // Default sounds from public/sounds folder
+    if (sound.type === 'default' || sound.type === 'uploaded') {
+      // Default and uploaded sounds from public/sounds folder
       audioUrl = `/sounds/${sound.filename}`;
     } else {
       // Custom sounds from base64 data
@@ -290,7 +305,7 @@ function testSound(soundId) {
 
 // Delete custom sound
 async function deleteCustomSound(soundId) {
-  if (!availableSounds[soundId] || availableSounds[soundId].type !== 'custom') {
+  if (!availableSounds[soundId] || (availableSounds[soundId].type !== 'custom' && availableSounds[soundId].type !== 'uploaded')) {
     return;
   }
   
@@ -316,6 +331,8 @@ async function deleteCustomSound(soundId) {
 
 // Update sound dropdowns with available options
 function updateSoundDropdowns() {
+  console.log('updateSoundDropdowns called. Available sounds:', availableSounds);
+  
   const soundDropdowns = [
     'soundDuringDelay',
     'soundEndOfDelay', 
@@ -324,9 +341,15 @@ function updateSoundDropdowns() {
   
   soundDropdowns.forEach(dropdownId => {
     const dropdown = document.getElementById(dropdownId);
-    if (!dropdown) return;
+    if (!dropdown) {
+      console.log(`Dropdown ${dropdownId} not found in DOM`);
+      return;
+    }
     
     const currentValue = dropdown.value;
+    
+    // Also check if we should use the value from settings
+    const settingsValue = Settings.settings?.[dropdownId] || currentValue;
     
     // Clear current options except 'none'
     Array.from(dropdown.options).forEach(option => {
@@ -335,38 +358,41 @@ function updateSoundDropdowns() {
       }
     });
     
-    // Add available sounds based on dropdown type
+    // Add ALL available sounds to ALL dropdowns
+    console.log(`Adding ${Object.keys(availableSounds).length} sounds to ${dropdownId}`);
     Object.entries(availableSounds).forEach(([soundId, sound]) => {
-      let shouldAdd = false;
-      
-      if (dropdownId === 'soundDuringDelay' && soundId.includes('drum')) {
-        shouldAdd = true;
-      } else if (dropdownId === 'soundEndOfDelay' && (soundId.includes('sting') || soundId.includes('rimshot'))) {
-        shouldAdd = true;
-      } else if (dropdownId === 'soundDuringReveal' && soundId.includes('applause')) {
-        shouldAdd = true;
-      }
-      
-      // Always add custom sounds to all dropdowns
-      if (sound.type === 'custom') {
-        shouldAdd = true;
-      }
-      
-      if (shouldAdd) {
-        const option = document.createElement('option');
-        option.value = soundId;
-        option.textContent = sound.name;
-        dropdown.appendChild(option);
-      }
+      const option = document.createElement('option');
+      option.value = soundId;
+      option.textContent = sound.name;
+      dropdown.appendChild(option);
+      console.log(`Added ${sound.name} (${soundId}) to ${dropdownId}`);
     });
     
-    // Restore previous selection if still available
-    if (currentValue && dropdown.querySelector(`option[value="${currentValue}"]`)) {
-      dropdown.value = currentValue;
+    // Restore previous selection - prefer settings value, fallback to current value
+    const valueToRestore = settingsValue || currentValue;
+    if (valueToRestore && valueToRestore !== 'none' && dropdown.querySelector(`option[value="${valueToRestore}"]`)) {
+      dropdown.value = valueToRestore;
+      console.log(`Restored value ${valueToRestore} for ${dropdownId}`);
+    } else if (valueToRestore === 'none') {
+      dropdown.value = 'none';
+      console.log(`Restored default value 'none' for ${dropdownId}`);
+    } else if (valueToRestore && valueToRestore !== 'none') {
+      console.log(`Could not restore value ${valueToRestore} for ${dropdownId} - option not found, defaulting to 'none'`);
+      dropdown.value = 'none';
     }
   });
   
   Settings.debugLog('Updated sound dropdowns with', Object.keys(availableSounds).length, 'available sounds');
+  
+  // Re-setup auto-save listeners for sound dropdowns after updating them
+  if (Settings && Settings.setupQuickSetupAutoSave) {
+    Settings.setupQuickSetupAutoSave();
+  }
+  
+  // Also reload sound settings if available
+  if (Settings && Settings.loadSoundSettingsToForm) {
+    Settings.loadSoundSettingsToForm();
+  }
 }
 
 // Get sound URL for playing (used by selection.js)
@@ -374,7 +400,7 @@ function getSoundUrl(soundId) {
   const sound = availableSounds[soundId];
   if (!sound) return null;
   
-  if (sound.type === 'default') {
+  if (sound.type === 'default' || sound.type === 'uploaded') {
     return `/sounds/${sound.filename}`;
   } else {
     const blob = base64ToBlob(sound.data);

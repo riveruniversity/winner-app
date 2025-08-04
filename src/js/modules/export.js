@@ -231,10 +231,63 @@ async function processRestoreFile(event) {
   event.target.value = '';
 }
 
-// Online backup functions (simplified - using localStorage for demo)
+// Clean data for Firestore by removing undefined values
+function cleanDataForFirestore(obj) {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanDataForFirestore(item)).filter(item => item !== undefined);
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const cleanedValue = cleanDataForFirestore(value);
+      // Only include the field if it's not undefined
+      if (cleanedValue !== undefined) {
+        cleaned[key] = cleanedValue;
+      }
+    }
+    return cleaned;
+  }
+  
+  // For primitive values, return as-is (including null, but not undefined)
+  return obj;
+}
+
+// Helper function to format backup size info
+function formatBackupSize(backup) {
+  const dataSize = JSON.stringify(backup.data || {}).length;
+  const sizeKB = (dataSize / 1024).toFixed(1);
+  return `${sizeKB} KB`;
+}
+
+// Global function for backup selection (called from modal HTML)
+window.selectBackup = async function(backupId) {
+  try {
+    // Close the modal
+    if (window.appModal) {
+      window.appModal.hide();
+    }
+    
+    // Perform the restore
+    await performOnlineRestore(backupId);
+  } catch (error) {
+    console.error('Error selecting backup:', error);
+    UI.showToast('Error selecting backup: ' + error.message, 'error');
+  }
+};
+
+// Online backup functions (using Firestore cloud storage)
 async function handleBackupOnline() {
   try {
     UI.showProgress('Creating Online Backup', 'Collecting data...');
+    
+    // Auto-generate backup name with ISO date and time
+    const now = new Date();
+    const backupName = now.toISOString().replace('T', ' ').substring(0, 19); // "2024-12-15 14:30:25"
 
     const backupData = {
       version: '1.0',
@@ -249,27 +302,25 @@ async function handleBackupOnline() {
     // Generate a unique backup ID
     const backupId = generateBackupId();
     
-    // For demo purposes, store in localStorage with a special key
-    // In production, this would use a real cloud service
-    const onlineBackupKey = `winner-app-online-backup-${backupId}`;
-    localStorage.setItem(onlineBackupKey, JSON.stringify(backupData));
+    // Clean backup data to remove undefined values (Firestore doesn't allow them)
+    const cleanedBackupData = cleanDataForFirestore(backupData);
     
-    // Store the backup ID locally for easy access
+    // Store the complete backup data in Firestore
     await Database.saveToStore('backups', {
       backupId: backupId,
-      onlineKey: onlineBackupKey,
+      name: backupName,
       timestamp: Date.now(),
-      description: `Backup created on ${new Date().toLocaleString()}`
+      description: `Auto-backup created at ${backupName}`,
+      data: cleanedBackupData // Store the cleaned backup data
     });
 
     UI.hideProgress();
     
-    // Show the backup ID to the user
-    UI.showConfirmationModal('Online Backup Created', 
+    // Show success message
+    UI.showConfirmationModal('Backup Created Successfully', 
       `<div class="alert alert-success">
-        <h6>Backup Created Successfully!</h6>
-        <p><strong>Backup ID:</strong> <code>${backupId}</code></p>
-        <p class="mb-0">Save this ID to restore your data later. This is a demo using local storage.</p>
+        <h6><i class="bi bi-cloud-check me-2"></i>Backup "${backupName}" Created!</h6>
+        <p class="mb-0">Your data has been securely backed up to the cloud. You can restore it anytime from the backup list.</p>
       </div>`, 
       () => {}
     );
@@ -283,15 +334,54 @@ async function handleBackupOnline() {
 
 async function handleRestoreOnline() {
   try {
-    // Get backup ID from user
-    const backupId = prompt('Enter your backup ID:');
-    if (!backupId) return;
+    UI.showProgress('Loading Backups', 'Fetching available backups...');
     
-    await performOnlineRestore(backupId.trim());
-
+    // Get all available backups
+    const backups = await Database.getFromStore('backups');
+    
+    UI.hideProgress();
+    
+    if (backups.length === 0) {
+      UI.showToast('No cloud backups found', 'info');
+      return;
+    }
+    
+    // Sort backups by timestamp (newest first)
+    backups.sort((a, b) => b.timestamp - a.timestamp);
+    
+    // Create backup selection UI
+    const backupOptions = backups.map(backup => 
+      `<div class="backup-option mb-2 p-3 border rounded" style="cursor: pointer; transition: all 0.2s;" 
+           onmouseover="this.style.backgroundColor='#f8f9fa'; this.style.borderColor='#007bff';" 
+           onmouseout="this.style.backgroundColor=''; this.style.borderColor='';"
+           onclick="selectBackup('${backup.backupId}')">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <h6 class="mb-1"><i class="bi bi-cloud-arrow-down me-2"></i>${backup.name}</h6>
+            <small class="text-muted">${backup.description}</small>
+          </div>
+          <div class="text-end">
+            <small class="text-muted d-block">${formatBackupSize(backup)}</small>
+            <small class="text-success"><i class="bi bi-check-circle me-1"></i>Available</small>
+          </div>
+        </div>
+      </div>`
+    ).join('');
+    
+    UI.showConfirmationModal('Select Backup to Restore', 
+      `<div class="mb-3">
+        <p>Choose a backup to restore:</p>
+        <div style="max-height: 400px; overflow-y: auto;">
+          ${backupOptions}
+        </div>
+      </div>`, 
+      () => {}
+    );
+    
   } catch (error) {
-    console.error('Error setting up online restore:', error);
-    UI.showToast('Error setting up online restore: ' + error.message, 'error');
+    UI.hideProgress();
+    console.error('Error loading backups:', error);
+    UI.showToast('Error loading backups: ' + error.message, 'error');
   }
 }
 
@@ -299,15 +389,14 @@ async function performOnlineRestore(backupId) {
   try {
     UI.showProgress('Restoring Online Backup', 'Downloading backup data...');
 
-    // For demo purposes, look for the backup in localStorage
-    const onlineBackupKey = `winner-app-online-backup-${backupId}`;
-    const backupDataStr = localStorage.getItem(onlineBackupKey);
+    // Get backup from Firestore
+    const backup = await Database.getFromStore('backups', backupId);
     
-    if (!backupDataStr) {
-      throw new Error('Backup ID not found');
+    if (!backup || !backup.data) {
+      throw new Error('Backup ID not found or backup data is corrupted');
     }
 
-    const backupData = JSON.parse(backupDataStr);
+    const backupData = backup.data;
 
     // Use existing restore logic from handleRestoreData
     await restoreBackupData(backupData);

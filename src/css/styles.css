@@ -351,8 +351,8 @@ body {
 
   /* Position outside the card */
   position: absolute;
-  top: clamp(-8px, -5cqw, -10px);
-  left: clamp(-8px, -5cqw, -10px);
+  top: clamp(-15px, -5cqw, -10px);
+  left: clamp(-10px, -5cqw, -10px);
   z-index: 10;
 
   /* Enhanced styling */

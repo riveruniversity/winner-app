@@ -102,7 +102,7 @@ async function handleBigPlayClick() {
     // Set current list for global access
     setCurrentList(list);
 
-    console.log('Big play clicked, selection mode:', selectionMode, 'delay visual:', delayVisualType);
+    Settings.debugLog('Big play clicked, selection mode:', selectionMode, 'delay visual:', delayVisualType);
     
     // Start the delay and selection process in parallel
     await selectWinnersWithDelay(winnersCount, selectedPrize, selectionMode, delayVisualType);
@@ -114,7 +114,7 @@ async function handleBigPlayClick() {
 
 async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, delayVisualType) {
   try {
-    console.log('Starting parallel selection and delay process');
+    Settings.debugLog('Starting parallel selection and delay process');
     
     // Get delay settings
     const preSelectionDelay = parseFloat(document.getElementById('preSelectionDelay')?.value) || 0;
@@ -124,7 +124,7 @@ async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, 
     
     // Start pre-selection delay if configured
     if (preSelectionDelay > 0) {
-      console.log('Starting pre-selection delay:', preSelectionDelay, 'seconds with visual:', delayVisualType);
+      Settings.debugLog('Starting pre-selection delay:', preSelectionDelay, 'seconds with visual:', delayVisualType);
       
       // Start sound during delay if configured
       if (settings.soundDuringDelay === 'drum-roll' && preSelectionDelay > 1) {
@@ -155,7 +155,7 @@ async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, 
     const [winners] = await Promise.all([selectionPromise, delayPromise]);
     winnersResult = winners;
     
-    console.log('Selection and delay completed, starting display process');
+    Settings.debugLog('Selection and delay completed, starting display process');
     
     // Display winners instantly (they're already selected and saved)
     await displayWinnersPublicly(winnersResult, selectedPrize, selectionMode);
@@ -185,7 +185,7 @@ async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, 
 }
 
 async function performWinnerSelection(numWinners, selectedPrize, selectionMode) {
-  console.log('Starting background winner selection');
+  Settings.debugLog('Starting background winner selection');
   UI.showProgress('Selecting Winners', 'Preparing random selection...');
 
   // Hide selection controls
@@ -280,7 +280,7 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
   UI.updateProgress(100, 'Winners selected!');
   UI.hideProgress();
   
-  console.log('Background winner selection completed');
+  Settings.debugLog('Background winner selection completed');
   return winners;
 }
 
@@ -289,33 +289,46 @@ function showCountdown(delaySeconds, visualType) {
     const countdownOverlay = document.getElementById('countdownOverlay');
     const countdownNumber = document.getElementById('countdownNumber');
 
-    console.log('Starting countdown with visual type:', visualType);
+    Settings.debugLog('Starting countdown with visual type:', visualType);
+    
+    // Show the countdown overlay first
+    countdownOverlay.classList.remove('d-none');
     
     if (visualType === 'animation') {
-      console.log('Starting particle animation');
+      Settings.debugLog('Starting particle animation');
       Animations.startParticleAnimation();
     }
     else if (visualType === 'swirl-animation') {
-      console.log('Starting swirl animation');
+      Settings.debugLog('Starting swirl animation');
       Animations.startSwirlAnimation();
     }
 
     let count = Math.ceil(delaySeconds);
-    countdownOverlay.classList.remove('d-none');
-    countdownNumber.textContent = count;
+    
+    // Only show countdown number for countdown visual
+    if (visualType === 'countdown') {
+      countdownNumber.textContent = count;
+    } else {
+      // Hide countdown number for animation types
+      countdownNumber.style.display = 'none';
+    }
 
     const interval = setInterval(() => {
       count--;
       if (count > 0) {
-        countdownNumber.textContent = count;
-        // Countdown beeps are part of the countdown visual, not configurable separately
-        playSound('countdown');
+        if (visualType === 'countdown') {
+          countdownNumber.textContent = count;
+          // Countdown beeps are part of the countdown visual, not configurable separately
+          playSound('countdown');
+        }
       } else {
         clearInterval(interval);
         if (visualType === 'animation' || visualType === 'swirl-animation') {
-          console.log('Stopping animation for type:', visualType);
+          Settings.debugLog('Stopping animation for type:', visualType);
           Animations.stopAnimation();
         }
+        // Restore countdown number display
+        countdownNumber.style.display = '';
         countdownOverlay.classList.add('d-none');
         resolve();
       }
@@ -496,6 +509,19 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
 
   winnersGrid.classList.remove('d-none');
 
+  // Trigger celebration animation if enabled
+  const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
+  const celebrationEffect = document.getElementById('celebrationEffect')?.value;
+  
+  if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
+    // Small delay to ensure winners are visible first
+    setTimeout(() => {
+      if (celebrationEffect === 'confetti' && window.Animations && window.Animations.startConfettiAnimation) {
+        window.Animations.startConfettiAnimation();
+      }
+    }, 500);
+  }
+
   // Show action buttons in header
   document.getElementById('undoSelectionBtn').classList.remove('d-none');
   document.getElementById('newSelectionBtn').classList.remove('d-none');
@@ -625,9 +651,12 @@ function getWinnerInfo3(winner) {
 function formatInfoTemplate(template, winner) {
   if (!template) return '';
   
-  return template.replace(/\{([^}]+)\}/g, (match, key) => {
+  const result = template.replace(/\{([^}]+)\}/g, (match, key) => {
     return winner[key.trim()] || '';
   }).trim();
+  
+  // Return empty string if result is just a dash or whitespace
+  return (result === '-' || result === '' || /^\s*$/.test(result)) ? '' : result;
 }
 
 // Legacy function - will be removed once info system is fully implemented

@@ -27,7 +27,10 @@ export let settings = {
   displayDuration: 0.5,
   soundDuringDelay: 'none',
   soundEndOfDelay: 'none',
-  soundDuringReveal: 'none'
+  soundDuringReveal: 'none',
+  celebrationEffect: 'confetti',
+  celebrationDuration: 4,
+  celebrationAutoTrigger: true
 };
 
 async function saveSettings() {
@@ -47,7 +50,7 @@ async function saveSingleSetting(key, value) {
     const settingToSave = { key, value };
     await Database.saveToStore('settings', settingToSave);
     
-    console.log(`Single setting saved: ${key} = ${value}`);
+    debugLog(`Single setting saved: ${key} = ${value}`);
   } catch (error) {
     console.error(`Error saving single setting ${key}:`, error);
     throw error;
@@ -68,7 +71,7 @@ async function saveMultipleSettings(settingsToSave) {
     }
     
     await Promise.all(savePromises);
-    console.log(`Batch settings saved:`, settingsToSave);
+    debugLog(`Batch settings saved:`, settingsToSave);
   } catch (error) {
     console.error('Error saving multiple settings:', error);
     throw error;
@@ -134,12 +137,41 @@ function setupTheme() {
   loadSettingsToForm();
   setupSoundTestButtons();
   
-  // Initialize sound dropdowns when available
+  // Initialize sound dropdowns when available, then reload sound settings
   setTimeout(() => {
-    if (window.Sounds) {
+    if (window.Sounds && window.Sounds.updateSoundDropdowns) {
       window.Sounds.updateSoundDropdowns();
+      debugLog('Sound dropdowns updated from setupTheme');
+      
+      // Reload sound settings after dropdowns are populated
+      loadSoundSettingsToForm();
+    } else {
+      debugLog('Sounds module not available yet in setupTheme');
     }
-  }, 100);
+  }, 500);
+}
+
+// Load only sound settings to form (called after sound dropdowns are updated)
+function loadSoundSettingsToForm() {
+  const soundFields = {
+    'soundDuringDelay': settings.soundDuringDelay,
+    'soundEndOfDelay': settings.soundEndOfDelay,
+    'soundDuringReveal': settings.soundDuringReveal
+  };
+  
+  for (const [fieldId, value] of Object.entries(soundFields)) {
+    const element = document.getElementById(fieldId);
+    if (element && value) {
+      // Check if the option exists in the dropdown
+      const option = element.querySelector(`option[value="${value}"]`);
+      if (option) {
+        element.value = value;
+        debugLog(`Restored sound setting ${fieldId} = ${value}`);
+      } else {
+        debugLog(`Sound option ${value} not found for ${fieldId}, keeping current value`);
+      }
+    }
+  }
 }
 
 function applyTheme() {
@@ -301,8 +333,8 @@ async function triggerWebhook(webhookData) {
       ...webhookData
     };
 
-    console.log('Sending webhook to:', settings.webhookUrl);
-    console.log('Payload:', payload);
+    debugLog('Sending webhook to:', settings.webhookUrl);
+    debugLog('Payload:', payload);
 
     let response;
     try {
@@ -336,8 +368,8 @@ async function triggerWebhook(webhookData) {
     }
 
     const responseText = await response.text();
-    console.log('Webhook response:', responseText);
-    console.log('Webhook notification sent successfully');
+    debugLog('Webhook response:', responseText);
+    debugLog('Webhook notification sent successfully');
     
   } catch (error) {
     console.error('Webhook notification failed:', error);
@@ -353,10 +385,10 @@ async function triggerWebhook(webhookData) {
 }
 
 function showDelayDisplay(delaySeconds, displayType) {
-  console.log('showDelayDisplay called with:', delaySeconds, displayType);
+  debugLog('showDelayDisplay called with:', delaySeconds, displayType);
   
   if (delaySeconds <= 0) {
-    console.log('No delay - returning immediately');
+    debugLog('No delay - returning immediately');
     return Promise.resolve();
   }
 
@@ -367,7 +399,7 @@ function showDelayDisplay(delaySeconds, displayType) {
     const progress = document.getElementById('delayProgress');
     const dots = document.getElementById('delayDots');
 
-    console.log('Elements found:', { 
+    debugLog('Elements found:', { 
       overlay: !!overlay, 
       spinner: !!spinner, 
       countdown: !!countdown, 
@@ -377,7 +409,7 @@ function showDelayDisplay(delaySeconds, displayType) {
 
     if (!overlay) {
       console.error('Delay overlay not found!');
-      console.log('Available elements with "delay" in ID:', 
+      debugLog('Available elements with "delay" in ID:', 
         Array.from(document.querySelectorAll('[id*="delay"]')).map(el => el.id)
       );
       resolve();
@@ -391,19 +423,19 @@ function showDelayDisplay(delaySeconds, displayType) {
 
     // Show overlay
     overlay.classList.remove('d-none');
-    console.log('Overlay shown, display type:', displayType);
+    debugLog('Overlay shown, display type:', displayType);
 
     switch (displayType) {
       case 'spinner':
-        console.log('Showing spinner');
+        debugLog('Showing spinner');
         if (spinner) {
           spinner.classList.remove('d-none');
-          console.log('Spinner shown, waiting', delaySeconds, 'seconds');
+          debugLog('Spinner shown, waiting', delaySeconds, 'seconds');
         } else {
           console.error('Spinner element not found!');
         }
         setTimeout(() => {
-          console.log('Delay complete, hiding overlay');
+          debugLog('Delay complete, hiding overlay');
           overlay.classList.add('d-none');
           resolve();
         }, delaySeconds * 1000);
@@ -467,18 +499,21 @@ function showDelayDisplay(delaySeconds, displayType) {
 
 // Test function for debugging delay
 function testDelay() {
-  // Simple test with 2 second spinner delay
-  console.log('Testing delay with 2 second spinner');
-  showDelayDisplay(2, 'spinner');
+  // Get current settings from the form
+  const delaySeconds = parseFloat(document.getElementById('preSelectionDelay')?.value) || 3;
+  const delayVisualType = document.getElementById('delayVisualType')?.value || 'countdown';
+  
+  debugLog('Testing delay with settings:', delaySeconds, delayVisualType);
+  showDelayDisplay(delaySeconds, delayVisualType);
 }
 
 // Function to update delay settings quickly - deprecated, no longer needed
 function setDelaySettings(delaySeconds, displayType) {
-  console.log('setDelaySettings called but post-display delay has been removed');
+  debugLog('setDelaySettings called but post-display delay has been removed');
 }
 
 // Auto-save function for quick setup fields (efficient batch save)
-async function autoSaveQuickSetup() {
+async function autoSaveQuickSetup(triggerElementId = null) {
   try {
     const changedSettings = {};
     
@@ -494,35 +529,73 @@ async function autoSaveQuickSetup() {
       'displayDuration': 'displayDuration',
       'soundDuringDelay': 'soundDuringDelay',
       'soundEndOfDelay': 'soundEndOfDelay',
-      'soundDuringReveal': 'soundDuringReveal'
+      'soundDuringReveal': 'soundDuringReveal',
+      'celebrationEffect': 'celebrationEffect',
+      'celebrationDuration': 'celebrationDuration',
+      'celebrationAutoTrigger': 'celebrationAutoTrigger'
     };
 
-    for (const [elementId, settingKey] of Object.entries(fieldMappings)) {
+    // If a specific element triggered this, only process that element and related ones
+    let fieldsToProcess = fieldMappings;
+    if (triggerElementId) {
+      // Define field groups to prevent cross-contamination
+      const fieldGroups = {
+        selection: ['quickListSelect', 'quickPrizeSelect', 'quickWinnersCount'],
+        timing: ['selectionMode', 'preSelectionDelay', 'delayVisualType'],
+        display: ['displayEffect', 'displayDuration'],
+        sound: ['soundDuringDelay', 'soundEndOfDelay', 'soundDuringReveal'],
+        celebration: ['celebrationEffect', 'celebrationDuration', 'celebrationAutoTrigger']
+      };
+      
+      // Find which group the trigger element belongs to
+      let targetGroup = null;
+      for (const [groupName, fields] of Object.entries(fieldGroups)) {
+        if (fields.includes(triggerElementId)) {
+          targetGroup = groupName;
+          break;
+        }
+      }
+      
+      // Only process fields in the same group
+      if (targetGroup) {
+        fieldsToProcess = {};
+        fieldGroups[targetGroup].forEach(fieldId => {
+          if (fieldMappings[fieldId]) {
+            fieldsToProcess[fieldId] = fieldMappings[fieldId];
+          }
+        });
+        debugLog(`Processing ${targetGroup} group fields for trigger: ${triggerElementId}`);
+      }
+    }
+
+    for (const [elementId, settingKey] of Object.entries(fieldsToProcess)) {
       const element = document.getElementById(elementId);
       if (element) {
-        console.log(`Checking field ${elementId} (${settingKey}): element.value="${element.value}", current setting="${settings[settingKey]}"`);
+        debugLog(`Checking field ${elementId} (${settingKey}): element.value="${element.value}", current setting="${settings[settingKey]}"`);
         
         let newValue;
         if (settingKey === 'winnersCount') {
           newValue = parseInt(element.value) || settings[settingKey];
-        } else if (settingKey === 'preSelectionDelay' || settingKey === 'displayDuration') {
+        } else if (settingKey === 'preSelectionDelay' || settingKey === 'displayDuration' || settingKey === 'celebrationDuration') {
           newValue = parseFloat(element.value);
           // Allow 0 as a valid value, only use fallback for NaN
           if (isNaN(newValue)) {
             newValue = settings[settingKey];
           }
+        } else if (element.type === 'checkbox') {
+          newValue = element.checked;
         } else {
           newValue = element.value || settings[settingKey];
         }
         
-        console.log(`Processed value for ${settingKey}: "${newValue}" (type: ${typeof newValue})`);
+        debugLog(`Processed value for ${settingKey}: "${newValue}" (type: ${typeof newValue})`);
         
         // Only add to changedSettings if value actually changed
         if (newValue !== settings[settingKey]) {
           changedSettings[settingKey] = newValue;
-          console.log(`✅ Quick setup detected change for ${settingKey}: ${settings[settingKey]} → ${newValue}`);
+          debugLog(`✅ Quick setup detected change for ${settingKey}: ${settings[settingKey]} → ${newValue}`);
         } else {
-          console.log(`❌ No change for ${settingKey}: both are ${newValue}`);
+          debugLog(`❌ No change for ${settingKey}: both are ${newValue}`);
         }
       }
     }
@@ -530,7 +603,14 @@ async function autoSaveQuickSetup() {
     // Only save if something actually changed
     if (Object.keys(changedSettings).length > 0) {
       await saveMultipleSettings(changedSettings);
-      console.log('Quick setup auto-saved:', Object.keys(changedSettings));
+      debugLog('Quick setup auto-saved:', Object.keys(changedSettings));
+      
+      // If quick selection fields changed, update UI displays
+      if (changedSettings.selectedListId !== undefined || 
+          changedSettings.selectedPrizeId !== undefined || 
+          changedSettings.winnersCount !== undefined) {
+        updateQuickSelectionUI();
+      }
     }
   } catch (error) {
     console.error('Error auto-saving quick setup:', error);
@@ -554,6 +634,7 @@ async function autoSaveIndividualSetting(fieldId) {
     const fieldToSettingMap = {
       'preventDuplicates': 'preventDuplicates',
       'hideEntryCounts': 'hideEntryCounts',
+      'celebrationAutoTrigger': 'celebrationAutoTrigger',
       'enableDebugLogs': 'enableDebugLogs',
       'fontFamily': 'fontFamily',
       'primaryColor': 'primaryColor',
@@ -572,7 +653,7 @@ async function autoSaveIndividualSetting(fieldId) {
         applyTheme();
       }
       
-      console.log(`Individual setting auto-saved: ${settingKey} = ${newValue}`);
+      debugLog(`Individual setting auto-saved: ${settingKey} = ${newValue}`);
     }
   } catch (error) {
     console.error('Error auto-saving individual setting:', error);
@@ -654,6 +735,10 @@ function testSoundEffect(phase) {
   }
 }
 
+// Store the debounced function and event listeners to prevent duplicates
+let debouncedQuickSave = null;
+let quickSetupListeners = new Map();
+
 // Setup auto-save listeners for quick setup fields
 function setupQuickSetupAutoSave() {
   const quickFields = [
@@ -667,29 +752,49 @@ function setupQuickSetupAutoSave() {
     'displayDuration',
     'soundDuringDelay',
     'soundEndOfDelay',
-    'soundDuringReveal'
+    'soundDuringReveal',
+    'celebrationEffect',
+    'celebrationDuration',
+    'celebrationAutoTrigger'
   ];
 
-  // Create a single debounced save function for all quick setup fields
-  const debouncedQuickSave = debounce(autoSaveQuickSetup, 300);
+  // Create the debounced function only once
+  if (!debouncedQuickSave) {
+    debouncedQuickSave = debounce(() => autoSaveQuickSetup(), 300);
+  }
 
   quickFields.forEach(fieldId => {
     const field = document.getElementById(fieldId);
     if (field) {
-      // Remove any existing listeners to prevent duplicates
-      field.removeEventListener('input', autoSaveQuickSetup);
-      field.removeEventListener('change', autoSaveQuickSetup);
-      field.removeEventListener('input', debouncedQuickSave);
-      field.removeEventListener('change', debouncedQuickSave);
-      
-      if (field.type === 'number' || field.type === 'text') {
-        field.addEventListener('input', debouncedQuickSave);
-        field.addEventListener('change', autoSaveQuickSetup); // Immediate save on blur
-      } else {
-        field.addEventListener('change', autoSaveQuickSetup);
+      // Remove any existing listeners stored in our map
+      if (quickSetupListeners.has(fieldId)) {
+        const listeners = quickSetupListeners.get(fieldId);
+        listeners.forEach(({ event, handler }) => {
+          field.removeEventListener(event, handler);
+        });
       }
       
-      console.log(`Quick setup auto-save listener added for: ${fieldId}`);
+      // Create field-specific handlers that pass the field ID
+      const fieldSpecificDebouncedSave = debounce(() => autoSaveQuickSetup(fieldId), 300);
+      const fieldSpecificImmediateSave = () => autoSaveQuickSetup(fieldId);
+      
+      // Create new listeners for this field
+      const newListeners = [];
+      
+      if (field.type === 'number' || field.type === 'text') {
+        field.addEventListener('input', fieldSpecificDebouncedSave);
+        field.addEventListener('change', fieldSpecificImmediateSave); // Immediate save on blur
+        newListeners.push({ event: 'input', handler: fieldSpecificDebouncedSave });
+        newListeners.push({ event: 'change', handler: fieldSpecificImmediateSave });
+      } else {
+        field.addEventListener('change', fieldSpecificImmediateSave);
+        newListeners.push({ event: 'change', handler: fieldSpecificImmediateSave });
+      }
+      
+      // Store the listeners for this field
+      quickSetupListeners.set(fieldId, newListeners);
+      
+      debugLog(`Quick setup auto-save listener added for: ${fieldId} (type: ${field.type})`);
     }
   });
 }
@@ -740,6 +845,63 @@ function debounce(func, wait) {
   };
 }
 
+// Update UI displays when quick selection fields change
+function updateQuickSelectionUI() {
+  const quickListSelect = document.getElementById('quickListSelect');
+  const quickPrizeSelect = document.getElementById('quickPrizeSelect');
+  const quickWinnersCount = document.getElementById('quickWinnersCount');
+
+  if (!quickListSelect || !quickPrizeSelect || !quickWinnersCount) return;
+
+  const listOption = quickListSelect.options[quickListSelect.selectedIndex];
+  const prizeOption = quickPrizeSelect.options[quickPrizeSelect.selectedIndex];
+
+  const listText = listOption ? listOption.textContent.split(' (')[0] : 'Not Selected';
+  const prizeText = prizeOption ? prizeOption.textContent.split(' (')[0] : 'Not Selected';
+
+  // Update display elements
+  const currentListDisplay = document.getElementById('currentListDisplay');
+  const currentPrizeDisplay = document.getElementById('currentPrizeDisplay');
+  const winnersCountDisplay = document.getElementById('winnersCountDisplay');
+  
+  if (currentListDisplay) currentListDisplay.textContent = listText;
+  if (currentPrizeDisplay) currentPrizeDisplay.textContent = prizeText;
+  if (winnersCountDisplay) winnersCountDisplay.textContent = quickWinnersCount.value;
+
+  // Update total entries when list changes
+  if (quickListSelect.value) {
+    updateTotalEntriesFromSettings();
+  } else {
+    const totalEntriesDisplay = document.getElementById('totalEntriesDisplay');
+    if (totalEntriesDisplay) totalEntriesDisplay.textContent = '0';
+  }
+
+  // Enable play button only if list and prize are selected
+  const bigPlayButton = document.getElementById('bigPlayButton');
+  if (bigPlayButton) {
+    bigPlayButton.disabled = !quickListSelect.value || !quickPrizeSelect.value;
+  }
+}
+
+// Update total entries helper function
+async function updateTotalEntriesFromSettings() {
+  try {
+    const quickListSelect = document.getElementById('quickListSelect');
+    const listId = quickListSelect?.value;
+    if (listId) {
+      const list = await Database.getFromStore('lists', listId);
+      if (list) {
+        const totalEntriesDisplay = document.getElementById('totalEntriesDisplay');
+        if (totalEntriesDisplay) {
+          totalEntriesDisplay.textContent = list.entries.length;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating total entries:', error);
+  }
+}
+
 // Debug logging utility function
 function debugLog(message, ...args) {
   if (settings.enableDebugLogs) {
@@ -756,6 +918,7 @@ export const Settings = {
   setupTheme,
   applyTheme,
   loadSettingsToForm,
+  loadSoundSettingsToForm,
   toggleTheme,
   handleThemePreset,
   setupWebhookToggle,

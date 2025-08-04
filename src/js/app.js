@@ -48,13 +48,12 @@ export async function initializeApp() {
   try {
     await Database.initDB();
     
-    // Load settings in background too - don't block UI
-    Settings.loadSettings().then(() => {
-      Settings.setupTheme(); // Apply theme once settings are loaded
-      console.log('Settings loaded:', settings);
-    });
+    // Load settings first, then load data - this ensures proper dropdown restoration
+    await Settings.loadSettings();
+    Settings.setupTheme(); // Apply theme once settings are loaded
+    console.log('Settings loaded:', settings);
     
-    // Start loading everything in background, don't block UI
+    // Now load data in background - settings are available for dropdown restoration
     loadDataInBackground();
     
     // Load other data in background too (don't await)
@@ -127,16 +126,13 @@ function setupInterfaceToggles() {
 }
 
 function setupQuickSelection() {
-  const quickListSelect = document.getElementById('quickListSelect');
-  const quickPrizeSelect = document.getElementById('quickPrizeSelect');
-  const quickWinnersCount = document.getElementById('quickWinnersCount');
+  // Quick selection fields (quickListSelect, quickPrizeSelect, quickWinnersCount) 
+  // are now handled by the unified Settings.setupQuickSetupAutoSave() system
+  
   const bigPlayButton = document.getElementById('bigPlayButton');
   const newSelectionBtn = document.getElementById('newSelectionBtn');
   const undoSelectionBtn = document.getElementById('undoSelectionBtn');
 
-  if (quickListSelect) quickListSelect.addEventListener('change', UI.updateSelectionInfo);
-  if (quickPrizeSelect) quickPrizeSelect.addEventListener('change', UI.updateSelectionInfo);
-  if (quickWinnersCount) quickWinnersCount.addEventListener('input', UI.updateSelectionInfo);
   if (bigPlayButton) bigPlayButton.addEventListener('click', Selection.handleBigPlayClick);
   if (newSelectionBtn) newSelectionBtn.addEventListener('click', Winners.resetToSelectionMode);
   if (undoSelectionBtn) undoSelectionBtn.addEventListener('click', Winners.undoLastSelection);
@@ -185,18 +181,55 @@ function setupManagementListeners() {
   themePresets.forEach(button => {
     button.addEventListener('click', Settings.handleThemePreset);
   });
+  
+  // Update sound dropdowns when settings tab is shown
+  const settingsTab = document.getElementById('settings-tab');
+  if (settingsTab) {
+    settingsTab.addEventListener('shown.bs.tab', () => {
+      if (window.Sounds && window.Sounds.updateSoundDropdowns) {
+        window.Sounds.updateSoundDropdowns();
+        Settings.debugLog('Sound dropdowns refreshed on settings tab show');
+      }
+    });
+  }
+
+  // Celebration test button
+  const testCelebrationBtn = document.getElementById('testCelebrationEffect');
+  if (testCelebrationBtn) {
+    testCelebrationBtn.addEventListener('click', () => {
+      const celebrationEffect = document.getElementById('celebrationEffect')?.value || 'confetti';
+      if (celebrationEffect === 'confetti' && window.Animations && window.Animations.startConfettiAnimation) {
+        window.Animations.startConfettiAnimation();
+      }
+    });
+  }
+  
+  // Also update sound dropdowns when quick setup tab is shown
+  const quickSetupTab = document.getElementById('quicksetup-tab');
+  if (quickSetupTab) {
+    quickSetupTab.addEventListener('shown.bs.tab', () => {
+      if (window.Sounds && window.Sounds.updateSoundDropdowns) {
+        window.Sounds.updateSoundDropdowns();
+        Settings.debugLog('Sound dropdowns refreshed on quick setup tab show');
+      }
+    });
+  }
 
   // Export/Import
   const exportWinnersBtn = document.getElementById('exportWinnersBtn');
   const clearWinnersBtn = document.getElementById('clearWinnersBtn');
   const backupData = document.getElementById('backupData');
   const restoreData = document.getElementById('restoreData');
+  const backupOnline = document.getElementById('backupOnline');
+  const restoreOnline = document.getElementById('restoreOnline');
   const undoLastSelection = document.getElementById('undoLastSelection');
 
   if (exportWinnersBtn) exportWinnersBtn.addEventListener('click', Export.handleExportWinners);
   if (clearWinnersBtn) clearWinnersBtn.addEventListener('click', Winners.clearAllWinners);
   if (backupData) backupData.addEventListener('click', Export.handleBackupData);
   if (restoreData) restoreData.addEventListener('click', Export.handleRestoreData);
+  if (backupOnline) backupOnline.addEventListener('click', Export.handleBackupOnline);
+  if (restoreOnline) restoreOnline.addEventListener('click', Export.handleRestoreOnline);
   if (undoLastSelection) undoLastSelection.addEventListener('click', Winners.undoLastSelection);
 }
 
@@ -303,3 +336,6 @@ export async function deleteHistoryConfirm(historyId) {
     }
   });
 }
+
+// Make function available globally for inline onclick handlers
+window.deleteHistoryConfirm = deleteHistoryConfirm;
