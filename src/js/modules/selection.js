@@ -488,15 +488,10 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   
-  console.log('🎉 Celebration settings:', { celebrationAutoTrigger, celebrationEffect });
-  
   if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
     // Only trigger confetti if confetti is selected (not for coins-only)
     if ((celebrationEffect === 'confetti' || celebrationEffect === 'both') && Animations && Animations.startConfettiAnimation) {
-      console.log('🎊 Starting confetti animation');
       Animations.startConfettiAnimation();
-    } else {
-      console.log('🚫 Confetti NOT started - effect is:', celebrationEffect);
     }
   }
 
@@ -519,8 +514,6 @@ async function displayWinnersAllAtOnce(winners, winnersGrid) {
   const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   const shouldShowCoins = celebrationAutoTrigger && (celebrationEffect === 'coins' || celebrationEffect === 'both');
-  
-  console.log('🪙 Coin settings:', { celebrationAutoTrigger, celebrationEffect, shouldShowCoins });
   
   winners.forEach((winner, index) => {
     const winnerCard = createWinnerCard(winner, index);
