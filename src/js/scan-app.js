@@ -54,7 +54,6 @@ function setupEventListeners() {
   // Scanner controls
   const startScanBtn = document.getElementById('startScanBtn');
   const stopScanBtn = document.getElementById('stopScanBtn');
-  const backToScannerBtn = document.getElementById('backToScannerBtn');
   const scanAnotherBtn = document.getElementById('scanAnotherBtn');
   
   if (startScanBtn) {
@@ -66,12 +65,6 @@ function setupEventListeners() {
   if (stopScanBtn) {
     stopScanBtn.addEventListener('click', () => {
       QRScanner.stopScanning();
-    });
-  }
-  
-  if (backToScannerBtn) {
-    backToScannerBtn.addEventListener('click', () => {
-      QRScanner.backToScanner(); // Just switch views, keep scanner running
     });
   }
   
