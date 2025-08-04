@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
   // Base public path when served in development or production
@@ -11,6 +12,10 @@ export default defineConfig({
     sourcemap: true,
     // Ensure proper asset handling
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        scan: resolve(__dirname, 'scan.html')
+      },
       output: {
         // Organize assets in build
         assetFileNames: (assetInfo) => {

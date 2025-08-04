@@ -218,14 +218,17 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
   const winners = selectedEntries.map((entry, index) => ({
     winnerId: UI.generateId(),
     uniqueId: UI.generateId(5).toUpperCase(),
-    ...entry.data,
+    entryId: entry.id, // Store the list entry ID for ticket scanning
+    data: entry.data, // Store all original data
     displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
     prize: selectedPrize.name,
     timestamp: Date.now(),
-    originalEntry: entry,
+    originalEntry: entry, // Store complete entry including ID
     listId: getCurrentList().listId || getCurrentList().metadata.listId,
     position: index + 1,
-    historyId: historyId
+    historyId: historyId,
+    pickedUp: false, // Initialize pickup status
+    pickupTimestamp: null
   }));
 
   UI.updateProgress(75, 'Saving winners...');
@@ -372,14 +375,17 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     const winners = selectedEntries.map((entry, index) => ({
       winnerId: UI.generateId(),
       uniqueId: UI.generateId(5).toUpperCase(),
-      ...entry.data,
+      entryId: entry.id, // Store the list entry ID for ticket scanning
+      data: entry.data, // Store all original data
       displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
       prize: selectedPrize.name,
       timestamp: Date.now(),
-      originalEntry: entry,
+      originalEntry: entry, // Store complete entry including ID
       listId: getCurrentList().listId || getCurrentList().metadata.listId,
       position: index + 1,
-      historyId: historyId
+      historyId: historyId,
+      pickedUp: false, // Initialize pickup status
+      pickupTimestamp: null
     }));
 
     UI.updateProgress(75, 'Saving winners...');

@@ -460,6 +460,41 @@ async function migrateFromIndexedDB() {
   console.log('Migration helper available if needed');
 }
 
+// Update specific fields in a document
+async function updateWinner(winnerId, updateData) {
+  try {
+    console.log(`🔄 Updating winner ${winnerId} with pickup status...`);
+    
+    // Get the existing winner data first
+    const existingWinner = await getFromStore('winners', winnerId);
+    if (!existingWinner) {
+      throw new Error(`Winner ${winnerId} not found`);
+    }
+    
+    // Merge update data with existing data
+    const updatedWinner = {
+      ...existingWinner,
+      ...updateData
+    };
+    
+    // Save the updated winner (fire-and-forget)
+    await saveToStore('winners', updatedWinner);
+    
+    // Also update in IndexedDB for immediate local access
+    if (window.localDB) {
+      const tx = window.localDB.transaction(['winners'], 'readwrite');
+      const store = tx.objectStore('winners');
+      await store.put(updatedWinner);
+    }
+    
+    console.log(`✅ Winner ${winnerId} updated with pickup status`);
+    return updatedWinner;
+  } catch (error) {
+    console.error(`Error updating winner ${winnerId}:`, error);
+    throw error;
+  }
+}
+
 // Export the clean API - only the essentials
 export const Database = {
   saveToStore,     // Handles everything: local-first, sharding, fire-and-forget
@@ -467,7 +502,19 @@ export const Database = {
   deleteFromStore, // Fire-and-forget deletes
   listenToCollection, // Real-time updates
   queryStore,      // Advanced queries
-  initDB: () => Promise.resolve(db) // Firebase initialization
+  updateWinner,    // Update winner pickup status
+  initDB: async () => {
+    // Initialize IndexedDB for local storage
+    if (!window.localDB) {
+      const request = indexedDB.open('winnerAppDB', 1);
+      request.onsuccess = (event) => {
+        window.localDB = event.target.result;
+      };
+    }
+    Database.db = db;
+    return db;
+  },
+  db: null // Will be set after initDB
 };
 
 // Export only the core functions for direct use

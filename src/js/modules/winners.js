@@ -43,24 +43,37 @@ async function loadWinners() {
     updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection);
 
     if (filteredWinners.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No winners match the current filters.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No winners match the current filters.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = filteredWinners.map(winner => `
-      <tr>
-        <td><span class="badge bg-primary">${winner.uniqueId || winner.winnerId.slice(0, 5).toUpperCase()}</span></td>
-        <td>${winner.displayName}</td>
-        <td>${winner.prize}</td>
-        <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
-        <td>${listNameMap[winner.listId] || 'Unknown'}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-danger" data-winner-id="${winner.winnerId}" onclick="Winners.deleteWinnerConfirm(this.dataset.winnerId)">
-            <i class="bi bi-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = filteredWinners.map(winner => {
+      const ticketCode = winner.winnerId.slice(0, 5).toUpperCase();
+      const pickupStatus = winner.pickedUp ? 
+        `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
+        `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
+      
+      return `
+        <tr>
+          <td>
+            <span class="badge bg-primary">${ticketCode}</span>
+            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="Winners.showQRCode('${winner.winnerId}')" title="Show QR Code">
+              <i class="bi bi-qr-code"></i>
+            </button>
+          </td>
+          <td>${winner.displayName}</td>
+          <td>${winner.prize}</td>
+          <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
+          <td>${listNameMap[winner.listId] || 'Unknown'}</td>
+          <td>${pickupStatus}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger" data-winner-id="${winner.winnerId}" onclick="Winners.deleteWinnerConfirm(this.dataset.winnerId)">
+              <i class="bi bi-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   } catch (error) {
     console.error('Error loading winners:', error);
     UI.showToast('Error loading winners: ' + error.message, 'error');
@@ -280,6 +293,44 @@ function resetToSelectionMode() {
   UI.populateQuickSelects();
 }
 
+async function showQRCode(winnerId) {
+  try {
+    // Get the winner record to find the actual ticket code (recordId)
+    const winners = await Database.getFromStore('winners');
+    const winner = winners.find(w => w.winnerId === winnerId);
+    
+    if (!winner) {
+      UI.showToast('Winner not found', 'error');
+      return;
+    }
+    
+    // Use original entry ID if available, otherwise fall back to winnerId
+    const ticketCode = winner.originalEntry?.id || winner.entryId || winnerId;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticketCode)}`;
+    
+    const modalElement = document.getElementById('appModal');
+    const modal = new bootstrap.Modal(modalElement);
+    
+    document.getElementById('appModalLabel').textContent = 'Winner Ticket QR Code';
+    document.getElementById('appModalBody').innerHTML = `
+      <div class="text-center">
+        <h5>Ticket Code: <span class="badge bg-primary fs-6">${ticketCode}</span></h5>
+        <img src="${qrCodeUrl}" alt="QR Code" class="img-fluid my-3" />
+        <p class="text-muted">Scan this code at the prize pickup station</p>
+        <button class="btn btn-primary" onclick="window.print()">
+          <i class="bi bi-printer"></i> Print QR Code
+        </button>
+      </div>
+    `;
+    
+    document.getElementById('appModalConfirmBtn').style.display = 'none';
+    modal.show();
+  } catch (error) {
+    console.error('Error showing QR code:', error);
+    UI.showToast('Error generating QR code: ' + error.message, 'error');
+  }
+}
+
 export const Winners = {
   loadWinners,
   populateWinnerFilters,
@@ -289,7 +340,8 @@ export const Winners = {
   getAllWinners,
   clearAllWinners,
   undoLastSelection,
-  resetToSelectionMode
+  resetToSelectionMode,
+  showQRCode
 };
 
 window.Winners = Winners;
