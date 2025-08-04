@@ -3,6 +3,7 @@ const STATIC_CACHE_NAME = 'winner-app-static-v1';
 const DYNAMIC_CACHE_NAME = 'winner-app-dynamic-v1';
 
 // Files to cache immediately (production paths)
+// NOTE: Built assets (JS/CSS with hashes) are cached dynamically when requested
 const STATIC_FILES = [
   './',
   './index.html',
@@ -11,6 +12,10 @@ const STATIC_FILES = [
   './favicon.png',
   './icons/icon-192x192.svg',
   './icons/icon-512x512.svg',
+  // Sound files
+  './sounds/applause.mp3',
+  './sounds/drum-roll.mp3', 
+  './sounds/sting-rimshot-drum-roll.mp3',
   // Bootstrap CSS
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
   // Bootstrap Icons
@@ -46,15 +51,42 @@ self.addEventListener('install', (event) => {
           }
         });
 
-        const results = await Promise.all(cachePromises);
+        // Also try to preload common build assets if they exist
+        // This helps with initial loading in production
+        const buildAssets = [
+          './assets/index.js', // Common patterns
+          './assets/index.css',
+          './assets/css/index.css'
+        ];
 
-        const failed = results.filter(r => !r.success);
-        const succeeded = results.filter(r => r.success);
+        const buildAssetPromises = buildAssets.map(async (url) => {
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              await cache.put(url, response);
+              console.log(`[Service Worker] Preloaded build asset: ${url}`);
+              return { url, success: true };
+            }
+            return { url, success: false, error: 'Not found' };
+          } catch (error) {
+            // It's okay if build assets don't exist - they'll be cached when requested
+            console.log(`[Service Worker] Build asset not available: ${url}`);
+            return { url, success: false, error };
+          }
+        });
 
-        console.log(`[Service Worker] Successfully cached ${succeeded.length}/${STATIC_FILES.length} files`);
+        const [staticResults, buildResults] = await Promise.all([
+          Promise.all(cachePromises),
+          Promise.all(buildAssetPromises)
+        ]);
+
+        const failed = staticResults.filter(r => !r.success);
+        const succeeded = staticResults.filter(r => r.success);
+
+        console.log(`[Service Worker] Successfully cached ${succeeded.length}/${STATIC_FILES.length} static files`);
 
         if (failed.length > 0) {
-          console.warn('[Service Worker] Failed to cache:', failed.map(f => f.url));
+          console.warn('[Service Worker] Failed to cache static files:', failed.map(f => f.url));
 
           // Don't fail installation for missing development files - they don't exist in production
           console.log('[Service Worker] Some files failed to cache, but installation will continue');
@@ -201,8 +233,20 @@ async function cacheFirst(request) {
 
     // Cache successful responses (but not chrome-extension URLs)
     if (networkResponse.status === 200 && !request.url.startsWith('chrome-extension://')) {
-      const responseClone = networkResponse.clone();
-      cache.put(request, responseClone);
+      try {
+        const responseClone = networkResponse.clone();
+        await cache.put(request, responseClone);
+        
+        // Log successful caching of built assets for debugging
+        if (request.url.includes('/assets/')) {
+          console.log('[Service Worker] Successfully cached built asset:', request.url);
+        }
+      } catch (cacheError) {
+        console.warn('[Service Worker] Failed to cache response for:', request.url, cacheError);
+        // Continue even if caching fails
+      }
+    } else if (networkResponse.status !== 200) {
+      console.warn('[Service Worker] Non-200 response for:', request.url, 'Status:', networkResponse.status);
     }
 
     return networkResponse;
@@ -254,19 +298,39 @@ async function networkFirst(request) {
 
 // Helper functions
 function isStaticFile(url) {
-  const staticExtensions = ['.html', '.css', '.js', '.json', '.ico', '.png', '.svg'];
-  const staticFiles = [
+  const staticExtensions = ['.html', '.css', '.js', '.json', '.ico', '.png', '.svg', '.mp3'];
+  const staticPaths = [
     './index.html',
-    './manifest.json',
+    './manifest.json', 
     './favicon.ico',
     './favicon.png',
-    // Assets folder (Vite builds JS/CSS here with hashes)
+    // Assets folder (Vite builds JS/CSS here with hashes) - cache these aggressively
     './assets/',
-    './icons/'
+    '/assets/', // Also match absolute paths
+    './icons/',
+    './sounds/'
   ];
 
-  return staticFiles.some(file => url.includes(file)) ||
-    staticExtensions.some(ext => url.endsWith(ext));
+  // Normalize URL for consistent matching
+  const normalizedUrl = url.replace(/^https?:\/\/[^\/]+/, ''); // Remove domain
+  
+  // Check if URL matches any static path patterns
+  const matchesStaticPath = staticPaths.some(path => {
+    return normalizedUrl.includes(path) || url.includes(path);
+  });
+  
+  const hasStaticExtension = staticExtensions.some(ext => normalizedUrl.endsWith(ext));
+  
+  // Consider files in assets folder as static (these are the built JS/CSS files)
+  const isAssetFile = (normalizedUrl.includes('/assets/') || normalizedUrl.includes('./assets/')) && 
+                     (normalizedUrl.includes('.js') || normalizedUrl.includes('.css'));
+  
+  // Debug logging for asset files
+  if (isAssetFile) {
+    console.log('[Service Worker] Detected asset file:', url, 'normalized:', normalizedUrl);
+  }
+  
+  return matchesStaticPath || hasStaticExtension || isAssetFile;
 }
 
 function isCDNFile(url) {
