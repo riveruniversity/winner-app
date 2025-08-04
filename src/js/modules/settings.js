@@ -492,21 +492,34 @@ function showDelayDisplay(delaySeconds, displayType) {
         const animationCountdownOverlay = document.getElementById('countdownOverlay');
         const animationCountdownNumber = document.getElementById('countdownNumber');
         
+        debugLog('Animation case - Elements found:', {
+          overlay: !!animationCountdownOverlay,
+          number: !!animationCountdownNumber,
+          animations: !!window.Animations,
+          startParticle: !!(window.Animations && window.Animations.startParticleAnimation)
+        });
+        
         if (animationCountdownOverlay && animationCountdownNumber) {
           // Hide delay overlay and show countdown overlay
           overlay.classList.add('d-none');
           animationCountdownOverlay.classList.remove('d-none');
+          debugLog('Countdown overlay shown for animation');
           
           // Start particle animation
           if (window.Animations && window.Animations.startParticleAnimation) {
             window.Animations.startParticleAnimation();
+            debugLog('Particle animation started');
+          } else {
+            debugLog('Particle animation not available');
           }
           
           let animationCount = Math.ceil(delaySeconds);
           animationCountdownNumber.textContent = animationCount;
+          debugLog('Starting countdown from:', animationCount);
 
           const animationInterval = setInterval(() => {
             animationCount--;
+            debugLog('Countdown tick:', animationCount);
             if (animationCount > 0) {
               animationCountdownNumber.textContent = animationCount;
             } else {
@@ -515,11 +528,12 @@ function showDelayDisplay(delaySeconds, displayType) {
               if (window.Animations && window.Animations.stopAnimation) {
                 window.Animations.stopAnimation();
               }
+              debugLog('Animation countdown completed');
               resolve();
             }
           }, 1000);
         } else {
-          // Fallback to silent delay if elements not found
+          debugLog('Animation elements not found, falling back to silent delay');
           overlay.classList.add('d-none');
           setTimeout(resolve, delaySeconds * 1000);
         }
@@ -530,21 +544,34 @@ function showDelayDisplay(delaySeconds, displayType) {
         const swirlCountdownOverlay = document.getElementById('countdownOverlay');
         const swirlCountdownNumber = document.getElementById('countdownNumber');
         
+        debugLog('Swirl animation case - Elements found:', {
+          overlay: !!swirlCountdownOverlay,
+          number: !!swirlCountdownNumber,
+          animations: !!window.Animations,
+          startSwirl: !!(window.Animations && window.Animations.startSwirlAnimation)
+        });
+        
         if (swirlCountdownOverlay && swirlCountdownNumber) {
           // Hide delay overlay and show countdown overlay
           overlay.classList.add('d-none');
           swirlCountdownOverlay.classList.remove('d-none');
+          debugLog('Countdown overlay shown for swirl animation');
           
           // Start swirl animation
           if (window.Animations && window.Animations.startSwirlAnimation) {
             window.Animations.startSwirlAnimation();
+            debugLog('Swirl animation started');
+          } else {
+            debugLog('Swirl animation not available');
           }
           
           let swirlCount = Math.ceil(delaySeconds);
           swirlCountdownNumber.textContent = swirlCount;
+          debugLog('Starting swirl countdown from:', swirlCount);
 
           const swirlInterval = setInterval(() => {
             swirlCount--;
+            debugLog('Swirl countdown tick:', swirlCount);
             if (swirlCount > 0) {
               swirlCountdownNumber.textContent = swirlCount;
             } else {
@@ -553,11 +580,12 @@ function showDelayDisplay(delaySeconds, displayType) {
               if (window.Animations && window.Animations.stopAnimation) {
                 window.Animations.stopAnimation();
               }
+              debugLog('Swirl animation countdown completed');
               resolve();
             }
           }, 1000);
         } else {
-          // Fallback to silent delay if elements not found
+          debugLog('Swirl animation elements not found, falling back to silent delay');
           overlay.classList.add('d-none');
           setTimeout(resolve, delaySeconds * 1000);
         }

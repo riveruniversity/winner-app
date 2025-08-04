@@ -305,20 +305,18 @@ function showCountdown(delaySeconds, visualType) {
 
     let count = Math.ceil(delaySeconds);
     
-    // Only show countdown number for countdown visual
-    if (visualType === 'countdown') {
-      countdownNumber.textContent = count;
-    } else {
-      // Hide countdown number for animation types
-      countdownNumber.style.display = 'none';
-    }
+    // Show countdown number for all visual types (countdown AND animations)
+    countdownNumber.textContent = count;
+    countdownNumber.style.display = 'block'; // Ensure it's visible
 
     const interval = setInterval(() => {
       count--;
       if (count > 0) {
+        // Update countdown number for all visual types
+        countdownNumber.textContent = count;
+        
+        // Only play countdown beep for countdown visual (not animations)
         if (visualType === 'countdown') {
-          countdownNumber.textContent = count;
-          // Countdown beeps are part of the countdown visual, not configurable separately
           playSound('countdown');
         }
       } else {
