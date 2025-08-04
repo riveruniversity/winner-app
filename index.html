@@ -106,8 +106,11 @@
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#" id="undoLastSelection"><i class="bi bi-arrow-counterclockwise me-2"></i>Undo Last Selection</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#" id="backupData"><i class="bi bi-download me-2"></i>Backup Data</a></li>
-                <li><a class="dropdown-item" href="#" id="restoreData"><i class="bi bi-upload me-2"></i>Restore Data</a></li>
+                <li><a class="dropdown-item" href="#" id="backupData"><i class="bi bi-download me-2"></i>Backup Local</a></li>
+                <li><a class="dropdown-item" href="#" id="restoreData"><i class="bi bi-upload me-2"></i>Restore Local</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" id="backupOnline"><i class="bi bi-cloud-upload me-2"></i>Backup Online</a></li>
+                <li><a class="dropdown-item" href="#" id="restoreOnline"><i class="bi bi-cloud-download me-2"></i>Restore Online</a></li>
               </ul>
             </div>
             <button class="btn btn-primary" id="backToPublicBtn">
@@ -257,7 +260,6 @@
                     </label>
                     <select class="form-select form-select-lg" id="soundDuringDelay">
                       <option value="none">No Sound</option>
-                      <option value="drum-roll">Drumroll</option>
                     </select>
                   </div>
                   <div class="col-md-4">
@@ -267,7 +269,6 @@
                     </label>
                     <select class="form-select form-select-lg" id="soundEndOfDelay">
                       <option value="none">No Sound</option>
-                      <option value="sting-rimshot-drum-roll">Sting Rimshot</option>
                     </select>
                   </div>
                   <div class="col-md-4">
@@ -277,7 +278,6 @@
                     </label>
                     <select class="form-select form-select-lg" id="soundDuringReveal">
                       <option value="none">No Sound</option>
-                      <option value="applause">Applause</option>
                     </select>
                   </div>
                   <div class="col-12">
@@ -291,15 +291,55 @@
                       <button type="button" class="btn btn-sm btn-outline-secondary" id="testSoundDuringReveal">
                         <i class="bi bi-play-fill me-1"></i>Test Reveal Sound
                       </button>
+                      <button type="button" class="btn btn-outline-info" id="previewDelayBtn">
+                        <i class="bi bi-eye me-1"></i>Preview Delay
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <div class="text-center mt-3">
-                  <button class="btn btn-outline-info" id="previewDelayBtn">
-                    <i class="bi bi-eye me-2"></i>Preview Delay
-                  </button>
+                <!-- Celebration Animation Settings -->
+                <div class="card mb-3">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <i class="bi bi-star-fill me-2"></i>Celebration Effects
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Visual effects when winners are revealed"></i>
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <label for="celebrationEffect" class="form-label">Celebration Animation</label>
+                        <select class="form-select" id="celebrationEffect">
+                          <option value="none">No Animation</option>
+                          <option value="confetti" selected>Confetti</option>
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label for="celebrationDuration" class="form-label">Animation Duration (seconds)</label>
+                        <input type="number" class="form-control" id="celebrationDuration" min="1" max="10" step="0.5" value="4">
+                      </div>
+                    </div>
+                    <div class="row mt-3">
+                      <div class="col-12">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" id="celebrationAutoTrigger" checked>
+                          <label class="form-check-label" for="celebrationAutoTrigger">
+                            Auto-trigger celebration when winners are revealed
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row mt-2">
+                      <div class="col-12">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="testCelebrationEffect">
+                          <i class="bi bi-play-fill me-1"></i>Test Celebration
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -676,7 +716,7 @@
                     <div class="mb-3">
                       <label class="form-label">Upload Sound Files</label>
                       <input type="file" class="form-control" id="soundFileInput" accept=".mp3" multiple style="display: none;">
-                      <div class="form-text">Click the button below to select and upload MP3 files. Files will be available in sound selection dropdowns.</div>
+                      <div class="form-text">Click the button below to select and upload MP3 files. All uploaded sounds will be available in all sound selection dropdowns.</div>
                     </div>
                     <button class="btn btn-primary" id="uploadSoundFilesBtn">
                       <i class="bi bi-upload me-2"></i>Upload Sound Files

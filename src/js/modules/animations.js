@@ -12,7 +12,7 @@ let animationFrameId = null;
 
 // Enhanced startParticleAnimation function for Swirl Animation
 function startSwirlAnimation() {
-  console.log('startSwirlAnimation called');
+  if (Settings && Settings.debugLog) Settings.debugLog('startSwirlAnimation called');
   const canvas = document.getElementById('animationCanvas');
   const ctx = canvas.getContext('2d');
   let particles = [];
@@ -189,6 +189,106 @@ function startParticleAnimation() {
   animate();
 }
 
+
+// Confetti Celebration Animation
+function startConfettiAnimation() {
+  if (Settings && Settings.debugLog) Settings.debugLog('startConfettiAnimation called');
+  const canvas = document.getElementById('animationCanvas');
+  const ctx = canvas.getContext('2d');
+  let confettiPieces = [];
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Convert hex to RGB
+  function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  const primaryRgb = hexToRgb(settings.primaryColor);
+  const secondaryRgb = hexToRgb(settings.secondaryColor);
+  const colors = [primaryRgb, secondaryRgb, {r: 255, g: 215, b: 0}, {r: 255, g: 20, b: 147}, {r: 50, g: 205, b: 50}];
+
+  class ConfettiPiece {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = -10;
+      this.vx = (Math.random() - 0.5) * 4;
+      this.vy = Math.random() * 3 + 2;
+      this.width = Math.random() * 8 + 4;
+      this.height = Math.random() * 8 + 4;
+      this.color = colors[Math.floor(Math.random() * colors.length)];
+      this.rotation = Math.random() * Math.PI * 2;
+      this.rotationSpeed = (Math.random() - 0.5) * 0.3;
+      this.gravity = 0.05;
+      this.life = 200;
+    }
+
+    update() {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vy += this.gravity;
+      this.rotation += this.rotationSpeed;
+      this.life--;
+      
+      // Slight air resistance
+      this.vx *= 0.999;
+      this.vy *= 0.999;
+    }
+
+    draw() {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.rotation);
+      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${Math.max(0, this.life / 200)})`;
+      ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+      ctx.restore();
+    }
+  }
+
+  function createConfetti() {
+    for (let i = 0; i < 5; i++) {
+      confettiPieces.push(new ConfettiPiece());
+    }
+  }
+
+  let frameCount = 0;
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Create new confetti pieces periodically
+    if (frameCount % 3 === 0 && frameCount < 120) {
+      createConfetti();
+    }
+    
+    // Update and draw confetti
+    for (let i = confettiPieces.length - 1; i >= 0; i--) {
+      const piece = confettiPieces[i];
+      piece.update();
+      piece.draw();
+      
+      if (piece.y > canvas.height + 10 || piece.life <= 0) {
+        confettiPieces.splice(i, 1);
+      }
+    }
+    
+    frameCount++;
+    
+    // Continue animation if there are still pieces or we're still creating them
+    if (confettiPieces.length > 0 || frameCount < 120) {
+      animationFrameId = requestAnimationFrame(animate);
+    }
+  }
+
+  animate();
+}
+
 // Stop animation function
 function stopAnimation() {
   if (animationFrameId) {
@@ -201,6 +301,7 @@ function stopAnimation() {
 export const Animations = {
   startSwirlAnimation,
   startParticleAnimation,
+  startConfettiAnimation,
   stopAnimation
 };
 

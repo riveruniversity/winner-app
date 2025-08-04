@@ -103,6 +103,8 @@ async function populateQuickSelects(lists = null, prizes = null) {
     const quickListSelect = document.getElementById('quickListSelect');
     const quickPrizeSelect = document.getElementById('quickPrizeSelect');
     const quickWinnersCount = document.getElementById('quickWinnersCount');
+    
+    let settingsChanged = false;
 
     if (quickListSelect) {
       quickListSelect.innerHTML = '<option value="">Select List...</option>';
@@ -115,7 +117,17 @@ async function populateQuickSelects(lists = null, prizes = null) {
       });
       
       if (settings.selectedListId) {
-        quickListSelect.value = settings.selectedListId;
+        const listOption = quickListSelect.querySelector(`option[value="${settings.selectedListId}"]`);
+        if (listOption) {
+          quickListSelect.value = settings.selectedListId;
+          console.log('Restored list selection:', settings.selectedListId);
+        } else {
+          console.log('Saved list selection not found, clearing setting:', settings.selectedListId);
+          settings.selectedListId = '';
+          settingsChanged = true;
+        }
+      } else {
+        console.log('No saved list selection to restore');
       }
     }
 
@@ -129,7 +141,17 @@ async function populateQuickSelects(lists = null, prizes = null) {
       });
       
       if (settings.selectedPrizeId) {
-        quickPrizeSelect.value = settings.selectedPrizeId;
+        const prizeOption = quickPrizeSelect.querySelector(`option[value="${settings.selectedPrizeId}"]`);
+        if (prizeOption) {
+          quickPrizeSelect.value = settings.selectedPrizeId;
+          console.log('Restored prize selection:', settings.selectedPrizeId);
+        } else {
+          console.log('Saved prize selection not found, clearing setting:', settings.selectedPrizeId);
+          settings.selectedPrizeId = '';
+          settingsChanged = true;
+        }
+      } else {
+        console.log('No saved prize selection to restore');
       }
     }
 
@@ -138,6 +160,16 @@ async function populateQuickSelects(lists = null, prizes = null) {
     }
 
     updateSelectionInfo();
+    
+    // Re-setup auto-save listeners for quick select dropdowns after updating them
+    if (Settings && Settings.setupQuickSetupAutoSave) {
+      Settings.setupQuickSetupAutoSave();
+    }
+    
+    // Save settings if any selections were cleared due to missing options
+    if (settingsChanged && Settings && Settings.saveSettings) {
+      Settings.saveSettings();
+    }
   } catch (error) {
     console.error('Error populating quick selects:', error);
     showToast('Error loading selection options: ' + error.message, 'error');
@@ -179,10 +211,8 @@ function updateSelectionInfo() {
   document.getElementById('currentPrizeDisplay').textContent = prizeText;
   document.getElementById('winnersCountDisplay').textContent = quickWinnersCount.value;
 
-  // Auto-save selections to settings
-  settings.selectedListId = quickListSelect.value;
-  settings.selectedPrizeId = quickPrizeSelect.value;
-  settings.winnersCount = parseInt(quickWinnersCount.value) || 1;
+  // Note: Quick selection fields are now handled by unified Settings.setupQuickSetupAutoSave() system
+  // This function is kept for legacy compatibility but the auto-save is handled elsewhere
 
   // Update total entries when list changes
   if (quickListSelect.value) {

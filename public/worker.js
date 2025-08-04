@@ -143,7 +143,6 @@ self.addEventListener('fetch', (event) => {
 
   // IMPORTANT: Bypass Firebase requests immediately
   if (isFirebaseRequest(request.url)) {
-    console.log('[Service Worker] Bypassing Firebase request:', request.url);
     return event.respondWith(fetch(request));
   }
 
@@ -154,7 +153,6 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension requests
   if (request.url.startsWith('chrome-extension://')) {
-    console.log('[Service Worker] Skipping chrome-extension request:', request.url);
     return;
   }
 
@@ -216,7 +214,6 @@ async function cacheFirst(request) {
   try {
     // Skip caching for chrome-extension requests
     if (request.url.startsWith('chrome-extension://')) {
-      console.log('[Service Worker] Skipping cache for chrome-extension:', request.url);
       return fetch(request);
     }
 
@@ -261,7 +258,6 @@ async function networkFirst(request) {
   try {
     // Skip caching for chrome-extension requests
     if (request.url.startsWith('chrome-extension://')) {
-      console.log('[Service Worker] Skipping cache for chrome-extension:', request.url);
       return fetch(request);
     }
 

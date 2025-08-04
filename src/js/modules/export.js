@@ -231,11 +231,159 @@ async function processRestoreFile(event) {
   event.target.value = '';
 }
 
+// Online backup functions (simplified - using localStorage for demo)
+async function handleBackupOnline() {
+  try {
+    UI.showProgress('Creating Online Backup', 'Collecting data...');
+
+    const backupData = {
+      version: '1.0',
+      timestamp: Date.now(),
+      lists: await Database.getFromStore('lists'),
+      prizes: await Database.getFromStore('prizes'),
+      winners: await Database.getFromStore('winners'),
+      history: await Database.getFromStore('history'),
+      settings: Settings.settings
+    };
+
+    // Generate a unique backup ID
+    const backupId = generateBackupId();
+    
+    // For demo purposes, store in localStorage with a special key
+    // In production, this would use a real cloud service
+    const onlineBackupKey = `winner-app-online-backup-${backupId}`;
+    localStorage.setItem(onlineBackupKey, JSON.stringify(backupData));
+    
+    // Store the backup ID locally for easy access
+    await Database.saveToStore('backups', {
+      backupId: backupId,
+      onlineKey: onlineBackupKey,
+      timestamp: Date.now(),
+      description: `Backup created on ${new Date().toLocaleString()}`
+    });
+
+    UI.hideProgress();
+    
+    // Show the backup ID to the user
+    UI.showConfirmationModal('Online Backup Created', 
+      `<div class="alert alert-success">
+        <h6>Backup Created Successfully!</h6>
+        <p><strong>Backup ID:</strong> <code>${backupId}</code></p>
+        <p class="mb-0">Save this ID to restore your data later. This is a demo using local storage.</p>
+      </div>`, 
+      () => {}
+    );
+
+  } catch (error) {
+    UI.hideProgress();
+    console.error('Error creating online backup:', error);
+    UI.showToast('Error creating online backup: ' + error.message, 'error');
+  }
+}
+
+async function handleRestoreOnline() {
+  try {
+    // Get backup ID from user
+    const backupId = prompt('Enter your backup ID:');
+    if (!backupId) return;
+    
+    await performOnlineRestore(backupId.trim());
+
+  } catch (error) {
+    console.error('Error setting up online restore:', error);
+    UI.showToast('Error setting up online restore: ' + error.message, 'error');
+  }
+}
+
+async function performOnlineRestore(backupId) {
+  try {
+    UI.showProgress('Restoring Online Backup', 'Downloading backup data...');
+
+    // For demo purposes, look for the backup in localStorage
+    const onlineBackupKey = `winner-app-online-backup-${backupId}`;
+    const backupDataStr = localStorage.getItem(onlineBackupKey);
+    
+    if (!backupDataStr) {
+      throw new Error('Backup ID not found');
+    }
+
+    const backupData = JSON.parse(backupDataStr);
+
+    // Use existing restore logic from handleRestoreData
+    await restoreBackupData(backupData);
+
+    UI.hideProgress();
+    UI.showToast('Online backup restored successfully!', 'success');
+
+  } catch (error) {
+    UI.hideProgress();
+    console.error('Error restoring online backup:', error);
+    UI.showToast('Error restoring online backup: ' + error.message, 'error');
+  }
+}
+
+function generateBackupId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Extract common restore logic
+async function restoreBackupData(backupData) {
+  if (!backupData.version) {
+    throw new Error('Invalid backup file format');
+  }
+
+  UI.updateProgress(20, 'Restoring lists...');
+  if (backupData.lists) {
+    for (const list of backupData.lists) {
+      await Database.saveToStore('lists', list);
+    }
+  }
+
+  UI.updateProgress(40, 'Restoring prizes...');
+  if (backupData.prizes) {
+    for (const prize of backupData.prizes) {
+      await Database.saveToStore('prizes', prize);
+    }
+  }
+
+  UI.updateProgress(60, 'Restoring winners...');
+  if (backupData.winners) {
+    for (const winner of backupData.winners) {
+      await Database.saveToStore('winners', winner);
+    }
+  }
+
+  UI.updateProgress(80, 'Restoring history...');
+  if (backupData.history) {
+    for (const historyEntry of backupData.history) {
+      await Database.saveToStore('history', historyEntry);
+    }
+  }
+
+  UI.updateProgress(90, 'Restoring settings...');
+  if (backupData.settings) {
+    Settings.updateSettings(backupData.settings);
+  }
+
+  UI.updateProgress(100, 'Finalizing...');
+
+  setTimeout(() => {
+    location.reload(); // Reload to ensure full UI refresh
+  }, 500);
+}
+
 export const Export = {
   handleExportWinners,
   handleBackupData,
   handleRestoreData,
-  processRestoreFile
+  processRestoreFile,
+  handleBackupOnline,
+  handleRestoreOnline
 };
 
 window.Export = Export;
