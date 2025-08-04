@@ -461,30 +461,6 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
   }
 }
 
-function adjustWinnerCardFontSize(numWinners) {
-  const winnerCards = document.querySelectorAll('.winner-card');
-  if (winnerCards.length === 0) return;
-
-  // Base font sizes
-  let nameFontSize = 1.5; // rem
-  let detailsFontSize = 0.9; // rem
-
-  // Adjust based on number of winners
-  if (numWinners > 8) {
-    nameFontSize = 1.0;
-    detailsFontSize = 0.7;
-  } else if (numWinners > 4) {
-    nameFontSize = 1.2;
-    detailsFontSize = 0.8;
-  }
-
-  winnerCards.forEach(card => {
-    const nameElement = card.querySelector('.winner-name');
-    const detailsElement = card.querySelector('.winner-details');
-    if (nameElement) nameElement.style.fontSize = `${nameFontSize}rem`;
-    if (detailsElement) detailsElement.style.fontSize = `${detailsFontSize}rem`;
-  });
-}
 
 async function displayWinnersPublicly(winners, prize, selectionMode) {
   // Show prize display

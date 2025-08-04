@@ -173,32 +173,103 @@ body {
   box-shadow: 0 10px 20px rgba(108, 117, 125, 0.4);
 }
 
-/* Winners Display - Flexbox with Wrap */
+/* Winners Display - Dynamic CSS Grid */
 .winners-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: clamp(0.25rem, 1vw, 0.75rem);
+  display: grid;
+  gap: clamp(0.25rem, 0.5vw, 0.75rem);
   width: 100%;
   height: calc(100vh - 200px);
-  padding: clamp(0.25rem, 1vw, 1rem);
+  padding: clamp(0.5rem, 1vw, 1rem);
   box-sizing: border-box;
-
-  /* Fill the screen vertically */
-  align-content: center;
-  justify-content: center;
-
+  
+  /* Fill available space completely */
+  place-content: stretch;
+  place-items: stretch;
+  
   /* Allow number badges to overflow */
   overflow: visible;
-  /* No scrolling - everything must fit */
-
-  /* Responsive behavior for different screen sizes */
+  
+  /* Enable container queries */
   container-type: inline-size;
+  
+  /* Default responsive grid for all winner counts */
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  grid-template-rows: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+}
+
+/* Small winner counts - explicit layouts for better space usage */
+.winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) {
+  /* 1 winner - single large card */
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) {
+  /* 2 winners - 2 columns, 1 row */
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)),
+.winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) {
+  /* 3-4 winners - 2 columns, 2 rows */
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.winners-grid:has(.winner-card:nth-child(5):nth-last-child(1)),
+.winners-grid:has(.winner-card:nth-child(6):nth-last-child(1)) {
+  /* 5-6 winners - 3 columns, 2 rows */
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.winners-grid:has(.winner-card:nth-child(7):nth-last-child(1)),
+.winners-grid:has(.winner-card:nth-child(8):nth-last-child(1)),
+.winners-grid:has(.winner-card:nth-child(9):nth-last-child(1)) {
+  /* 7-9 winners - 3 columns, 3 rows */
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+.winners-grid:has(.winner-card:nth-child(10):nth-last-child(1)),
+.winners-grid:has(.winner-card:nth-child(11):nth-last-child(1)),
+.winners-grid:has(.winner-card:nth-child(12):nth-last-child(1)) {
+  /* 10-12 winners - 4 columns, 3 rows */
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+/* Medium winner counts - calculated grid */
+.winners-grid:has(.winner-card:nth-child(n+13):nth-child(-n+25)) {
+  /* 13-25 winners - 5 columns, auto rows */
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(auto-fit, minmax(min(120px, calc((100vh - 240px) / 5)), 1fr));
+}
+
+/* Large winner counts - flexible grid that adapts */
+.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) {
+  /* 26-49 winners - 7 columns */
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(auto-fit, minmax(min(100px, calc((100vh - 240px) / 7)), 1fr));
+}
+
+.winners-grid:has(.winner-card:nth-child(n+50):nth-child(-n+99)) {
+  /* 50-99 winners - 10 columns */
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(auto-fit, minmax(min(80px, calc((100vh - 240px) / 10)), 1fr));
+}
+
+.winners-grid:has(.winner-card:nth-child(n+100)) {
+  /* 100+ winners - 12 columns */
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(auto-fit, minmax(min(70px, calc((100vh - 240px) / 12)), 1fr));
 }
 
 .winner-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: clamp(8px, 2vw, 15px);
-  padding: 8px;
+  padding: clamp(0.5rem, 2vw, 2rem);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #333;
@@ -209,10 +280,10 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-
-  /* Truly flexible with height constraint */
-  flex: 1 1 auto;
-  max-height: 150px;
+  
+  /* Fill the grid cell completely */
+  width: 100%;
+  height: 100%;
 
   /* Initial state - will be animated by JavaScript based on selected effect */
   opacity: 0;
@@ -337,7 +408,6 @@ body {
 }
 
 .winner-number {
-  /* Much smaller circles */
   width: clamp(25px, 8cqw, 40px);
   height: clamp(25px, 8cqw, 40px);
   border-radius: 50%;
@@ -360,11 +430,53 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Scale winner numbers based on winner count */
+.winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-number {
+  width: clamp(60px, 10vw, 100px);
+  height: clamp(60px, 10vw, 100px);
+  font-size: clamp(2rem, 5vw, 3rem);
+  top: clamp(-30px, -5vw, -50px);
+  left: clamp(-30px, -5vw, -50px);
+}
+
+.winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-number,
+.winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-number,
+.winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-number {
+  width: clamp(50px, 8vw, 70px);
+  height: clamp(50px, 8vw, 70px);
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  top: clamp(-25px, -4vw, -35px);
+  left: clamp(-25px, -4vw, -35px);
+}
+
+/* For 5+ winners, use container-based scaling */
+.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-number {
+  width: clamp(30px, 8cqw, 50px);
+  height: clamp(30px, 8cqw, 50px);
+  font-size: clamp(0.8rem, 5cqw, 1.5rem);
+  top: clamp(-15px, -4cqw, -25px);
+  left: clamp(-15px, -4cqw, -25px);
+}
+
+.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-number {
+  width: clamp(25px, 6cqw, 40px);
+  height: clamp(25px, 6cqw, 40px);
+  font-size: clamp(0.7rem, 4cqw, 1.2rem);
+  top: clamp(-12px, -3cqw, -20px);
+  left: clamp(-12px, -3cqw, -20px);
+}
+
+.winners-grid:has(.winner-card:nth-child(n+50)) .winner-number {
+  width: clamp(20px, 5cqw, 35px);
+  height: clamp(20px, 5cqw, 35px);
+  font-size: clamp(0.6rem, 3cqw, 1rem);
+  top: clamp(-10px, -2.5cqw, -17px);
+  left: clamp(-10px, -2.5cqw, -17px);
+}
+
 .winner-info1 {
   font-size: clamp(0.6rem, 3cqw, 1.0rem);
-  /* Smaller - for small info at top */
   font-weight: 500;
-  /* Medium weight */
   color: #555;
   margin-bottom: clamp(0.05rem, 0.5cqw, 0.2rem);
   margin-top: 0;
@@ -375,9 +487,7 @@ body {
 
 .winner-info2 {
   font-size: clamp(0.7rem, 4cqw, 1.2rem);
-  /* Larger - main name */
   font-weight: 700;
-  /* Bold for primary info */
   color: #333;
   margin-bottom: clamp(0.1rem, 1cqw, 0.3rem);
   line-height: 1.1;
@@ -387,13 +497,69 @@ body {
 
 .winner-info3 {
   font-size: clamp(0.5rem, 2.5cqw, 0.8rem);
-  /* Smallest - smallest scaling */
   font-weight: 400;
-  /* Normal weight for tertiary info */
   color: #666;
   line-height: 1.2;
   word-break: break-word;
   hyphens: auto;
+}
+
+/* Scale fonts based on winner count - simplified approach */
+.winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info1 {
+  font-size: clamp(1.5rem, 5vw, 3rem);
+}
+.winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info2 {
+  font-size: clamp(2rem, 8vw, 4rem);
+}
+.winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info3 {
+  font-size: clamp(1.2rem, 4vw, 2rem);
+}
+
+.winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info1,
+.winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info1,
+.winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info1 {
+  font-size: clamp(1rem, 4vw, 2rem);
+}
+.winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info2 {
+  font-size: clamp(1.5rem, 6vw, 2.5rem);
+}
+.winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info3,
+.winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info3,
+.winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info3 {
+  font-size: clamp(0.8rem, 3vw, 1.5rem);
+}
+
+/* Font scaling for different winner count ranges */
+.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-info1 {
+  font-size: clamp(0.7rem, 4cqw, 1.2rem);
+}
+.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-info2 {
+  font-size: clamp(0.9rem, 6cqw, 1.6rem);
+}
+.winners-grid:has(.winner-card:nth-child(n+5):nth-child(-n+25)) .winner-info3 {
+  font-size: clamp(0.6rem, 3cqw, 1rem);
+}
+
+.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info1 {
+  font-size: clamp(0.6rem, 3.5cqw, 1rem);
+}
+.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info2 {
+  font-size: clamp(0.8rem, 5cqw, 1.3rem);
+}
+.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info3 {
+  font-size: clamp(0.5rem, 2.5cqw, 0.8rem);
+}
+
+.winners-grid:has(.winner-card:nth-child(n+50)) .winner-info1 {
+  font-size: clamp(0.5rem, 3cqw, 0.9rem);
+}
+.winners-grid:has(.winner-card:nth-child(n+50)) .winner-info2 {
+  font-size: clamp(0.7rem, 4cqw, 1.1rem);
+}
+.winners-grid:has(.winner-card:nth-child(n+50)) .winner-info3 {
+  font-size: clamp(0.4rem, 2cqw, 0.7rem);
 }
 
 /* Prize Display */
