@@ -487,6 +487,82 @@ function showDelayDisplay(delaySeconds, displayType) {
         }, delaySeconds * 1000);
         break;
 
+      case 'animation':
+        // Show countdown overlay with particle animation canvas
+        const animationCountdownOverlay = document.getElementById('countdownOverlay');
+        const animationCountdownNumber = document.getElementById('countdownNumber');
+        
+        if (animationCountdownOverlay && animationCountdownNumber) {
+          // Hide delay overlay and show countdown overlay
+          overlay.classList.add('d-none');
+          animationCountdownOverlay.classList.remove('d-none');
+          
+          // Start particle animation
+          if (window.Animations && window.Animations.startParticleAnimation) {
+            window.Animations.startParticleAnimation();
+          }
+          
+          let animationCount = Math.ceil(delaySeconds);
+          animationCountdownNumber.textContent = animationCount;
+
+          const animationInterval = setInterval(() => {
+            animationCount--;
+            if (animationCount > 0) {
+              animationCountdownNumber.textContent = animationCount;
+            } else {
+              clearInterval(animationInterval);
+              animationCountdownOverlay.classList.add('d-none');
+              if (window.Animations && window.Animations.stopAnimation) {
+                window.Animations.stopAnimation();
+              }
+              resolve();
+            }
+          }, 1000);
+        } else {
+          // Fallback to silent delay if elements not found
+          overlay.classList.add('d-none');
+          setTimeout(resolve, delaySeconds * 1000);
+        }
+        break;
+
+      case 'swirl-animation':
+        // Show countdown overlay with swirl animation canvas
+        const swirlCountdownOverlay = document.getElementById('countdownOverlay');
+        const swirlCountdownNumber = document.getElementById('countdownNumber');
+        
+        if (swirlCountdownOverlay && swirlCountdownNumber) {
+          // Hide delay overlay and show countdown overlay
+          overlay.classList.add('d-none');
+          swirlCountdownOverlay.classList.remove('d-none');
+          
+          // Start swirl animation
+          if (window.Animations && window.Animations.startSwirlAnimation) {
+            window.Animations.startSwirlAnimation();
+          }
+          
+          let swirlCount = Math.ceil(delaySeconds);
+          swirlCountdownNumber.textContent = swirlCount;
+
+          const swirlInterval = setInterval(() => {
+            swirlCount--;
+            if (swirlCount > 0) {
+              swirlCountdownNumber.textContent = swirlCount;
+            } else {
+              clearInterval(swirlInterval);
+              swirlCountdownOverlay.classList.add('d-none');
+              if (window.Animations && window.Animations.stopAnimation) {
+                window.Animations.stopAnimation();
+              }
+              resolve();
+            }
+          }, 1000);
+        } else {
+          // Fallback to silent delay if elements not found
+          overlay.classList.add('d-none');
+          setTimeout(resolve, delaySeconds * 1000);
+        }
+        break;
+
       case 'none':
       default:
         // Silent delay - hide overlay immediately and just wait

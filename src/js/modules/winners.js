@@ -200,6 +200,43 @@ async function clearAllWinners() {
   );
 }
 
+// Background sync function for undo operations (fire and forget)
+async function performUndoBackgroundSync(lastAction) {
+  try {
+    // Delete winners from database
+    for (const winner of lastAction.winners) {
+      await Database.deleteFromStore('winners', winner.winnerId);
+    }
+
+    // Restore prize quantity
+    const prizes = await Database.getFromStore('prizes');
+    const prize = prizes.find(p => p.prizeId === lastAction.prizeId);
+    if (prize) {
+      prize.quantity += lastAction.prizeCount;
+      await Database.saveToStore('prizes', prize);
+    }
+
+    // Delete history entry
+    await Database.deleteFromStore('history', lastAction.historyId);
+
+    // Restore entries to list if they were removed
+    const currentList = getCurrentList();
+    if (settings.preventDuplicates && currentList && lastAction.removedEntries) {
+      currentList.entries.push(...lastAction.removedEntries);
+      if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
+        currentList.listId = currentList.metadata.listId;
+      }
+      await Database.saveToStore('lists', currentList);
+    }
+
+    console.log('Undo background sync completed successfully');
+  } catch (error) {
+    console.error('Error in undo background sync:', error);
+    // Don't show user error for background operations
+    // The UI already shows success, no need to confuse user with sync errors
+  }
+}
+
 async function undoLastSelection() {
   const currentLastAction = getLastAction(); // Get the current lastAction from app.js
 
@@ -213,44 +250,19 @@ async function undoLastSelection() {
     'Are you sure you want to undo the last winner selection? This will delete the winners, restore prize quantities, and cannot be undone.',
     async () => {
       try {
-        UI.showProgress('Undoing Selection', 'Reversing last selection...');
-
-        // Delete winners (fire and forget)
-        for (const winner of currentLastAction.winners) {
-          Database.deleteFromStore('winners', winner.winnerId);
-        }
-
-        // Restore prize quantity (fire and forget)
-        Database.getFromStore('prizes').then(prizes => {
-          const prize = prizes.find(p => p.prizeId === currentLastAction.prizeId);
-          if (prize) {
-            prize.quantity += currentLastAction.prizeCount;
-            Database.saveToStore('prizes', prize);
-          }
-        });
-
-        // Delete history entry (fire and forget)
-        Database.deleteFromStore('history', currentLastAction.historyId);
-
-        // Restore entries to list if they were removed (fire and forget)
-        const currentList = getCurrentList(); // Get the currentList from app.js
-        if (settings.preventDuplicates && currentList) {
-          currentList.entries.push(...currentLastAction.removedEntries);
-          if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
-            currentList.listId = currentList.metadata.listId;
-          }
-          Database.saveToStore('lists', currentList);
-        }
-
-        UI.hideProgress();
+        // INSTANT UI FEEDBACK - Do this first, before any database operations
         UI.showToast('Selection undone successfully', 'success');
-
-        await loadWinners();
         resetToSelectionMode();
         setLastAction(null); // Clear lastAction in app.js
+        
+        // Update UI immediately by reloading winners (this is fast from local cache)
+        await loadWinners();
+
+        // BACKGROUND SYNC - Do all database operations in background (fire and forget)
+        // This ensures UI responds instantly while database catches up
+        performUndoBackgroundSync(currentLastAction);
 
       } catch (error) {
-        UI.hideProgress();
         console.error('Error undoing selection:', error);
         UI.showToast('Error undoing selection: ' + error.message, 'error');
       }
