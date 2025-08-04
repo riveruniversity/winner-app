@@ -479,6 +479,16 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   winnersGrid.innerHTML = '';
   winnersGrid.className = 'winners-grid';
 
+  // Trigger celebration animation immediately when reveal starts
+  const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
+  const celebrationEffect = document.getElementById('celebrationEffect')?.value;
+  
+  if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
+    if (celebrationEffect === 'confetti' && window.Animations && window.Animations.startConfettiAnimation) {
+      window.Animations.startConfettiAnimation();
+    }
+  }
+
   if (selectionMode === 'sequential' || selectionMode === 'individual') {
     await displayWinnersSequential(winners, winnersGrid);
   } else {
@@ -486,19 +496,6 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   }
 
   winnersGrid.classList.remove('d-none');
-
-  // Trigger celebration animation if enabled
-  const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
-  const celebrationEffect = document.getElementById('celebrationEffect')?.value;
-  
-  if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
-    // Small delay to ensure winners are visible first
-    setTimeout(() => {
-      if (celebrationEffect === 'confetti' && window.Animations && window.Animations.startConfettiAnimation) {
-        window.Animations.startConfettiAnimation();
-      }
-    }, 500);
-  }
 
   // Show action buttons in header
   document.getElementById('undoSelectionBtn').classList.remove('d-none');
