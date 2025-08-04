@@ -480,13 +480,6 @@ async function updateWinner(winnerId, updateData) {
     // Save the updated winner (fire-and-forget)
     await saveToStore('winners', updatedWinner);
     
-    // Also update in IndexedDB for immediate local access
-    if (window.localDB) {
-      const tx = window.localDB.transaction(['winners'], 'readwrite');
-      const store = tx.objectStore('winners');
-      await store.put(updatedWinner);
-    }
-    
     console.log(`✅ Winner ${winnerId} updated with pickup status`);
     return updatedWinner;
   } catch (error) {

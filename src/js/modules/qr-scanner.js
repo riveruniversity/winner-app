@@ -238,6 +238,17 @@ export class QRScannerModule {
     this.currentWinnerData = null;
     document.getElementById('winnerInfo')?.classList.add('d-none');
     document.getElementById('scannerSection')?.classList.remove('d-none');
+    // Restart scanning immediately
+    this.startScanning();
+  }
+
+  backToScanner() {
+    // Switch views and resume scanning (since it was stopped when winner was found)
+    this.currentWinnerData = null;
+    document.getElementById('winnerInfo')?.classList.add('d-none');
+    document.getElementById('scannerSection')?.classList.remove('d-none');
+    // Resume scanning since it was stopped when winner was displayed
+    this.startScanning();
   }
 }
 

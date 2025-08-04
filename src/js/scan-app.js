@@ -71,15 +71,13 @@ function setupEventListeners() {
   
   if (backToScannerBtn) {
     backToScannerBtn.addEventListener('click', () => {
-      QRScanner.reset();
-      QRScanner.stopScanning();
+      QRScanner.backToScanner(); // Just switch views, keep scanner running
     });
   }
   
   if (scanAnotherBtn) {
     scanAnotherBtn.addEventListener('click', () => {
-      QRScanner.reset();
-      QRScanner.startScanning();
+      QRScanner.reset(); // This restarts the scanner for a fresh scan
     });
   }
   
