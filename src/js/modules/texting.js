@@ -127,7 +127,7 @@ class TextingService {
   }
 
   /**
-   * Sends SMS to multiple recipients with proactive rate limiting
+   * Sends SMS to multiple recipients with async rate limiting (200 requests/minute)
    */
   async sendBatchTexts(recipients, messageTemplate, options = {}) {
     const results = {
@@ -136,73 +136,110 @@ class TextingService {
       total: recipients.length
     };
 
-    // Send each recipient individually to have fine-grained rate control
-    for (let i = 0; i < recipients.length; i++) {
-      const recipient = recipients[i];
-      
-      try {
-        // Check if sending was cancelled
-        if (this.abortController?.signal.aborted) {
-          results.failed.push({
-            recipient: recipient,
-            error: 'Cancelled by user'
-          });
-          continue;
-        }
+    // Create all SMS tasks
+    const smsTasks = recipients.map((recipient, index) => ({
+      recipient,
+      index,
+      task: async () => {
+        try {
+          // Check if sending was cancelled
+          if (this.abortController?.signal.aborted) {
+            return {
+              success: false,
+              recipient,
+              error: 'Cancelled by user'
+            };
+          }
 
-        // Update progress with rate limiting info
+          // Check if recipient has a phone number
+          if (!recipient.phone) {
+            return {
+              success: false,
+              recipient,
+              error: 'No phone number'
+            };
+          }
+
+          // Personalize message for this recipient
+          let personalizedMessage = messageTemplate;
+          personalizedMessage = personalizedMessage.replace('{name}', recipient.displayName || recipient.name || 'Winner');
+          personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
+          personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
+
+          // Send individual message (rate limiting handled in makeRequest)
+          const body = {
+            action: 'sendMessage',
+            data: {
+              message: personalizedMessage,
+              phoneNumbers: [recipient.phone],
+              options: options
+            }
+          };
+
+          const result = await this.makeRequest(body);
+          
+          return {
+            success: result.success,
+            recipient,
+            error: result.success ? null : (result.error || 'Unknown error')
+          };
+
+        } catch (error) {
+          return {
+            success: false,
+            recipient,
+            error: error.message
+          };
+        }
+      }
+    }));
+
+    // Process tasks with controlled concurrency and rate limiting
+    let completed = 0;
+    const promises = [];
+    
+    for (const smsTask of smsTasks) {
+      // Wait for rate limit if needed
+      const waitTime = rateLimiter.getWaitTime();
+      if (waitTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+
+      // Start the SMS task (don't await here)
+      const promise = smsTask.task().then(result => {
+        completed++;
+        
+        // Update progress
+        const progress = Math.round((completed / recipients.length) * 100);
         const currentCount = rateLimiter.getCurrentCount();
         const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
-        const progress = Math.round(((i + 1) / recipients.length) * 100);
         
         UI.updateProgress(
-          progress, 
-          `Sending ${i + 1}/${recipients.length} (Rate: ${currentCount}/${maxRequests} requests/min)`
+          progress,
+          `Sending ${completed}/${recipients.length} (Rate: ${currentCount}/${maxRequests} requests/min)`
         );
 
-        // Check if recipient has a phone number
-        if (!recipient.phone) {
-          results.failed.push({
-            recipient: recipient,
-            error: 'No phone number'
-          });
-          continue;
-        }
-
-        // Personalize message for this recipient
-        let personalizedMessage = messageTemplate;
-        personalizedMessage = personalizedMessage.replace('{name}', recipient.displayName || recipient.name || 'Winner');
-        personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
-        personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
-
-        // Send individual message (rate limiting handled in makeRequest)
-        const body = {
-          action: 'sendMessage',
-          data: {
-            message: personalizedMessage,
-            phoneNumbers: [recipient.phone],
-            options: options
-          }
-        };
-
-        const result = await this.makeRequest(body);
-        
+        // Store result
         if (result.success) {
-          results.successful.push(recipient);
+          results.successful.push(result.recipient);
         } else {
           results.failed.push({
-            recipient: recipient,
-            error: result.error || 'Unknown error'
+            recipient: result.recipient,
+            error: result.error
           });
         }
 
-      } catch (error) {
-        results.failed.push({
-          recipient: recipient,
-          error: error.message
-        });
-      }
+        return result;
+      });
+
+      promises.push(promise);
+
+      // Small delay between starting requests (300ms = 200 requests/minute)
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
+
+    // Wait for all SMS tasks to complete
+    await Promise.all(promises);
 
     return results;
   }
@@ -223,10 +260,9 @@ class TextingService {
       return;
     }
 
-    // Simple confirmation
-    if (!confirm(`Send SMS to ${currentWinners.length} current winners using the template from settings?`)) {
-      return;
-    }
+    // Show confirmation modal with template preview
+    const confirmed = await this.showSMSConfirmationModal(currentWinners.length);
+    if (!confirmed) return;
 
     // Use SMS template from settings
     const message = settings.smsTemplate || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
@@ -258,48 +294,23 @@ class TextingService {
         return;
       }
 
-      let successful = 0;
-      let failed = 0;
-
-      for (const winner of winnersWithPhone) {
-        try {
+      // Send messages asynchronously with proper rate limiting
+      const results = await this.sendBatchTexts(
+        winnersWithPhone.map(winner => {
           // Get phone number from direct properties or camelized data object
           const phone = winner.phone || winner.Phone || winner.mobile || winner.phoneNumber ||
                        (winner.data && (winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
                                        winner.data.cellPhone || winner.data.cell || winner.data.telephone));
-          let personalizedMessage = message
-            .replace('{name}', winner.displayName || winner.name || 'Winner')
-            .replace('{prize}', winner.prize || 'your prize')
-            .replace('{ticketCode}', winner.ticketCode || winner.data?.ticketCode || winner.winnerId || '');
+          return {
+            ...winner,
+            phone: this.cleanPhoneNumber(phone)
+          };
+        }),
+        message
+      );
 
-          const response = await fetch('/.netlify/functions/ez-texting', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'sendMessage',
-              data: {
-                message: personalizedMessage,
-                phoneNumbers: [this.cleanPhoneNumber(phone)]
-              }
-            })
-          });
-
-          if (response.ok) {
-            successful++;
-          } else {
-            failed++;
-          }
-
-          // Small delay between requests
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-        } catch (error) {
-          failed++;
-          console.error('Error sending to', winner.name, error);
-        }
-      }
-
-      UI.showToast(`SMS sent: ${successful} successful, ${failed} failed`, successful > 0 ? 'success' : 'error');
+      UI.showToast(`SMS sent: ${results.successful.length} successful, ${results.failed.length} failed`, 
+                   results.successful.length > 0 ? 'success' : 'error');
 
     } catch (error) {
       UI.showToast('Error sending messages: ' + error.message, 'error');
@@ -307,6 +318,98 @@ class TextingService {
       this.sendingInProgress = false;
       UI.hideProgress();
     }
+  }
+
+  /**
+   * Shows SMS confirmation modal with template preview
+   */
+  async showSMSConfirmationModal(winnerCount) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('appModal');
+      const modalTitle = document.getElementById('appModalLabel');
+      const modalBody = document.getElementById('appModalBody');
+      const confirmBtn = document.getElementById('appModalConfirmBtn');
+      
+      modalTitle.textContent = 'Send SMS Messages';
+      
+      const currentWinners = getCurrentWinners();
+      const sampleWinner = currentWinners[0] || { displayName: 'John Doe', prize: 'Sample Prize', winnerId: 'ABC123' };
+      const template = settings.smsTemplate || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
+      
+      // Create preview message
+      let previewMessage = template
+        .replace('{name}', sampleWinner.displayName || 'John Doe')
+        .replace('{prize}', sampleWinner.prize || 'Sample Prize')
+        .replace('{ticketCode}', sampleWinner.ticketCode || sampleWinner.data?.ticketCode || sampleWinner.winnerId || 'ABC123');
+      
+      modalBody.innerHTML = `
+        <div class="mb-3">
+          <p>Send SMS messages to <strong>${winnerCount} current winner${winnerCount > 1 ? 's' : ''}</strong> with phone numbers?</p>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Message Preview:</label>
+          <div class="alert alert-info">
+            <div class="mb-2">${previewMessage}</div>
+            <small class="text-muted">
+              ${this.calculateSMSInfo(previewMessage)}
+            </small>
+          </div>
+        </div>
+        <div class="mb-3">
+          <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            You can edit the SMS template in Settings if needed.
+          </small>
+        </div>
+      `;
+
+      confirmBtn.textContent = 'Send Messages';
+      confirmBtn.className = 'btn btn-success';
+      confirmBtn.onclick = () => {
+        window.appModal.hide();
+        resolve(true);
+      };
+
+      // Add cancel functionality
+      const cancelBtn = document.getElementById('appModalCancelBtn') || this.createCancelButton();
+      cancelBtn.onclick = () => {
+        window.appModal.hide();
+        resolve(false);
+      };
+      cancelBtn.style.display = 'inline-block';
+
+      window.appModal.show();
+    });
+  }
+
+  /**
+   * Calculate SMS info (character count and message count)
+   */
+  calculateSMSInfo(message) {
+    const charCount = message.length;
+    let smsCount;
+    if (charCount === 0) {
+      smsCount = 1;
+    } else if (charCount <= 160) {
+      smsCount = 1;
+    } else {
+      smsCount = Math.ceil(charCount / 153);
+    }
+    return `${charCount} characters, ${smsCount} SMS${smsCount > 1 ? ' messages' : ''}`;
+  }
+
+  /**
+   * Create cancel button if it doesn't exist
+   */
+  createCancelButton() {
+    const modalFooter = document.querySelector('#appModal .modal-footer');
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'appModalCancelBtn';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.display = 'none';
+    modalFooter.insertBefore(cancelBtn, modalFooter.firstChild);
+    return cancelBtn;
   }
 
 
