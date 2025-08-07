@@ -12,11 +12,13 @@ import { Selection } from './modules/selection.js';
 import { CSVParser } from './modules/csv-parser.js';
 import { Export } from './modules/export.js';
 import { Sounds } from './modules/sounds.js';
+import { Texting } from './modules/texting.js';
 
 // Global state variables (now truly central)
 export let appModal = null;
 let _currentList = null; // Internal variable
 let _lastAction = null; // Internal variable
+let _currentWinners = []; // Current batch of winners
 
 // Export functions to get/set these central state variables
 export function setCurrentList(list) {
@@ -33,6 +35,31 @@ export function setLastAction(action) {
 
 export function getLastAction() {
   return _lastAction;
+}
+
+export function setCurrentWinners(winners) {
+  console.log('setCurrentWinners called with:', winners);
+  _currentWinners = winners;
+  // Show SMS button when winners are set
+  const smsBtn = document.getElementById('sendSMSBtn');
+  console.log('SMS button element:', smsBtn);
+  if (smsBtn && winners && winners.length > 0) {
+    console.log('Showing SMS button for', winners.length, 'winners');
+    smsBtn.classList.remove('d-none');
+  }
+}
+
+export function getCurrentWinners() {
+  return _currentWinners;
+}
+
+export function clearCurrentWinners() {
+  _currentWinners = [];
+  // Hide SMS button when no current winners
+  const smsBtn = document.getElementById('sendSMSBtn');
+  if (smsBtn) {
+    smsBtn.classList.add('d-none');
+  }
 }
 
 // Load data in background without blocking UI
@@ -69,7 +96,10 @@ export async function initializeApp() {
       const modalElement = document.getElementById('appModal');
       if (modalElement) {
         appModal = new bootstrap.Modal(modalElement);
-        // No need to assign to window.appModal here, as it's exported
+        window.appModal = appModal; // Make available globally
+        console.log('Bootstrap modal initialized and assigned to window.appModal');
+      } else {
+        console.error('Modal element #appModal not found');
       }
     }, 100);
 
@@ -97,6 +127,7 @@ function setupInterfaceToggles() {
   const managementToggle = document.getElementById('managementToggle');
   const backToPublicBtn = document.getElementById('backToPublicBtn');
   const fullscreenToggle = document.getElementById('fullscreenToggle');
+  const sendSMSBtn = document.getElementById('sendSMSBtn');
 
   if (managementToggle) {
     managementToggle.addEventListener('click', function () {
@@ -121,6 +152,13 @@ function setupInterfaceToggles() {
         document.exitFullscreen();
         fullscreenToggle.innerHTML = '<i class="bi bi-fullscreen"></i>';
       }
+    });
+  }
+
+  if (sendSMSBtn) {
+    sendSMSBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      Texting.sendToCurrentWinners();
     });
   }
 }
@@ -166,6 +204,9 @@ function setupManagementListeners() {
   
   // Setup webhook toggle functionality
   Settings.setupWebhookToggle();
+  
+  // Setup SMS template character counter
+  Settings.setupSMSTemplateCounter();
   
   // Setup auto-save for quick setup fields
   Settings.setupQuickSetupAutoSave();
@@ -339,3 +380,4 @@ export async function deleteHistoryConfirm(historyId) {
 
 // Make function available globally for inline onclick handlers
 window.deleteHistoryConfirm = deleteHistoryConfirm;
+window.setCurrentWinners = setCurrentWinners; // For debugging

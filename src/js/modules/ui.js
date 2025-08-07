@@ -245,13 +245,56 @@ async function updateTotalEntries() {
   }
 }
 
+// Promise-based confirmation modal
+function showConfirmationPromise(title, message) {
+  return new Promise((resolve) => {
+    const modalTitle = document.getElementById('appModalLabel');
+    const modalBody = document.getElementById('appModalBody');
+    const confirmBtn = document.getElementById('appModalConfirmBtn');
+    const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `<p>${message}</p>`;
+    confirmBtn.textContent = 'Confirm';
+    confirmBtn.className = 'btn btn-danger';
+    confirmBtn.style.display = 'inline-block';
+    cancelBtn.style.display = 'inline-block';
+
+    // Clean up old event listeners
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+    newConfirmBtn.onclick = () => {
+      if (window.appModal) window.appModal.hide();
+      resolve(true);
+    };
+
+    newCancelBtn.onclick = () => {
+      if (window.appModal) window.appModal.hide();
+      resolve(false);
+    };
+
+    if (window.appModal) window.appModal.show();
+  });
+}
+
+// Enhanced showConfirmationModal that supports both callbacks and promises
+function enhancedShowConfirmationModal(title, message, onConfirm) {
+  if (!onConfirm) {
+    return showConfirmationPromise(title, message);
+  }
+  return showConfirmationModal(title, message, onConfirm);
+}
+
 export const UI = {
   generateId,
   showToast,
   showProgress,
   updateProgress,
   hideProgress,
-  showConfirmationModal,
+  showConfirmationModal: enhancedShowConfirmationModal,
   readFileAsText,
   populateQuickSelects,
   applyVisibilitySettings,

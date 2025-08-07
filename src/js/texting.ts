@@ -1,24 +1,18 @@
 import { APIResponse } from "../../functions/ez-texting";
 
 
-async function sendSingleText(data) {
+export async function sendSingleText(data: any) {
 
   const body = {
     action: 'sendMessage',
-    data: {
-      message: 'Hello from Netlify!',
-      phoneNumbers: ['8134507575'],
-      options: {
-        companyName: 'My Company'
-      }
-    }
+    data: data
   };
 
   return post(body);
 }
 
 
-async function test_sendSingleText(data) {
+async function test_sendSingleText(data: any) {
 
   const body = {
     action: 'sendMessage',

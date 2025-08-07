@@ -28,6 +28,7 @@ export let settings = {
   soundDuringDelay: 'none',
   soundEndOfDelay: 'none',
   soundDuringReveal: 'none',
+  smsTemplate: 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}',
   celebrationEffect: 'confetti',
   celebrationDuration: 4,
   celebrationAutoTrigger: true
@@ -275,6 +276,59 @@ function loadSettingsToForm() {
   }
   if (celebrationDuration && settings.celebrationDuration !== undefined) {
     celebrationDuration.value = settings.celebrationDuration;
+  }
+
+  // Load SMS template
+  const smsTemplate = document.getElementById('smsTemplate');
+  if (smsTemplate && settings.smsTemplate) {
+    smsTemplate.value = settings.smsTemplate;
+    updateSMSCharCount(); // Update character count display
+  }
+}
+
+// Update SMS character count and SMS count display
+function updateSMSCharCount() {
+  const smsTemplate = document.getElementById('smsTemplate');
+  const smsCharCount = document.getElementById('smsCharCount');
+  
+  if (smsTemplate && smsCharCount) {
+    const text = smsTemplate.value;
+    const charCount = text.length;
+    
+    // Calculate SMS count (standard SMS is 160 chars, multipart starts at 153 chars per segment)
+    let smsCount;
+    if (charCount === 0) {
+      smsCount = 1;
+    } else if (charCount <= 160) {
+      smsCount = 1;
+    } else {
+      // Multipart SMS: first segment 153 chars, subsequent segments 153 chars
+      smsCount = Math.ceil(charCount / 153);
+    }
+    
+    smsCharCount.textContent = `${charCount} characters, ${smsCount} SMS${smsCount > 1 ? ' messages' : ''}`;
+    
+    // Color coding based on SMS count
+    if (smsCount >= 3) {
+      smsCharCount.style.color = '#dc3545'; // red for 3+ SMS
+    } else if (smsCount === 2) {
+      smsCharCount.style.color = '#fd7e14'; // orange for 2 SMS
+    } else {
+      smsCharCount.style.color = '#6c757d'; // muted gray for 1 SMS
+    }
+  }
+}
+
+// Setup SMS template character counter
+function setupSMSTemplateCounter() {
+  const smsTemplate = document.getElementById('smsTemplate');
+  if (smsTemplate) {
+    // Add character count update and auto-save
+    smsTemplate.addEventListener('input', () => {
+      updateSMSCharCount();
+      autoSaveIndividualSetting('smsTemplate');
+    });
+    updateSMSCharCount(); // Initial count
   }
 }
 
@@ -760,7 +814,8 @@ async function autoSaveIndividualSetting(fieldId) {
       'secondaryColor': 'secondaryColor',
       'backgroundType': 'backgroundType',
       'enableWebhook': 'enableWebhook',
-      'webhookUrl': 'webhookUrl'
+      'webhookUrl': 'webhookUrl',
+      'smsTemplate': 'smsTemplate'
     };
 
     const settingKey = fieldToSettingMap[fieldId];
@@ -930,7 +985,8 @@ function setupAllSettingsAutoSave() {
     'secondaryColor',
     'backgroundType',
     'enableWebhook',
-    'webhookUrl'
+    'webhookUrl',
+    'smsTemplate'
   ];
 
   allSettingsFields.forEach(fieldId => {
@@ -941,9 +997,10 @@ function setupAllSettingsAutoSave() {
       
       if (field.type === 'checkbox') {
         field.addEventListener('change', () => autoSaveIndividualSetting(fieldId));
-      } else if (field.type === 'color' || field.type === 'url' || field.type === 'text') {
+      } else if (field.type === 'color' || field.type === 'url' || field.type === 'text' || field.tagName === 'TEXTAREA') {
         field.addEventListener('input', debouncedSave); // Debounced for frequent changes
         field.addEventListener('change', () => autoSaveIndividualSetting(fieldId)); // Immediate on blur
+        debugLog(`Auto-save listeners added for ${fieldId} (${field.tagName})`);
       } else {
         field.addEventListener('change', () => autoSaveIndividualSetting(fieldId));
       }
@@ -1052,6 +1109,7 @@ export const Settings = {
   autoSaveAllSettings,
   setupQuickSetupAutoSave,
   setupAllSettingsAutoSave,
+  setupSMSTemplateCounter,
   updateSettings: function(newSettings) { Object.assign(settings, newSettings); }, // Added for external updates
   debugLog // Export debug logging function
 };

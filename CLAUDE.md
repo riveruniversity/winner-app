@@ -83,6 +83,13 @@
 - Real-time status updates
 - Mobile-optimized interface
 
+### 9. **SMS Texting System**
+- Bulk SMS messaging to all winners
+- Rate limiting compliance (200 requests/minute)
+- Message personalization with variables
+- Batch processing with progress indicators
+- Integration with EZ Texting API via Netlify Functions
+
 ## 📁 Project Structure
 
 ```

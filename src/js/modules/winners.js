@@ -4,6 +4,7 @@
 
 import { Database } from './firestore.js';
 import { UI } from './ui.js';
+import { clearCurrentWinners } from '../app.js';
 import { Lists } from './lists.js';
 import { settings } from './settings.js'; // Import settings directly
 import { getCurrentList, getLastAction, setLastAction } from '../app.js'; // Import central state
@@ -48,7 +49,7 @@ async function loadWinners() {
     }
 
     tbody.innerHTML = filteredWinners.map(winner => {
-      const ticketCode = winner.winnerId.slice(0, 5).toUpperCase();
+      const ticketCode = (winner.winnerId || winner.id || 'N/A').toString().slice(0, 5).toUpperCase();
       const pickupStatus = winner.pickedUp ? 
         `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
         `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
@@ -290,6 +291,8 @@ function resetToSelectionMode() {
   // Hide action buttons in header
   document.getElementById('undoSelectionBtn').classList.add('d-none');
   document.getElementById('newSelectionBtn').classList.add('d-none');
+  // Clear current winners and hide SMS button
+  clearCurrentWinners();
   UI.populateQuickSelects();
 }
 

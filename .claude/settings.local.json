@@ -21,7 +21,8 @@
       "Bash(rg:*)",
       "Bash(pnpm run:*)",
       "Bash(taskkill:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

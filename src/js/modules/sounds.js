@@ -359,13 +359,11 @@ function updateSoundDropdowns() {
     });
     
     // Add ALL available sounds to ALL dropdowns
-    console.log(`Adding ${Object.keys(availableSounds).length} sounds to ${dropdownId}`);
     Object.entries(availableSounds).forEach(([soundId, sound]) => {
       const option = document.createElement('option');
       option.value = soundId;
       option.textContent = sound.name;
       dropdown.appendChild(option);
-      console.log(`Added ${sound.name} (${soundId}) to ${dropdownId}`);
     });
     
     // Restore previous selection - prefer settings value, fallback to current value

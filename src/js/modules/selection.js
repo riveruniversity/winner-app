@@ -8,6 +8,7 @@ import { Lists } from './lists.js';
 import { Winners } from './winners.js';
 import { settings, Settings } from './settings.js'; // Import settings and Settings module
 import { Animations } from './animations.js';
+import { setCurrentWinners } from '../app.js';
 import { getCurrentList, setCurrentList, getLastAction, setLastAction, loadHistory, updateHistoryStats } from '../app.js'; // Import central state and history functions
 
 function createRandomWorker() {
@@ -156,6 +157,9 @@ async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, 
     winnersResult = winners;
     
     Settings.debugLog('Selection and delay completed, starting display process');
+    
+    // Set current winners immediately (so SMS button appears even during any display delays)
+    setCurrentWinners(winnersResult);
     
     // Display winners instantly (they're already selected and saved)
     await displayWinnersPublicly(winnersResult, selectedPrize, selectionMode);
@@ -438,6 +442,9 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     setTimeout(async () => {
       UI.hideProgress();
       
+      // Set current winners immediately (so SMS button appears)
+      setCurrentWinners(winners);
+      
       await displayWinnersPublicly(winners, selectedPrize, selectionMode);
 
       // Update the winners list in management interface
@@ -494,9 +501,17 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   
+  console.log('Celebration settings:', {
+    autoTrigger: celebrationAutoTrigger,
+    effect: celebrationEffect,
+    AnimationsAvailable: !!Animations,
+    startConfettiAvailable: !!(Animations && Animations.startConfettiAnimation)
+  });
+  
   if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
     // Only trigger confetti if confetti is selected (not for coins-only)
     if ((celebrationEffect === 'confetti' || celebrationEffect === 'both') && Animations && Animations.startConfettiAnimation) {
+      console.log('🎉 Triggering confetti animation');
       Animations.startConfettiAnimation();
     }
   }

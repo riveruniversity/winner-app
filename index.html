@@ -38,12 +38,15 @@
       </div>
       <div class="d-flex gap-2">
         <!-- Winner Action Buttons (Hidden initially) -->
-        <button class="btn btn-outline-warning d-none" id="undoSelectionBtn" title="Undo last selection">
-          <i class="bi bi-arrow-counterclockwise"></i>
-        </button>
         <button class="btn btn-outline-light d-none" id="newSelectionBtn" title="Start new selection">
           <i class="bi bi-arrow-repeat"></i>
         </button>
+        <button class="btn btn-outline-warning d-none" id="undoSelectionBtn" title="Undo last selection">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <!-- SMS Button (Hidden initially) -->
+        <button class="btn btn-outline-success d-none" id="sendSMSBtn" title="Send SMS to current winners">
+          <i class="bi bi-envelope-fill"></i></button>
         <button class="btn btn-outline-light" id="themeToggle" title="Toggle theme">
           <i class="bi bi-moon-fill"></i>
         </button>
@@ -731,6 +734,23 @@
                       <label class="form-label">Available Sound Files</label>
                       <div id="soundFilesList" class="d-flex flex-column gap-2">
                         <!-- Sound files will be listed here -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- SMS Settings -->
+                <div class="card mt-3">
+                  <div class="card-body">
+                    <h5 class="card-title">SMS Settings</h5>
+                    <div class="mb-3">
+                      <label class="form-label" for="smsTemplate">
+                        SMS Template
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Template for SMS messages sent to winners. Use placeholders: {name}, {prize}, {ticketCode}"></i>
+                      </label>
+                      <textarea class="form-control" id="smsTemplate" rows="3" placeholder="Congratulations {name}! You won {prize}. Your ticket: {ticketCode}">Congratulations {name}! You won {prize}. Your ticket: {ticketCode}</textarea>
+                      <div class="form-text">
+                        Available placeholders: <code>{name}</code>, <code>{prize}</code>, <code>{ticketCode}</code>
+                        <br><span id="smsCharCount">0 characters, 1 SMS</span>
                       </div>
                     </div>
                   </div>

@@ -8,6 +8,64 @@ import { Database } from './firestore.js';
 
 let pendingCSVData = null;
 
+// Utility functions for camelizing object keys
+function camelize(key) {
+  const prefix = key.match(/^_{1,2}/)?.[0] || '';
+  const keyWithoutPrefix = key.slice(prefix.length);
+
+  if (keyWithoutPrefix === '' || keyWithoutPrefix.match(/^\|+$/)) {
+    return prefix;
+  }
+
+  const cleaned = keyWithoutPrefix
+    .normalize('NFD') // Decompose Unicode characters
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
+    .replace(/[^\p{Alphabetic}\p{Number}]+/gu, '|')
+    .replace(/(?<=[a-z0-9])([A-Z][A-Za-z]*[A-Za-z]\b)/, str => '|' + str)
+    .toLowerCase();
+
+  const camelizedKey = cleaned.split('|').filter(Boolean).map((part, i) => (i === 0 ? part : capitalize(part))).join('');
+
+  return prefix + camelizedKey;
+}
+
+/**
+ * Recursively or shallowly transforms the keys of an object to camelCase.
+ *
+ * @param {Object|Array} obj - The object or array whose keys should be camelized.
+ * @param {boolean} [deep=false] - Whether to recursively camelize nested objects and arrays.
+ * @returns {Object|Array} A new object or array with camelized keys.
+ */
+function camelizeObj(obj, deep = false) {
+  if (Array.isArray(obj)) {
+    return deep ? obj.map(item => camelizeObj(item, true)) : obj;
+  }
+
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+
+  return Object.entries(obj).reduce((acc, [key, value]) => {
+    const newKey = camelize(key);
+    const newValue = deep ? camelizeObj(value, true) : value;
+    acc[newKey] = newValue;
+    return acc;
+  }, {});
+}
+
+function lowerCase(str) {
+  return str.length && str[0].toLowerCase() + str.slice(1);
+}
+
+// Capitalize a string
+function capitalize(str, { lowerRest = false } = {}) {
+  if (!str) return str;
+  if (lowerRest) {
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
 
@@ -27,7 +85,9 @@ function parseCSV(csvText) {
         headers.forEach((header, index) => {
           row[header.trim()] = values[index]?.trim() || '';
         });
-        data.push(row);
+        // Camelize the row object keys for consistency
+        const camelizedRow = camelizeObj(row);
+        data.push(camelizedRow);
       }
     } catch (error) {
       errors.push(`Line ${i + 1}: ${error.message}`);
