@@ -595,6 +595,15 @@ function createWinnerCard(winner, index) {
   const info2 = getWinnerInfo2(winner);
   const info3 = getWinnerInfo3(winner);
   
+  console.log('Creating winner card:', {
+    winner,
+    info1,
+    info2,
+    info3,
+    displayName: winner.displayName,
+    data: winner.data
+  });
+  
   let cardHTML = `<div class="winner-number">${winner.position}</div>`;
   
   if (info1) {
@@ -669,7 +678,16 @@ function formatInfoTemplate(template, winner) {
   if (!template) return '';
   
   const result = template.replace(/\{([^}]+)\}/g, (match, key) => {
-    return winner[key.trim()] || '';
+    const trimmedKey = key.trim();
+    // First check if the key exists directly on winner (like displayName)
+    if (winner[trimmedKey]) {
+      return winner[trimmedKey];
+    }
+    // Then check in the data object where CSV fields are stored
+    if (winner.data && winner.data[trimmedKey]) {
+      return winner.data[trimmedKey];
+    }
+    return '';
   }).trim();
   
   // Return empty string if result is just a dash or whitespace
