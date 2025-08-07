@@ -269,7 +269,7 @@ body {
 .winner-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: clamp(8px, 2vw, 15px);
-  padding: clamp(0.5rem, 2vw, 2rem);
+  padding: clamp(0.3rem, 1.5vw, 1.2rem);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #333;
@@ -461,10 +461,10 @@ body {
 }
 
 .winner-info2 {
-  font-size: clamp(0.4rem, 3cqw, 1.3rem);
+  font-size: clamp(1.2rem, 8cqw, 2.5rem);
   font-weight: 700;
   color: #333;
-  margin-bottom: clamp(0.1rem, 1cqw, 0.3rem);
+  margin-bottom: clamp(0.05rem, 0.5cqw, 0.15rem);
   line-height: 1.1;
   word-break: break-word;
   hyphens: auto;
@@ -484,7 +484,7 @@ body {
   font-size: clamp(1.5rem, 8cqw, 3rem);
 }
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(2rem, 12cqw, 4rem);
+  font-size: clamp(2.5rem, 15cqw, 5rem);
 }
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info3 {
   font-size: clamp(1rem, 6cqw, 2rem);
@@ -498,12 +498,44 @@ body {
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(1.3rem, 8cqw, 2.5rem);
+  font-size: clamp(1.8rem, 10cqw, 3.2rem);
 }
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info3,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info3,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info3 {
   font-size: clamp(0.8rem, 5cqw, 1.5rem);
+}
+
+/* 5-12 winners */
+.winners-grid:has(.winner-card:nth-child(5):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(6):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(7):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(8):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(9):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(10):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(11):nth-last-child(1)) .winner-info2,
+.winners-grid:has(.winner-card:nth-child(12):nth-last-child(1)) .winner-info2 {
+  font-size: clamp(1.4rem, 8cqw, 2.2rem);
+}
+
+/* 13-25 winners */
+.winners-grid:has(.winner-card:nth-child(n+13):nth-child(-n+25)) .winner-info2 {
+  font-size: clamp(1.2rem, 7cqw, 1.9rem);
+}
+
+/* 26-49 winners */
+.winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info2 {
+  font-size: clamp(1rem, 6cqw, 1.6rem);
+}
+
+/* 50-99 winners */
+.winners-grid:has(.winner-card:nth-child(n+50):nth-child(-n+99)) .winner-info2 {
+  font-size: clamp(0.9rem, 5cqw, 1.4rem);
+}
+
+/* 100+ winners */
+.winners-grid:has(.winner-card:nth-child(n+100)) .winner-info2 {
+  font-size: clamp(0.8rem, 4cqw, 1.2rem);
 }
 
 /* Prize Display */
@@ -948,8 +980,8 @@ body {
 
 @container (max-width: 280px) {
   .winner-info2 {
-    display: none;
-    /* Hide secondary info on very small cards */
+    font-size: clamp(0.7rem, 10cqw, 1rem);
+    /* Keep visible but smaller on very small cards */
   }
 
   .winner-info1 {
