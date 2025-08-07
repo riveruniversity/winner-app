@@ -494,7 +494,7 @@ async function performMaintenance() {
     const cache = await caches.open(DYNAMIC_CACHE_NAME);
     const requests = await cache.keys();
 
-    const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
 
     for (const request of requests) {
       const response = await cache.match(request);
@@ -502,7 +502,7 @@ async function performMaintenance() {
         const dateHeader = response.headers.get('date');
         if (dateHeader) {
           const responseDate = new Date(dateHeader).getTime();
-          if (responseDate < oneWeekAgo) {
+          if (responseDate < oneHourAgo) {
             await cache.delete(request);
             console.log('[Service Worker] Cleaned up old cache entry:', request.url);
           }

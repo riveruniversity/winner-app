@@ -3,3 +3,6 @@ node_modules
 .env
 
 pnpm-lock.yaml
+# Local Netlify folder
+.netlify
+package-lock.json
