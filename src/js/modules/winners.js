@@ -414,9 +414,6 @@ async function showQRCode(winnerId) {
         <h5>Ticket Code: <span class="badge bg-primary fs-6">${ticketCode}</span></h5>
         <img src="${qrCodeUrl}" alt="QR Code" class="img-fluid my-3" />
         <p class="text-muted">Scan this code at the prize pickup station</p>
-        <button class="btn btn-primary" onclick="window.print()">
-          <i class="bi bi-printer"></i> Print QR Code
-        </button>
       </div>
     `;
     

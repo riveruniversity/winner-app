@@ -2,6 +2,7 @@
 :root {
   --primary-color: #0A4f7B;
   --secondary-color: #5FA1F7;
+  --primary-color-shadow: rgba(10, 79, 123, 0.25);
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
@@ -36,14 +37,14 @@ body {
 
 /* Prize Grid Styles */
 #prizesGrid .card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: box-shadow 0.3s ease;
   cursor: pointer;
   height: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #prizesGrid .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 6px 20px var(--primary-color-shadow, rgba(99, 102, 241, 0.25)) !important;
 }
 
 #prizesGrid .card-body {
