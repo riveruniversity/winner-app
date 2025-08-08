@@ -43,16 +43,37 @@ body {
   font-family: monospace;
 }
 
-/* Prize Grid Styles */
-#prizesGrid .card {
-  transition: box-shadow 0.3s ease;
-  cursor: pointer;
-  height: 100%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Management Cards Hover Effects */
+.card {
+  transition: box-shadow 0.3s ease !important;
 }
 
-#prizesGrid .card:hover {
-  box-shadow: 0 6px 20px var(--primary-color-shadow, rgba(99, 102, 241, 0.25)) !important;
+/* Cards in all management tabs including settings */
+.management-interface .card,
+.tab-pane .card,
+#prizesGrid .card,
+#listsContainer .card,
+#prizesContainer .card,
+#settings .card,
+#lists .card,
+#prizes .card {
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.management-interface .card:hover,
+.tab-pane .card:hover,
+#prizesGrid .card:hover,
+#listsContainer .card:hover,
+#prizesContainer .card:hover,
+#settings .card:hover,
+#lists .card:hover,
+#prizes .card:hover {
+  box-shadow: 0 8px 24px var(--primary-color-shadow, rgba(99, 102, 241, 0.35)) !important;
+}
+
+#prizesGrid .card {
+  height: 100%;
 }
 
 #prizesGrid .card-body {

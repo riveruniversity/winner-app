@@ -27,7 +27,7 @@ async function loadPrizes() {
 
       const prizeCards = prizes.map(prize => `
         <div class="col-md-6 col-lg-4">
-          <div class="card h-100 shadow-sm">
+          <div class="card h-100">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-2">
                 <h5 class="card-title mb-0">${prize.name}</h5>
