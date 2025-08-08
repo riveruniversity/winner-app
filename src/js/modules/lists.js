@@ -5,23 +5,30 @@
 // 1. Import dependencies
 import { Database } from './firestore.js';
 import { UI } from './ui.js';
+import { settings } from './settings.js';
 
 // 2. Define functions as standalone, not inside a closure
 // Cache-first loading with real-time updates
 async function loadLists() {
-  const container = document.getElementById('listsContainer');
-  if (!container) return;
-
-  // Show loading state
-  container.innerHTML = '<p class="text-muted">📦 Loading lists...</p>';
+  const gridContainer = document.getElementById('listsGrid');
+  const noListsMessage = document.getElementById('noListsMessage');
+  
+  // Fallback to old container for backward compatibility
+  const oldContainer = document.getElementById('listsContainer');
+  
+  if (!gridContainer && !oldContainer) return;
 
   try {
     const lists = await Database.getFromStore('lists');
 
     if (lists.length === 0) {
-      container.innerHTML = '<p class="text-muted">No lists uploaded yet.</p>';
+      if (gridContainer) gridContainer.innerHTML = '';
+      if (noListsMessage) noListsMessage.style.display = 'block';
+      if (oldContainer) oldContainer.innerHTML = '<p class="text-muted">No lists uploaded yet.</p>';
       return;
     }
+
+    if (noListsMessage) noListsMessage.style.display = 'none';
 
     // Ensure backward compatibility
     for (const list of lists) {
@@ -31,27 +38,62 @@ async function loadLists() {
       }
     }
 
-    container.innerHTML = lists.map(list => `
-      <div class="card mb-3">
-        <div class="card-body">
-          <h6 class="card-title">${list.metadata.name}</h6>
-          <p class="card-text">
-            <small class="text-muted">
-              ${list.entries.length} entries • 
-              Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
-            </small>
-          </p>
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.viewList(this.dataset.listId)">
-              <i class="bi bi-eye"></i> View
-            </button>
-            <button class="btn btn-outline-danger" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.deleteListConfirm(this.dataset.listId)">
-              <i class="bi bi-trash"></i> Delete
-            </button>
+    const listCards = lists.map(list => `
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">${list.metadata.name}</h5>
+            ${!settings.hideEntryCounts ? `
+            <p class="card-text">
+              <strong>${list.entries.length}</strong> entries
+            </p>
+            ` : ''}
+            <p class="card-text">
+              <small class="text-muted">
+                Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
+              </small>
+            </p>
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-sm btn-outline-primary" onclick="Lists.viewList('${list.listId || list.metadata.listId}')" 
+                      title="View list entries" data-bs-toggle="tooltip">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')"
+                      title="Delete this list" data-bs-toggle="tooltip">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     `).join('');
+
+    if (gridContainer) {
+      gridContainer.innerHTML = listCards;
+    } else if (oldContainer) {
+      // Fallback for old container
+      oldContainer.innerHTML = lists.map(list => `
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-title">${list.metadata.name}</h6>
+            <p class="card-text">
+              <small class="text-muted">
+                ${!settings.hideEntryCounts ? `${list.entries.length} entries • ` : ''}
+                Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
+              </small>
+            </p>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="Lists.viewList('${list.listId || list.metadata.listId}')">
+                <i class="bi bi-eye"></i> View
+              </button>
+              <button class="btn btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
   } catch (error) {
     console.error('Error rendering lists:', error);
     UI.showToast('Error loading lists: ' + error.message, 'error');
@@ -85,7 +127,7 @@ async function loadListsTraditional() {
           <h6 class="card-title">${list.metadata.name}</h6>
           <p class="card-text">
             <small class="text-muted">
-              ${list.entries.length} entries • 
+              ${!settings.hideEntryCounts ? `${list.entries.length} entries • ` : ''}
               Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
             </small>
           </p>
@@ -141,10 +183,12 @@ async function viewList(listId) {
       }).join('');
 
       modalBody.innerHTML = `
+        ${!settings.hideEntryCounts ? `
         <div class="mb-3">
           <strong>Total Entries:</strong> ${list.entries.length}
           ${list.metadata.skippedWinners ? `<span class="text-muted ms-2">(${list.metadata.skippedWinners} winners skipped during upload)</span>` : ''}
         </div>
+        ` : ''}
         <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
           <table class="table table-striped table-sm">
             <thead class="sticky-top bg-white">

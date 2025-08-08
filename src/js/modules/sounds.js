@@ -17,7 +17,11 @@ let availableSounds = {
 };
 
 // Initialize sound file management
+let soundsInitialized = false;
 async function initSounds() {
+  if (soundsInitialized) return; // Prevent duplicate initialization
+  soundsInitialized = true;
+  
   await loadCustomSounds();
   updateSoundFilesList();
   updateSoundDropdowns();

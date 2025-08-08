@@ -280,50 +280,98 @@ window.selectBackup = async function(backupId) {
   }
 };
 
+// Global function for backup deletion (called from modal HTML)
+window.deleteBackup = async function(backupId) {
+  try {
+    // Confirm deletion
+    if (!confirm('Are you sure you want to delete this backup? This action cannot be undone.')) {
+      return;
+    }
+    
+    // Delete the backup
+    await Database.deleteFromStore('backups', backupId);
+    
+    // Remove from UI
+    const backupElement = document.getElementById(`backup-${backupId}`);
+    if (backupElement) {
+      backupElement.style.opacity = '0.5';
+      backupElement.style.transition = 'opacity 0.3s';
+      setTimeout(() => {
+        backupElement.remove();
+        
+        // Check if any backups remain
+        const remainingBackups = document.querySelectorAll('.backup-option');
+        if (remainingBackups.length === 0) {
+          // Close modal and show message
+          if (window.appModal) {
+            window.appModal.hide();
+          }
+          UI.showToast('All backups deleted. No backups remaining.', 'info');
+        }
+      }, 300);
+    }
+    
+    UI.showToast('Backup deleted successfully', 'success');
+  } catch (error) {
+    console.error('Error deleting backup:', error);
+    UI.showToast('Error deleting backup: ' + error.message, 'error');
+  }
+};
+
 // Online backup functions (using Firestore cloud storage)
 async function handleBackupOnline() {
   try {
-    UI.showProgress('Creating Online Backup', 'Collecting data...');
-    
-    // Auto-generate backup name with ISO date and time
+    // Auto-generate default backup name with ISO date and time
     const now = new Date();
-    const backupName = now.toISOString().replace('T', ' ').substring(0, 19); // "2024-12-15 14:30:25"
-
-    const backupData = {
-      version: '1.0',
-      timestamp: Date.now(),
-      lists: await Database.getFromStore('lists'),
-      prizes: await Database.getFromStore('prizes'),
-      winners: await Database.getFromStore('winners'),
-      history: await Database.getFromStore('history'),
-      settings: Settings.settings
-    };
-
-    // Generate a unique backup ID
-    const backupId = generateBackupId();
+    const defaultBackupName = now.toISOString().replace('T', ' ').substring(0, 19); // "2024-12-15 14:30:25"
     
-    // Clean backup data to remove undefined values (Firestore doesn't allow them)
-    const cleanedBackupData = cleanDataForFirestore(backupData);
+    // Show modal to get optional backup name
+    const modalContent = `
+      <div class="mb-3">
+        <label for="backupNameInput" class="form-label">Backup Name (optional)</label>
+        <input type="text" class="form-control" id="backupNameInput" 
+               placeholder="${defaultBackupName}" 
+               value="${defaultBackupName}">
+        <small class="text-muted">Leave as default or enter a custom name for this backup</small>
+      </div>
+    `;
     
-    // Store the complete backup data in Firestore
-    await Database.saveToStore('backups', {
-      backupId: backupId,
-      name: backupName,
-      timestamp: Date.now(),
-      description: `Auto-backup created at ${backupName}`,
-      data: cleanedBackupData // Store the cleaned backup data
+    UI.showConfirmationModal('Create Online Backup', modalContent, async () => {
+      const customName = document.getElementById('backupNameInput')?.value?.trim();
+      const backupName = customName || defaultBackupName;
+      
+      UI.showProgress('Creating Online Backup', 'Collecting data...');
+      
+      const backupData = {
+        version: '1.0',
+        timestamp: Date.now(),
+        lists: await Database.getFromStore('lists'),
+        prizes: await Database.getFromStore('prizes'),
+        winners: await Database.getFromStore('winners'),
+        history: await Database.getFromStore('history'),
+        settings: Settings.settings
+      };
+
+      // Generate a unique backup ID
+      const backupId = generateBackupId();
+      
+      // Clean backup data to remove undefined values (Firestore doesn't allow them)
+      const cleanedBackupData = cleanDataForFirestore(backupData);
+      
+      // Store the complete backup data in Firestore
+      await Database.saveToStore('backups', {
+        backupId: backupId,
+        name: backupName,
+        timestamp: Date.now(),
+        description: `Backup created at ${new Date().toLocaleString()}`,
+        data: cleanedBackupData // Store the cleaned backup data
+      });
+
+      UI.hideProgress();
+      
+      // Show success message
+      UI.showToast(`Backup "${backupName}" created successfully!`, 'success');
     });
-
-    UI.hideProgress();
-    
-    // Show success message
-    UI.showConfirmationModal('Backup Created Successfully', 
-      `<div class="alert alert-success">
-        <h6><i class="bi bi-cloud-check me-2"></i>Backup "${backupName}" Created!</h6>
-        <p class="mb-0">Your data has been securely backed up to the cloud. You can restore it anytime from the backup list.</p>
-      </div>`, 
-      () => {}
-    );
 
   } catch (error) {
     UI.hideProgress();
@@ -349,20 +397,30 @@ async function handleRestoreOnline() {
     // Sort backups by timestamp (newest first)
     backups.sort((a, b) => b.timestamp - a.timestamp);
     
-    // Create backup selection UI
+    // Create backup selection UI with delete buttons
     const backupOptions = backups.map(backup => 
-      `<div class="backup-option mb-2 p-3 border rounded" style="cursor: pointer; transition: all 0.2s;" 
-           onmouseover="this.style.backgroundColor='#f8f9fa'; this.style.borderColor='#007bff';" 
-           onmouseout="this.style.backgroundColor=''; this.style.borderColor='';"
-           onclick="selectBackup('${backup.backupId}')">
+      `<div class="backup-option mb-2 p-3 border rounded" style="transition: all 0.2s;" 
+           id="backup-${backup.backupId}">
         <div class="d-flex justify-content-between align-items-start">
-          <div>
+          <div style="flex-grow: 1; cursor: pointer;" 
+               onclick="selectBackup('${backup.backupId}')"
+               onmouseover="this.parentElement.parentElement.style.backgroundColor='#f8f9fa'; this.parentElement.parentElement.style.borderColor='#007bff';" 
+               onmouseout="this.parentElement.parentElement.style.backgroundColor=''; this.parentElement.parentElement.style.borderColor='';">
             <h6 class="mb-1"><i class="bi bi-cloud-arrow-down me-2"></i>${backup.name}</h6>
             <small class="text-muted">${backup.description}</small>
           </div>
           <div class="text-end">
             <small class="text-muted d-block">${formatBackupSize(backup)}</small>
-            <small class="text-success"><i class="bi bi-check-circle me-1"></i>Available</small>
+            <div class="btn-group btn-group-sm mt-1" role="group">
+              <button class="btn btn-outline-success" onclick="selectBackup('${backup.backupId}')" 
+                      title="Restore" data-bs-toggle="tooltip" data-bs-placement="top">
+                <i class="bi bi-arrow-down-circle" style="font-size: 0.875rem;"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="deleteBackup('${backup.backupId}')"
+                      title="Delete" data-bs-toggle="tooltip" data-bs-placement="top">
+                <i class="bi bi-trash" style="font-size: 0.875rem;"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>`
@@ -370,7 +428,7 @@ async function handleRestoreOnline() {
     
     UI.showConfirmationModal('Select Backup to Restore', 
       `<div class="mb-3">
-        <p>Choose a backup to restore:</p>
+        <p>Choose a backup to restore or delete:</p>
         <div style="max-height: 400px; overflow-y: auto;">
           ${backupOptions}
         </div>

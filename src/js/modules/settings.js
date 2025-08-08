@@ -840,6 +840,15 @@ async function autoSaveIndividualSetting(fieldId) {
         applyTheme();
       }
       
+      // Apply visibility changes immediately
+      if (settingKey === 'hideEntryCounts') {
+        UI.applyVisibilitySettings();
+        // Also reload lists to update their display
+        if (window.Lists && window.Lists.loadLists) {
+          window.Lists.loadLists();
+        }
+      }
+      
       debugLog(`Individual setting auto-saved: ${settingKey} = ${newValue}`);
     }
   } catch (error) {

@@ -108,12 +108,18 @@
               </button>
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="./scan.html" target="_blank"><i class="bi bi-qr-code-scan me-2"></i>Prize Pickup Scanner</a></li>
-                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
                 <li><a class="dropdown-item" href="#" id="undoLastSelection"><i class="bi bi-arrow-counterclockwise me-2"></i>Undo Last Selection</a></li>
-                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
                 <li><a class="dropdown-item" href="#" id="backupData"><i class="bi bi-download me-2"></i>Backup Local</a></li>
                 <li><a class="dropdown-item" href="#" id="restoreData"><i class="bi bi-upload me-2"></i>Restore Local</a></li>
-                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <hr class="dropdown-divider">
+                </li>
                 <li><a class="dropdown-item" href="#" id="backupOnline"><i class="bi bi-cloud-upload me-2"></i>Backup Online</a></li>
                 <li><a class="dropdown-item" href="#" id="restoreOnline"><i class="bi bi-cloud-download me-2"></i>Restore Online</a></li>
               </ul>
@@ -180,7 +186,6 @@
                 </div>
                 <hr class="my-4">
                 <h6 class="card-subtitle mb-3 text-muted">Selection & Presentation Settings</h6>
-                
                 <!-- Basic Settings -->
                 <div class="row g-3 mb-4">
                   <div class="col-md-6">
@@ -199,7 +204,6 @@
                     </select>
                   </div>
                 </div>
-
                 <!-- Pre-Selection Delay -->
                 <div class="row g-3 mb-4">
                   <div class="col-12">
@@ -226,7 +230,6 @@
                     </select>
                   </div>
                 </div>
-
                 <!-- Winner Display Effects -->
                 <div class="row g-3 mb-4">
                   <div class="col-12">
@@ -253,7 +256,6 @@
                     <input type="number" class="form-control form-control-lg" id="displayDuration" value="0.5" min="0.1" max="5" step="0.1">
                   </div>
                 </div>
-
                 <!-- Sound Settings -->
                 <div class="row g-3 mb-4">
                   <div class="col-12">
@@ -303,7 +305,6 @@
                     </div>
                   </div>
                 </div>
-
                 <!-- Celebration Animation Settings -->
                 <div class="card mb-3">
                   <div class="card-header">
@@ -347,56 +348,34 @@
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
           <!-- Lists Tab -->
           <div class="tab-pane fade" id="lists" role="tabpanel">
-            <div class="row">
-              <div class="col-lg-6">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Upload CSV List</h5>
-                    <div class="mb-3">
-                      <label class="form-label">List Name</label>
-                      <input type="text" class="form-control" id="listName" placeholder="Enter list name">
-                    </div>
-                    <div class="mb-3">
-                      <label class="form-label">CSV File</label>
-                      <input type="file" class="form-control" id="csvFile" accept=".csv" style="display: none;">
-                    </div>
-                    <button class="btn btn-primary" id="uploadBtn">
-                      <i class="bi bi-upload me-2"></i>Upload List
-                    </button>
-                  </div>
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                  <h5 class="card-title mb-0">List Management</h5>
+                  <button class="btn btn-primary" id="uploadListModalBtn">
+                    <i class="bi bi-plus-circle me-2"></i>Upload List
+                  </button>
                 </div>
-              </div>
-              <div class="col-lg-6">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Manage Lists</h5>
-                    <div id="listsContainer">
-                      <!-- Lists will be displayed here -->
-                    </div>
-                  </div>
+                <!-- Lists Grid -->
+                <div class="row g-3" id="listsGrid">
+                  <!-- List cards will be displayed here in grid format -->
                 </div>
-              </div>
-            </div>
-            <!-- Data Preview Card - Full Width -->
-            <div class="row mt-3">
-              <div class="col-12">
-                <div class="card" id="dataPreviewCard" style="display: none;">
-                  <div class="card-body">
-                    <h5 class="card-title">Data Preview</h5>
-                    <div class="table-responsive">
-                      <table class="table table-sm" id="previewTable">
-                        <thead id="previewHeaders"></thead>
-                        <tbody id="previewBody"></tbody>
-                      </table>
-                    </div>
-                  </div>
+                <!-- Empty state -->
+                <div id="noListsMessage" class="text-center py-5" style="display: none;">
+                  <i class="bi bi-file-earmark-spreadsheet display-1 text-muted"></i>
+                  <p class="text-muted mt-3">No lists uploaded yet</p>
+                  <button class="btn btn-primary" onclick="document.getElementById('uploadListModalBtn').click()">
+                    <i class="bi bi-plus-circle me-2"></i>Upload Your First List
+                  </button>
                 </div>
+                <!-- Hidden inputs for CSV upload -->
+                <input type="text" id="listName" style="display: none;">
+                <input type="file" id="csvFile" accept=".csv" style="display: none;">
               </div>
             </div>
             <!-- Configuration Card - Full Width -->
@@ -422,6 +401,13 @@
                             </label>
                           </div>
                         </div>
+                        <div class="mb-3" id="columnIdSection" style="display: none;">
+                          <label for="idColumnSelect" class="form-label">Select ID Column</label>
+                          <select class="form-select" id="idColumnSelect">
+                            <option value="">Select a column...</option>
+                          </select>
+                          <div class="form-text">Selected column values must be unique for each record.</div>
+                        </div>
                         <div class="mb-3 border rounded p-3 bg-light">
                           <label class="form-label fw-bold">Upload Options</label>
                           <div class="form-check">
@@ -431,13 +417,6 @@
                               <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="When enabled, records are matched by their unique ID only. Records with the same name but different IDs will still be uploaded."></i>
                             </label>
                           </div>
-                        </div>
-                        <div class="mb-3" id="columnIdSection" style="display: none;">
-                          <label for="idColumnSelect" class="form-label">Select ID Column</label>
-                          <select class="form-select" id="idColumnSelect">
-                            <option value="">Select a column...</option>
-                          </select>
-                          <div class="form-text">Selected column values must be unique for each record.</div>
                         </div>
                       </div>
                       <div class="col-12 col-lg-6">
@@ -528,12 +507,10 @@
                     <i class="bi bi-plus-circle me-2"></i>Add Prize
                   </button>
                 </div>
-                
                 <!-- Prizes Grid -->
                 <div class="row g-3" id="prizesGrid">
                   <!-- Prize cards will be displayed here in grid format -->
                 </div>
-                
                 <!-- Empty state -->
                 <div id="noPrizesMessage" class="text-center py-5" style="display: none;">
                   <i class="bi bi-gift display-1 text-muted"></i>
@@ -541,6 +518,22 @@
                   <button class="btn btn-primary" onclick="document.getElementById('addPrizeModalBtn').click()">
                     <i class="bi bi-plus-circle me-2"></i>Add Your First Prize
                   </button>
+                </div>
+              </div>
+            </div>
+            <!-- Data Preview Card - Full Width -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card" id="dataPreviewCard" style="display: none;">
+                  <div class="card-body">
+                    <h5 class="card-title">Data Preview</h5>
+                    <div class="table-responsive">
+                      <table class="table table-sm" id="previewTable">
+                        <thead id="previewHeaders"></thead>
+                        <tbody id="previewBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -871,7 +864,6 @@
     <div class="countdown-number" id="countdownNumber">3</div>
     <canvas id="countdownCanvas"></canvas>
   </div>
-  
   <!-- Animation Canvas - outside countdown so it's always available -->
   <canvas id="animationCanvas"></canvas>
   <!-- Pre-Display Delay Overlay -->

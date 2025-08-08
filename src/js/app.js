@@ -64,10 +64,10 @@ export function clearCurrentWinners() {
 
 // Load data in background without blocking UI
 function loadDataInBackground() {
-  // Fire and forget - don't await these
+  // Fire and forget - components will load their own data from cache
   Lists.loadLists();
   Prizes.loadPrizes();
-  UI.syncUI();
+  UI.syncUI(); // This will populate selects AND apply visibility settings
 }
 
 // Application initialization
@@ -80,7 +80,7 @@ export async function initializeApp() {
     Settings.setupTheme(); // Apply theme once settings are loaded
     console.log('Settings loaded:', settings);
     
-    // Now load data in background - settings are available for dropdown restoration
+    // Load data once and share the results
     loadDataInBackground();
     
     // Load other data in background too (don't await)
@@ -177,17 +177,16 @@ function setupQuickSelection() {
 }
 
 function setupManagementListeners() {
-  // CSV Upload
-  const uploadBtn = document.getElementById('uploadBtn');
+  // CSV Upload handlers
   const csvFileInput = document.getElementById('csvFile');
   const confirmUpload = document.getElementById('confirmUpload');
   const cancelUpload = document.getElementById('cancelUpload');
 
-  if (uploadBtn) {
-    uploadBtn.addEventListener('click', () => csvFileInput.click());
-  }
+  // The file input change is now triggered from the button click
   if (csvFileInput) {
-    csvFileInput.addEventListener('change', CSVParser.handleCSVUpload);
+    csvFileInput.addEventListener('change', async (event) => {
+      await CSVParser.handleCSVUpload(event);
+    });
   }
   if (confirmUpload) confirmUpload.addEventListener('click', CSVParser.handleConfirmUpload);
   if (cancelUpload) cancelUpload.addEventListener('click', CSVParser.handleCancelUpload);
@@ -199,6 +198,19 @@ function setupManagementListeners() {
   // New Add Prize Modal Button
   const addPrizeModalBtn = document.getElementById('addPrizeModalBtn');
   if (addPrizeModalBtn) addPrizeModalBtn.addEventListener('click', Prizes.showAddPrizeModal);
+  
+  // Upload List Button - Opens file browser directly
+  const uploadListModalBtn = document.getElementById('uploadListModalBtn');
+  if (uploadListModalBtn) {
+    uploadListModalBtn.addEventListener('click', () => {
+      // Just trigger the file input directly - no modal needed for step 1
+      const csvFileInput = document.getElementById('csvFile');
+      if (csvFileInput) {
+        csvFileInput.click();
+      }
+    });
+  }
+  
 
   // Settings are now auto-saved, no manual save button needed
   

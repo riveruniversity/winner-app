@@ -134,17 +134,19 @@ function parseCSVLine(line) {
 }
 
 async function handleCSVUpload() {
+  console.log('handleCSVUpload called');
   const listNameInput = document.getElementById('listName');
   const csvFileInput = document.getElementById('csvFile');
 
+  if (!csvFileInput || !csvFileInput.files || csvFileInput.files.length === 0) {
+    console.log('No file selected');
+    return;
+  }
+
   const csvFile = csvFileInput.files[0];
+  console.log('CSV file:', csvFile);
   const fileName = csvFile.name.replace(/\.[^/.]+$/, "");
   const listName = listNameInput.value.trim() || fileName;
-
-  if (!listName) {
-    // UI.showToast('Please enter a list name', 'warning');
-    // return;
-  }
 
   if (!csvFile) {
     UI.showToast('Please select a CSV file', 'warning');
@@ -182,11 +184,19 @@ async function handleCSVUpload() {
 }
 
 function showCSVPreview(data, listName) {
+  console.log('showCSVPreview called with', data.length, 'rows');
   const previewCard = document.getElementById('dataPreviewCard');
   const previewHeaders = document.getElementById('previewHeaders');
   const previewBody = document.getElementById('previewBody');
 
+  console.log('Preview card element:', previewCard);
+  if (!previewCard) {
+    console.error('dataPreviewCard element not found!');
+    return;
+  }
+  
   previewCard.style.display = 'block';
+  console.log('Set preview card to display: block');
   const headers = Object.keys(data[0]);
 
   previewHeaders.innerHTML = '<tr>' +
