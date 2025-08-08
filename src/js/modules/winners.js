@@ -77,9 +77,14 @@ async function loadWinners() {
           <td>${listNameMap[winner.listId] || 'Unknown'}</td>
           <td>${pickupStatus}</td>
           <td>
-            <button class="btn btn-sm btn-outline-danger" data-winner-id="${winner.winnerId}" onclick="Winners.deleteWinnerConfirm(this.dataset.winnerId)">
-              <i class="bi bi-trash"></i>
-            </button>
+            <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-info" data-winner-id="${winner.winnerId}" onclick="Winners.returnToList('${winner.winnerId}')" title="Return to List">
+                <i class="bi bi-arrow-return-left"></i>
+              </button>
+              <button class="btn btn-outline-danger" data-winner-id="${winner.winnerId}" onclick="Winners.deleteWinnerConfirm(this.dataset.winnerId)" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -309,6 +314,82 @@ function resetToSelectionMode() {
   UI.populateQuickSelects();
 }
 
+async function returnToList(winnerId) {
+  try {
+    // Get the winner record
+    const winners = await Database.getFromStore('winners');
+    const winner = winners.find(w => w.winnerId === winnerId);
+    
+    if (!winner) {
+      UI.showToast('Winner not found', 'error');
+      return;
+    }
+    
+    // Check if the original list still exists
+    const lists = await Database.getFromStore('lists');
+    const list = lists.find(l => (l.listId || l.metadata?.listId) === winner.listId);
+    
+    if (!list) {
+      UI.showToast('Original list no longer exists', 'warning');
+      return;
+    }
+    
+    // Check if the entry already exists in the list (to avoid duplicates)
+    const entryExists = list.entries.some(entry => 
+      entry.id === winner.entryId || 
+      entry.id === winner.originalEntry?.id
+    );
+    
+    if (entryExists) {
+      UI.showToast('Entry already exists in the list', 'info');
+      return;
+    }
+    
+    UI.showConfirmationModal(
+      'Return to List',
+      `Are you sure you want to return "${winner.displayName}" to the list "${list.metadata.name}"? They will remain in the winners list and can win again.`,
+      async () => {
+        try {
+          // Create entry to add back to list
+          const entryToRestore = {
+            id: winner.originalEntry?.id || winner.entryId || UI.generateId(),
+            index: list.entries.length,
+            data: winner.originalEntry?.data || {
+              name: winner.displayName,
+              // Try to reconstruct data from winner info if available
+              ...(winner.originalData || {})
+            }
+          };
+          
+          // Add entry back to the list
+          list.entries.push(entryToRestore);
+          
+          // Update entry count in metadata
+          list.metadata.entryCount = list.entries.length;
+          
+          // Save the updated list
+          await Database.saveToStore('lists', list);
+          
+          UI.showToast(`"${winner.displayName}" has been returned to the list "${list.metadata.name}"`, 'success');
+          
+          // Update quick selects
+          await UI.populateQuickSelects();
+          
+          // Reload winners display
+          await loadWinners();
+          
+        } catch (error) {
+          console.error('Error returning winner to list:', error);
+          UI.showToast('Error returning winner to list: ' + error.message, 'error');
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error in returnToList:', error);
+    UI.showToast('Error: ' + error.message, 'error');
+  }
+}
+
 async function showQRCode(winnerId) {
   try {
     // Get the winner record to find the actual ticket code (recordId)
@@ -357,6 +438,7 @@ export const Winners = {
   clearAllWinners,
   undoLastSelection,
   resetToSelectionMode,
+  returnToList,
   showQRCode
 };
 
