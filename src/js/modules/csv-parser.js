@@ -5,8 +5,16 @@
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 import { Database } from './firestore.js';
+import { settings, Settings } from './settings.js';
 
 let pendingCSVData = null;
+
+// Handler for skip existing winners checkbox
+function handleSkipWinnersChange(event) {
+  const checked = event.target.checked;
+  Settings.saveSingleSetting('skipExistingWinners', checked);
+  console.log('Skip existing winners setting saved:', checked);
+}
 
 // Utility functions for camelizing object keys
 function camelize(key) {
@@ -210,9 +218,29 @@ function showNameConfiguration(headers, firstRow) {
   const columnIdSection = document.getElementById('columnIdSection');
   const autoGenerateId = document.getElementById('autoGenerateId');
   const useColumnId = document.getElementById('useColumnId');
+  const skipExistingWinnersCheckbox = document.getElementById('skipExistingWinners');
 
   nameConfigCard.style.display = 'block';
   availableFields.innerHTML = '';
+  
+  // Load the skipExistingWinners setting
+  if (skipExistingWinnersCheckbox) {
+    console.log('Skip winners checkbox found, setting to:', settings.skipExistingWinners);
+    skipExistingWinnersCheckbox.checked = settings.skipExistingWinners || false;
+    
+    // Add change listener to save the setting
+    skipExistingWinnersCheckbox.removeEventListener('change', handleSkipWinnersChange);
+    skipExistingWinnersCheckbox.addEventListener('change', handleSkipWinnersChange);
+    
+    // Make sure the checkbox and its container are visible
+    skipExistingWinnersCheckbox.style.display = 'inline-block';
+    const checkboxContainer = skipExistingWinnersCheckbox.closest('.mb-3');
+    if (checkboxContainer) {
+      checkboxContainer.style.display = 'block';
+    }
+  } else {
+    console.error('Skip winners checkbox not found!');
+  }
 
   // Populate available fields for name template
   headers.forEach(header => {
@@ -360,6 +388,12 @@ async function handleConfirmUpload() {
     const nameConfig = getNameConfiguration();
     const infoConfig = getInfoConfiguration();
     const idConfig = getIdConfiguration();
+    
+    // Get skipExistingWinners from checkbox if available, otherwise use settings
+    const skipCheckbox = document.getElementById('skipExistingWinners');
+    const skipExistingWinners = skipCheckbox ? skipCheckbox.checked : settings.skipExistingWinners;
+    
+    console.log('Skip existing winners:', skipExistingWinners, 'Checkbox exists:', !!skipCheckbox);
 
     // Validate ID configuration if using column-based IDs
     if (idConfig.source === 'column') {
@@ -373,6 +407,65 @@ async function handleConfirmUpload() {
 
     UI.updateProgress(25, 'Creating list structure...');
 
+    // Filter out existing winners if the option is enabled
+    let dataToUpload = pendingCSVData.data;
+    let skippedCount = 0;
+    
+    if (skipExistingWinners) {
+      UI.updateProgress(30, 'Checking for existing winners...');
+      const winners = await Database.getFromStore('winners');
+      console.log('Total winners in database:', winners.length);
+      
+      const winnerIds = new Set();
+      
+      // Collect all winner IDs (unique IDs only, not names)
+      winners.forEach(winner => {
+        // Check for original entry ID (preferred)
+        if (winner.originalEntry?.id) {
+          winnerIds.add(winner.originalEntry.id);
+        }
+        // Also check entryId field
+        if (winner.entryId) {
+          winnerIds.add(winner.entryId);
+        }
+        // Check winnerId as fallback (in case it was used as the record ID)
+        if (winner.winnerId) {
+          winnerIds.add(winner.winnerId);
+        }
+      });
+      
+      console.log('Winner IDs collected:', winnerIds.size);
+
+      // Filter the data - match by ID only
+      dataToUpload = pendingCSVData.data.filter((row, index) => {
+        const entryId = generateEntryId(row, index, idConfig);
+        
+        const isWinner = winnerIds.has(entryId);
+        
+        if (isWinner) {
+          const displayName = nameConfig.replace(/\{([^}]+)\}/g, (match, key) => {
+            return row[key.trim()] || '';
+          }).trim();
+          console.log(`Skipping winner by ID match: "${displayName}" (ID: ${entryId})`);
+          skippedCount++;
+          return false;
+        }
+        return true;
+      });
+      
+      if (skippedCount > 0) {
+        UI.showToast(`Skipping ${skippedCount} records that have already won prizes`, 'info');
+      }
+      
+      if (dataToUpload.length === 0) {
+        UI.hideProgress();
+        UI.showToast('All records in this file have already won prizes. No new records to upload.', 'warning');
+        return;
+      }
+    }
+
+    UI.updateProgress(35, 'Creating list structure...');
+
     const listId = UI.generateId();
     const listData = {
       listId: listId,
@@ -381,12 +474,14 @@ async function handleConfirmUpload() {
         name: pendingCSVData.listName,
         timestamp: Date.now(),
         originalFilename: pendingCSVData.fileName,
-        entryCount: pendingCSVData.data.length,
+        entryCount: dataToUpload.length,
+        originalCount: pendingCSVData.data.length,
+        skippedWinners: skippedCount,
         nameConfig: nameConfig,
         infoConfig: infoConfig,
         idConfig: idConfig
       },
-      entries: pendingCSVData.data.map((row, index) => ({
+      entries: dataToUpload.map((row, index) => ({
         id: generateEntryId(row, index, idConfig),
         index: index,
         data: row
@@ -409,11 +504,13 @@ async function handleConfirmUpload() {
       UI.hideProgress();
     }, 1000);
 
-    const entriesText = pendingCSVData.data.length > 1000 ? 
-      `${pendingCSVData.data.length} entries (auto-sharded for optimal performance)` :
-      `${pendingCSVData.data.length} entries`;
+    const entriesText = dataToUpload.length > 1000 ? 
+      `${dataToUpload.length} entries (auto-sharded for optimal performance)` :
+      `${dataToUpload.length} entries`;
+    
+    const skippedText = skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : '';
       
-    UI.showToast(`List "${pendingCSVData.listName}" processed successfully with ${entriesText}! 📦 Syncing to cloud...`, 'success');
+    UI.showToast(`List "${pendingCSVData.listName}" processed successfully with ${entriesText}${skippedText}! 📦 Syncing to cloud...`, 'success');
 
     // Clear form and hide preview
     document.getElementById('listName').value = '';

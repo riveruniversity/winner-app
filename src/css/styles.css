@@ -34,6 +34,35 @@ body {
   --bs-border-color: #334155;
 }
 
+/* Prize Grid Styles */
+#prizesGrid .card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  height: 100%;
+}
+
+#prizesGrid .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+#prizesGrid .card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+#prizesGrid .card-body .mt-auto {
+  margin-top: auto !important;
+}
+
+#noPrizesMessage {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Main Public Selection Interface */
 .public-selection-interface {
   min-height: 100vh;

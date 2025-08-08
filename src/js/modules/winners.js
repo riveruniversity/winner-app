@@ -30,6 +30,7 @@ async function loadWinners() {
     const filterPrize = document.getElementById('filterPrize').value;
     const filterList = document.getElementById('filterList').value;
     const filterSelection = document.getElementById('filterSelection').value;
+    const filterDateInput = document.getElementById('filterDate').value;
 
     populateWinnerFilters(winners, lists, filterPrize, filterList, filterSelection);
 
@@ -38,10 +39,18 @@ async function loadWinners() {
       const listName = listNameMap[winner.listId] || 'Unknown';
       const listMatch = !filterList || listName === filterList;
       const selectionMatch = !filterSelection || winner.historyId === filterSelection;
-      return prizeMatch && listMatch && selectionMatch;
+      
+      // Date filter
+      let dateMatch = true;
+      if (filterDateInput) {
+        const winnerDate = new Date(winner.timestamp).toISOString().split('T')[0];
+        dateMatch = winnerDate === filterDateInput;
+      }
+      
+      return prizeMatch && listMatch && selectionMatch && dateMatch;
     });
 
-    updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection);
+    updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection, filterDateInput);
 
     if (filteredWinners.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No winners match the current filters.</td></tr>';
@@ -137,7 +146,7 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   selectionFilter.value = selectedSelection;
 }
 
-function updateWinnersCountDisplay(filteredCount, totalCount, filterPrize, filterList, filterSelection) {
+function updateWinnersCountDisplay(filteredCount, totalCount, filterPrize, filterList, filterSelection, filterDate) {
   const winnersCountElement = document.getElementById('winnersCount');
   const filterStatusElement = document.getElementById('filterStatus');
   
@@ -152,7 +161,11 @@ function updateWinnersCountDisplay(filteredCount, totalCount, filterPrize, filte
   const activeFilters = [];
   if (filterPrize) activeFilters.push(`Prize: ${filterPrize}`);
   if (filterList) activeFilters.push(`List: ${filterList}`);
-  if (filterSelection) activeFilters.push(`Selection: ${filterSelection}`);
+  if (filterSelection) activeFilters.push(`Batch: ${filterSelection}`);
+  if (filterDate) {
+    const dateObj = new Date(filterDate + 'T00:00:00');
+    activeFilters.push(`Date: ${dateObj.toLocaleDateString()}`);
+  }
 
   if (activeFilters.length > 0) {
     filterStatusElement.textContent = `Filtered by: ${activeFilters.join(', ')}`;

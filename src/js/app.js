@@ -195,6 +195,10 @@ function setupManagementListeners() {
   // Prize Management
   const addPrizeBtn = document.getElementById('addPrizeBtn');
   if (addPrizeBtn) addPrizeBtn.addEventListener('click', Prizes.handleAddPrize);
+  
+  // New Add Prize Modal Button
+  const addPrizeModalBtn = document.getElementById('addPrizeModalBtn');
+  if (addPrizeModalBtn) addPrizeModalBtn.addEventListener('click', Prizes.showAddPrizeModal);
 
   // Settings are now auto-saved, no manual save button needed
   
@@ -272,16 +276,30 @@ function setupManagementListeners() {
   if (backupOnline) backupOnline.addEventListener('click', Export.handleBackupOnline);
   if (restoreOnline) restoreOnline.addEventListener('click', Export.handleRestoreOnline);
   if (undoLastSelection) undoLastSelection.addEventListener('click', Winners.undoLastSelection);
+  
+  // Clear filters button
+  const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', () => {
+      document.getElementById('filterPrize').value = '';
+      document.getElementById('filterList').value = '';
+      document.getElementById('filterSelection').value = '';
+      document.getElementById('filterDate').value = '';
+      Winners.loadWinners();
+    });
+  }
 }
 
 function setupWinnerFilters() {
   const prizeFilter = document.getElementById('filterPrize');
   const listFilter = document.getElementById('filterList');
   const selectionFilter = document.getElementById('filterSelection');
+  const dateFilter = document.getElementById('filterDate');
 
   if (prizeFilter) prizeFilter.addEventListener('change', Winners.loadWinners);
   if (listFilter) listFilter.addEventListener('change', Winners.loadWinners);
   if (selectionFilter) selectionFilter.addEventListener('change', Winners.loadWinners);
+  if (dateFilter) dateFilter.addEventListener('change', Winners.loadWinners);
 }
 
 function setupDisplayMode() {

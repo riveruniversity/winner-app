@@ -8,34 +8,71 @@ import { UI } from './ui.js';
 async function loadPrizes() {
     try {
       const prizes = await Database.getFromStore('prizes');
-      const container = document.getElementById('prizesContainer');
+      const gridContainer = document.getElementById('prizesGrid');
+      const noPrizesMessage = document.getElementById('noPrizesMessage');
+      
+      // Also check for old container for backward compatibility
+      const oldContainer = document.getElementById('prizesContainer');
 
-      if (!container) return;
+      if (!gridContainer && !oldContainer) return;
 
       if (prizes.length === 0) {
-        container.innerHTML = '<p class="text-muted">No prizes added yet.</p>';
+        if (gridContainer) gridContainer.innerHTML = '';
+        if (noPrizesMessage) noPrizesMessage.style.display = 'block';
+        if (oldContainer) oldContainer.innerHTML = '<p class="text-muted">No prizes added yet.</p>';
         return;
       }
 
-      container.innerHTML = prizes.map(prize => `
-        <div class="card mb-3">
-          <div class="card-body">
-            <h6 class="card-title">${prize.name}</h6>
-            <p class="card-text">
-              <span class="badge bg-primary">Qty: ${prize.quantity}</span>
-              ${prize.description ? `<br><small class="text-muted">${prize.description}</small>` : ''}
-            </p>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrize(this.dataset.prizeId)">
-                <i class="bi bi-pencil"></i> Edit
-              </button>
-              <button class="btn btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm(this.dataset.prizeId)">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+      if (noPrizesMessage) noPrizesMessage.style.display = 'none';
+
+      const prizeCards = prizes.map(prize => `
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="card-title mb-0">${prize.name}</h5>
+                <span class="badge bg-primary">Qty: ${prize.quantity}</span>
+              </div>
+              ${prize.description ? `<p class="card-text text-muted small">${prize.description}</p>` : '<p class="card-text text-muted small">No description</p>'}
+              <div class="mt-auto pt-3">
+                <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
       `).join('');
+
+      if (gridContainer) {
+        gridContainer.innerHTML = prizeCards;
+      }
+      
+      // Backward compatibility for old container
+      if (oldContainer) {
+        oldContainer.innerHTML = prizes.map(prize => `
+          <div class="card mb-3">
+            <div class="card-body">
+              <h6 class="card-title">${prize.name}</h6>
+              <p class="card-text">
+                <span class="badge bg-primary">Qty: ${prize.quantity}</span>
+                ${prize.description ? `<br><small class="text-muted">${prize.description}</small>` : ''}
+              </p>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
     } catch (error) {
       console.error('Error loading prizes:', error);
       UI.showToast('Error loading prizes: ' + error.message, 'error');
@@ -91,7 +128,79 @@ async function loadPrizes() {
     }
   }
 
-  async function editPrize(prizeId) {
+  // Show Add Prize Modal
+  async function showAddPrizeModal() {
+    const modalTitle = document.getElementById('appModalLabel');
+    const modalBody = document.getElementById('appModalBody');
+    const confirmBtn = document.getElementById('appModalConfirmBtn');
+
+    modalTitle.textContent = 'Add New Prize';
+    modalBody.innerHTML = `
+      <div class="mb-3">
+        <label for="modalPrizeName" class="form-label">Prize Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="modalPrizeName" placeholder="Enter prize name" required>
+      </div>
+      <div class="mb-3">
+        <label for="modalPrizeQuantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" id="modalPrizeQuantity" value="1" min="1" required>
+      </div>
+      <div class="mb-3">
+        <label for="modalPrizeDescription" class="form-label">Description (Optional)</label>
+        <textarea class="form-control" id="modalPrizeDescription" rows="3" placeholder="Enter prize description"></textarea>
+      </div>
+    `;
+    
+    confirmBtn.textContent = 'Add Prize';
+    confirmBtn.className = 'btn btn-primary';
+    confirmBtn.style.display = 'inline-block';
+
+    // Remove old event listeners by replacing the button
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+      const name = document.getElementById('modalPrizeName').value.trim();
+      const quantity = parseInt(document.getElementById('modalPrizeQuantity').value);
+      const description = document.getElementById('modalPrizeDescription').value.trim();
+
+      if (!name) {
+        UI.showToast('Please enter a prize name', 'warning');
+        return;
+      }
+
+      if (quantity < 1) {
+        UI.showToast('Please enter a valid quantity', 'warning');
+        return;
+      }
+
+      try {
+        const prizeId = UI.generateId();
+        const prize = {
+          prizeId: prizeId,
+          name: name,
+          quantity: quantity,
+          description: description,
+          timestamp: Date.now(),
+          id: prizeId
+        };
+
+        await Database.saveToStore('prizes', prize);
+        UI.showToast(`Prize "${name}" added successfully`, 'success');
+        
+        await loadPrizes();
+        await UI.populateQuickSelects();
+        window.appModal.hide();
+      } catch (error) {
+        console.error('Error adding prize:', error);
+        UI.showToast('Error adding prize: ' + error.message, 'error');
+      }
+    }, { once: true });
+
+    window.appModal.show();
+  }
+
+  // Edit Prize Modal (renamed from editPrize to editPrizeModal)
+  async function editPrizeModal(prizeId) {
     const prizes = await Database.getFromStore('prizes');
     const prize = prizes.find(p => p.prizeId === prizeId);
     if (!prize) return;
@@ -103,18 +212,19 @@ async function loadPrizes() {
     modalTitle.textContent = 'Edit Prize';
     modalBody.innerHTML = `
       <div class="mb-3">
-        <label for="modalPrizeName" class="form-label">Prize Name</label>
-        <input type="text" class="form-control" id="modalPrizeName" value="${prize.name}">
+        <label for="modalPrizeName" class="form-label">Prize Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="modalPrizeName" value="${prize.name}" required>
       </div>
       <div class="mb-3">
-        <label for="modalPrizeQuantity" class="form-label">Quantity</label>
-        <input type="number" class="form-control" id="modalPrizeQuantity" value="${prize.quantity}" min="0">
+        <label for="modalPrizeQuantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" id="modalPrizeQuantity" value="${prize.quantity}" min="0" required>
       </div>
       <div class="mb-3">
-        <label for="modalPrizeDescription" class="form-label">Description</label>
+        <label for="modalPrizeDescription" class="form-label">Description (Optional)</label>
         <textarea class="form-control" id="modalPrizeDescription" rows="3">${prize.description || ''}</textarea>
       </div>
     `;
+    
     confirmBtn.textContent = 'Save Changes';
     confirmBtn.className = 'btn btn-primary';
     confirmBtn.style.display = 'inline-block';
@@ -144,6 +254,11 @@ async function loadPrizes() {
 
     window.appModal.show();
   }
+  
+  // Keep old editPrize for backward compatibility
+  async function editPrize(prizeId) {
+    return editPrizeModal(prizeId);
+  }
 
   async function deletePrizeConfirm(prizeId) {
     UI.showConfirmationModal('Delete Prize', 'Are you sure you want to delete this prize?', async () => {
@@ -157,7 +272,9 @@ async function loadPrizes() {
 export const Prizes = {
   loadPrizes,
   handleAddPrize,
+  showAddPrizeModal,
   editPrize,
+  editPrizeModal,
   deletePrizeConfirm
 };
 

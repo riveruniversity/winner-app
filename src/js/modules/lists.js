@@ -116,20 +116,70 @@ async function viewList(listId) {
       const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
 
       modalTitle.textContent = `List: ${list.metadata.name}`;
-      const entriesPreview = list.entries.slice(0, 10).map(entry =>
-        `<li>${formatDisplayName(entry, list.metadata.nameConfig)}</li>`
-      ).join('');
+      
+      // Create table view with individual record management
+      const tableRows = list.entries.map((entry, index) => {
+        const displayName = formatDisplayName(entry, list.metadata.nameConfig);
+        const info1 = list.metadata.infoConfig?.info1 ? 
+          list.metadata.infoConfig.info1.replace(/\{([^}]+)\}/g, (match, key) => entry.data[key.trim()] || '').trim() : '';
+        const info2 = list.metadata.infoConfig?.info2 ? 
+          list.metadata.infoConfig.info2.replace(/\{([^}]+)\}/g, (match, key) => entry.data[key.trim()] || '').trim() : '';
+        
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${displayName}</td>
+            <td>${info1}</td>
+            <td>${info2}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListEntry('${listId}', '${entry.id}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
 
       modalBody.innerHTML = `
-        <p><strong>Total Entries:</strong> ${list.entries.length}</p>
-        <h6>First 10 Entries:</h6>
-        <ul>${entriesPreview}</ul>
-        ${list.entries.length > 10 ? '<p>...</p>' : ''}
+        <div class="mb-3">
+          <strong>Total Entries:</strong> ${list.entries.length}
+          ${list.metadata.skippedWinners ? `<span class="text-muted ms-2">(${list.metadata.skippedWinners} winners skipped during upload)</span>` : ''}
+        </div>
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-striped table-sm">
+            <thead class="sticky-top bg-white">
+              <tr>
+                <th style="width: 60px;">#</th>
+                <th>Name</th>
+                <th>Info 1</th>
+                <th>Info 2</th>
+                <th style="width: 80px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows || '<tr><td colspan="5" class="text-center text-muted">No entries in this list</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-3 text-muted small">
+          <i class="bi bi-info-circle"></i> Individual records can be deleted from this list. This action cannot be undone.
+        </div>
       `;
 
       confirmBtn.style.display = 'none';
       cancelBtn.textContent = 'Close';
+      
+      // Make modal extra large for table view
+      const modalDialog = document.querySelector('#appModal .modal-dialog');
+      modalDialog.classList.add('modal-xl');
+      
       window.appModal.show();
+      
+      // Remove modal-xl class when modal is hidden
+      const modalElement = document.getElementById('appModal');
+      modalElement.addEventListener('hidden.bs.modal', function() {
+        modalDialog.classList.remove('modal-xl');
+      }, { once: true });
     }
   } catch (error) {
     console.error('Error viewing list:', error);
@@ -188,12 +238,71 @@ function formatDisplayName(entry, nameConfig) {
   return entry.data[firstField] || 'Unknown';
 }
 
+async function deleteListEntry(listId, entryId) {
+  try {
+    const list = await Database.getFromStore('lists', listId);
+    if (!list) {
+      UI.showToast('List not found', 'error');
+      return;
+    }
+    
+    // Find and remove the entry
+    const entryIndex = list.entries.findIndex(e => e.id === entryId);
+    if (entryIndex === -1) {
+      UI.showToast('Entry not found in list', 'error');
+      return;
+    }
+    
+    const entryName = formatDisplayName(list.entries[entryIndex], list.metadata.nameConfig);
+    
+    UI.showConfirmationModal(
+      'Delete Entry',
+      `Are you sure you want to delete "${entryName}" from this list?`,
+      async () => {
+        try {
+          // Remove the entry from the list
+          list.entries.splice(entryIndex, 1);
+          
+          // Update entry count in metadata
+          list.metadata.entryCount = list.entries.length;
+          
+          // Re-index remaining entries
+          list.entries.forEach((entry, index) => {
+            entry.index = index;
+          });
+          
+          // Save the updated list
+          await Database.saveToStore('lists', list);
+          
+          UI.showToast(`Entry "${entryName}" deleted successfully`, 'success');
+          
+          // Refresh the modal view
+          viewList(listId);
+          
+          // Refresh the lists display
+          loadLists();
+          
+          // Update quick selects
+          UI.populateQuickSelects();
+        } catch (error) {
+          console.error('Error deleting entry:', error);
+          UI.showToast('Error deleting entry: ' + error.message, 'error');
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error in deleteListEntry:', error);
+    UI.showToast('Error: ' + error.message, 'error');
+  }
+}
+
 // 3. Export the functions you want to be public
 export const Lists = {
   loadLists,
   loadListsTraditional,
   viewList,
   deleteListConfirm,
+  deleteListEntry,
   formatDisplayName
 };
 
