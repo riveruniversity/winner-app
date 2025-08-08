@@ -739,9 +739,7 @@ body {
   transition: transform 0.3s ease;
 }
 
-.card:hover {
-  transform: translateY(-2px);
-}
+/* Removed general card hover transform to prevent unwanted movement */
 
 .card-title {
   color: var(--primary-color);
@@ -764,7 +762,6 @@ body {
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
 }
 

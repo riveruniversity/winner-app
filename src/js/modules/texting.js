@@ -347,12 +347,16 @@ class TextingService {
           <p>Send SMS messages to <strong>${winnerCount} current winner${winnerCount > 1 ? 's' : ''}</strong> with phone numbers?</p>
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">Message Preview:</label>
-          <div class="alert alert-info">
-            <div class="mb-2">${previewMessage}</div>
-            <small class="text-muted">
-              ${this.calculateSMSInfo(previewMessage)}
-            </small>
+          <a href="#" class="text-decoration-none" onclick="event.preventDefault(); const preview = document.getElementById('smsPreviewContent'); const icon = this.querySelector('i'); preview.classList.toggle('d-none'); icon.classList.toggle('bi-chevron-down'); icon.classList.toggle('bi-chevron-right');">
+            <i class="bi bi-chevron-right"></i> <span class="fw-bold">Show Message Preview</span>
+          </a>
+          <div id="smsPreviewContent" class="d-none mt-2">
+            <div class="alert alert-info">
+              <div class="mb-2">${previewMessage}</div>
+              <small class="text-muted">
+                ${this.calculateSMSInfo(previewMessage)}
+              </small>
+            </div>
           </div>
         </div>
         <div class="mb-3">
