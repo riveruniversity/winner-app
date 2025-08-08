@@ -373,8 +373,7 @@
                     <i class="bi bi-plus-circle me-2"></i>Upload Your First List
                   </button>
                 </div>
-                <!-- Hidden inputs for CSV upload -->
-                <input type="text" id="listName" style="display: none;">
+                <!-- Hidden input for CSV upload -->
                 <input type="file" id="csvFile" accept=".csv" style="display: none;">
               </div>
             </div>
@@ -383,6 +382,12 @@
               <div class="col-12">
                 <div class="card" id="nameConfigCard" style="display: none;">
                   <div class="card-body">
+                    <div class="mb-3">
+                      <label for="listName" class="form-label">List Name (Optional)</label>
+                      <input type="text" class="form-control" id="listName" placeholder="Enter custom list name or leave empty to use filename">
+                      <div class="form-text">If left empty, the CSV filename will be used as the list name.</div>
+                    </div>
+                    <hr>
                     <div class="row">
                       <div class="col-12 col-lg-6">
                         <h5 class="card-subtitle mb-3 text-muted">Record ID Configuration</h5>
@@ -496,6 +501,22 @@
                 </div>
               </div>
             </div>
+            <!-- Data Preview Card - Full Width -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card" id="dataPreviewCard" style="display: none;">
+                  <div class="card-body">
+                    <h5 class="card-title">Data Preview</h5>
+                    <div class="table-responsive">
+                      <table class="table table-sm" id="previewTable">
+                        <thead id="previewHeaders"></thead>
+                        <tbody id="previewBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <!-- Prizes Tab -->
           <div class="tab-pane fade" id="prizes" role="tabpanel">
@@ -518,22 +539,6 @@
                   <button class="btn btn-primary" onclick="document.getElementById('addPrizeModalBtn').click()">
                     <i class="bi bi-plus-circle me-2"></i>Add Your First Prize
                   </button>
-                </div>
-              </div>
-            </div>
-            <!-- Data Preview Card - Full Width -->
-            <div class="row mt-3">
-              <div class="col-12">
-                <div class="card" id="dataPreviewCard" style="display: none;">
-                  <div class="card-body">
-                    <h5 class="card-title">Data Preview</h5>
-                    <div class="table-responsive">
-                      <table class="table table-sm" id="previewTable">
-                        <thead id="previewHeaders"></thead>
-                        <tbody id="previewBody"></tbody>
-                      </table>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>

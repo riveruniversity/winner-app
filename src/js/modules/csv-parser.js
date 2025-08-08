@@ -208,7 +208,13 @@ function showCSVPreview(data, listName) {
   previewTitle.innerHTML = `Data Preview - <span class="list-name">"${listName}"</span> <span class="list-count">(${data.length} total records, showing first ${previewData.length})</span>`;
 
   showNameConfiguration(headers, data[0]);
-  previewCard.scrollIntoView({ behavior: 'smooth' });
+  
+  // Scroll to configuration card instead of preview since config is on top
+  const nameConfigCard = document.getElementById('nameConfigCard');
+  if (nameConfigCard) {
+    nameConfigCard.scrollIntoView({ behavior: 'smooth' });
+  }
+  
   UI.showToast(`Preview ready! Showing first ${previewData.length} of ${data.length} records`, 'info');
 }
 

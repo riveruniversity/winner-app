@@ -38,6 +38,13 @@ async function loadLists() {
       }
     }
 
+    // Sort lists by upload date (most recent first)
+    lists.sort((a, b) => {
+      const dateA = a.metadata?.timestamp || 0;
+      const dateB = b.metadata?.timestamp || 0;
+      return dateB - dateA;
+    });
+
     const listCards = lists.map(list => `
       <div class="col-md-6 col-lg-4">
         <div class="card h-100">
@@ -120,6 +127,13 @@ async function loadListsTraditional() {
         await Database.saveToStore('lists', list);
       }
     }
+
+    // Sort lists by upload date (most recent first)
+    lists.sort((a, b) => {
+      const dateA = a.metadata?.timestamp || 0;
+      const dateB = b.metadata?.timestamp || 0;
+      return dateB - dateA;
+    });
 
     container.innerHTML = lists.map(list => `
       <div class="card mb-3">
