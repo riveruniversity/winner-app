@@ -243,8 +243,22 @@ function setupManagementListeners() {
   if (testCelebrationBtn) {
     testCelebrationBtn.addEventListener('click', () => {
       const celebrationEffect = document.getElementById('celebrationEffect')?.value || 'confetti';
-      if (celebrationEffect === 'confetti' && window.Animations && window.Animations.startConfettiAnimation) {
-        window.Animations.startConfettiAnimation();
+      console.log('🎊 Test celebration button clicked');
+      console.log('Effect selected:', celebrationEffect);
+      console.log('Animations available:', !!window.Animations);
+      console.log('startConfettiAnimation available:', !!(window.Animations && window.Animations.startConfettiAnimation));
+      
+      if (celebrationEffect === 'confetti' || celebrationEffect === 'both') {
+        if (window.Animations && window.Animations.startConfettiAnimation) {
+          console.log('🎉 Triggering confetti animation from test button...');
+          window.Animations.startConfettiAnimation();
+        } else {
+          console.error('❌ Animations.startConfettiAnimation not available');
+        }
+      }
+      
+      if (celebrationEffect === 'coins' || celebrationEffect === 'both') {
+        console.log('🪙 Coin animation would trigger here if implemented');
       }
     });
   }

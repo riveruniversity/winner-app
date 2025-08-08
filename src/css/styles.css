@@ -655,7 +655,11 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 99999; /* Very high z-index to appear above everything */
+  z-index: 999999; /* Even higher z-index to ensure visibility */
+  /* Ensure canvas is not hidden */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .countdown-number {
