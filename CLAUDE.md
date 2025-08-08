@@ -258,9 +258,53 @@ Manages data export and backup operations including CSV winner exports, complete
 #### **qr-scanner.js** - QR Code Scanning
 Implements QR code scanning functionality for winner pickup tracking. Provides real-time QR recognition, winner lookup by ticket codes, and integrates with the winner database.
 
+## 🎲 Random Selection Algorithm Details
+
+### **Winner Selection Process**
+The app uses a sophisticated randomization system to ensure fair and truly random winner selection:
+
+#### **Data Handling for Large Lists**
+- Lists with >1000 entries are automatically **sharded** into chunks of 1000 entries each
+- Shards are stored separately in Firestore for optimal performance
+- When selecting winners, ALL shards are automatically reconstructed into the complete list
+- The selection algorithm receives the ENTIRE list regardless of size (tested up to 20,000 entries)
+
+#### **Randomization Algorithm (Updated)**
+Located in `selection.js`, the algorithm uses:
+
+1. **Cryptographically Secure Random Numbers**
+   - Uses `crypto.getRandomValues()` when available for true randomness
+   - Falls back to `Math.random()` only if crypto API is unavailable
+   - Provides uniform distribution across the entire range
+
+2. **Fisher-Yates Shuffle Algorithm**
+   - Industry-standard shuffling algorithm
+   - Guarantees each entry has exactly equal probability
+   - Time complexity: O(n) - efficient even for large lists
+
+3. **Triple Shuffle Technique**
+   - **First shuffle**: Randomizes the entire list thoroughly
+   - **Second shuffle**: Additional randomization to break any residual patterns
+   - **Third shuffle**: Randomizes the display order of selected winners
+   - This eliminates clustering issues where adjacent entries (like family members) were winning together
+
+#### **Previous Issues (Fixed)**
+The original algorithm had several problems:
+- Used `Math.sin()` based pseudo-random generator which created predictable patterns
+- Selected winners sequentially without proper shuffling
+- Entries near each other in the CSV remained clustered
+- This caused the "family clustering" issue where adjacent CSV entries won multiple prizes
+
+#### **Current Guarantees**
+- ✅ Every single entry from the uploaded CSV is included
+- ✅ Lists of any size are fully supported (automatic sharding/reconstruction)
+- ✅ Each entry has an equal, independent probability of selection
+- ✅ No clustering or pattern biases
+- ✅ Cryptographically secure randomness when available
+
 ## 📝 Summary
 The River Winner App is a comprehensive, production-ready PWA that combines modern web technologies with thoughtful UX design to create an engaging winner selection platform. Its local-first architecture ensures lightning-fast performance, while Firebase integration provides reliable cloud sync. The modular codebase, extensive feature set, and professional UI make it suitable for a wide range of professional environments and use cases.
 
 ---
 *Generated on: November 7, 2025*
-*Last Updated: Current working state with all modules functional*
+*Last Updated: December 2024 - Improved randomization algorithm and confetti animation fixes*

@@ -23,27 +23,38 @@ function createRandomWorker() {
     }
     
     function selectRandomWinners(entries, numWinners, seed) {
-      // Use seed for reproducible randomness if needed
-      if (seed) {
-        Math.seedrandom = function(seed) {
-          let x = Math.sin(seed) * 10000;
-          return function() {
-            x = Math.sin(x) * 10000;
-            return x - Math.floor(x);
-          };
-        };
-        Math.random = Math.seedrandom(seed);
+      // Better random number generator using crypto API if available
+      function getSecureRandom() {
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+          const array = new Uint32Array(1);
+          crypto.getRandomValues(array);
+          return array[0] / (0xffffffff + 1);
+        }
+        return Math.random();
       }
       
-      const available = [...entries];
-      const selected = [];
-      
-      for (let i = 0; i < numWinners && available.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * available.length);
-        selected.push(available.splice(randomIndex, 1)[0]);
+      // Fisher-Yates shuffle for better randomization
+      function shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          // Use secure random for better distribution
+          const j = Math.floor(getSecureRandom() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
       }
       
-      return selected;
+      // First, shuffle the entire list to ensure good distribution
+      const shuffledEntries = shuffleArray(entries);
+      
+      // Then shuffle again for extra randomness (double shuffle technique)
+      const doubleShuffled = shuffleArray(shuffledEntries);
+      
+      // Select the first N winners from the well-shuffled list
+      const selected = doubleShuffled.slice(0, Math.min(numWinners, doubleShuffled.length));
+      
+      // One more shuffle of the selected winners to randomize display order
+      return shuffleArray(selected);
     }
     
     self.onmessage = function(e) {
