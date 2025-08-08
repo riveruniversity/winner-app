@@ -66,7 +66,7 @@ async function loadWinners() {
       return `
         <tr>
           <td>
-            <span class="badge bg-primary">${ticketCode}</span>
+            <span class="badge bg-primary winner-id-badge">${ticketCode}</span>
             <button class="btn btn-sm btn-outline-secondary ms-1" onclick="Winners.showQRCode('${winner.winnerId}')" title="Show QR Code">
               <i class="bi bi-qr-code"></i>
             </button>

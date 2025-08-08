@@ -35,6 +35,14 @@ body {
   --bs-border-color: #334155;
 }
 
+/* Winner ID Badge Styles */
+.winner-id-badge {
+  display: inline-block;
+  width: 65px;
+  text-align: center;
+  font-family: monospace;
+}
+
 /* Prize Grid Styles */
 #prizesGrid .card {
   transition: box-shadow 0.3s ease;
