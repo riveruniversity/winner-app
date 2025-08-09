@@ -87,23 +87,48 @@ export class QRScannerModule {
       
       // Find winners with matching entry ID (from their original list entry)
       const matchingWinners = winners.filter(w => {
-        // Check if the original entry ID matches the scanned ticket code
+        // Primary check: original entry ID matches the scanned ticket code
         if (w.originalEntry && w.originalEntry.id === ticketCode) {
           return true;
         }
-        // Also check for direct entryId field (if stored separately)
+        // Secondary check: direct entryId field (if stored separately)
         if (w.entryId === ticketCode) {
           return true;
         }
-        // Check in the data object as well
-        if (w.data && Object.values(w.data).includes(ticketCode)) {
-          return true;
-        }
+        // Removed the broad data object search to prevent false matches
         return false;
       });
       
       if (matchingWinners.length === 0) {
         return null;
+      }
+
+      // Log for debugging
+      console.log(`Found ${matchingWinners.length} prizes for ticket code: ${ticketCode}`);
+      
+      // Verify all matches are for the same person
+      const firstWinnerName = matchingWinners[0].displayName;
+      const allSamePerson = matchingWinners.every(w => w.displayName === firstWinnerName);
+      
+      if (!allSamePerson) {
+        console.warn('Warning: Found prizes for different people with same ticket code!');
+        // Filter to only show prizes for the first person found
+        const filteredWinners = matchingWinners.filter(w => w.displayName === firstWinnerName);
+        console.log(`Filtered to ${filteredWinners.length} prizes for ${firstWinnerName}`);
+        
+        const representative = filteredWinners[0];
+        const allPrizesWon = filteredWinners.map(w => ({
+          winnerId: w.winnerId,
+          prize: w.prize,
+          timestamp: w.timestamp,
+          pickedUp: w.pickedUp || false,
+          pickupTimestamp: w.pickupTimestamp || null
+        }));
+
+        return {
+          winner: representative,
+          prizes: allPrizesWon
+        };
       }
 
       // Group prizes by the winner (first matching winner as representative)
