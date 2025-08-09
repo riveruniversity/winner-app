@@ -15,11 +15,11 @@ let lastAction = null; // This will eventually be managed by app.js
 let currentFilteredWinners = []; // Store the currently filtered winners
 let allWinners = []; // Store all winners for comparison
 
-async function loadWinners() {
+async function loadWinners(winnersData = null, listsData = null) {
   try {
-    const winners = await Database.getFromStore('winners');
+    const winners = winnersData || await Database.getFromStore('winners');
     allWinners = winners; // Store all winners
-    const lists = await Database.getFromStore('lists');
+    const lists = listsData || await Database.getFromStore('lists');
     const tbody = document.getElementById('winnersTableBody');
 
     if (!tbody) return;

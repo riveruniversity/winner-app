@@ -9,7 +9,7 @@ import { settings, Settings } from './settings.js';
 
 // 2. Define functions as standalone, not inside a closure
 // Cache-first loading with real-time updates
-async function loadLists() {
+async function loadLists(listsData = null) {
   const gridContainer = document.getElementById('listsGrid');
   const noListsMessage = document.getElementById('noListsMessage');
   
@@ -19,7 +19,7 @@ async function loadLists() {
   if (!gridContainer && !oldContainer) return;
 
   try {
-    const lists = await Database.getFromStore('lists');
+    const lists = listsData || await Database.getFromStore('lists');
 
     if (lists.length === 0) {
       if (gridContainer) gridContainer.innerHTML = '';

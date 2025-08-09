@@ -65,7 +65,7 @@ export function clearCurrentWinners() {
 // Load data in background without blocking UI
 async function loadDataInBackground() {
   try {
-    // Load data once and share it
+    // Load all data in parallel for efficiency
     const [lists, prizes, winners, history] = await Promise.all([
       Database.getFromStore('lists'),
       Database.getFromStore('prizes'),
@@ -73,15 +73,17 @@ async function loadDataInBackground() {
       Database.getFromStore('history')
     ]);
     
-    // Pass loaded data to avoid duplicate loads
-    Lists.loadLists(); // This updates the UI
-    Prizes.loadPrizes(); // This updates the UI
-    UI.syncUI(lists, prizes); // Pass data to avoid reload
-    Winners.loadWinners(); // This updates the UI
+    // Update UI components with the loaded data
+    Lists.loadLists(lists); // Pass loaded data
+    Prizes.loadPrizes(prizes); // Pass loaded data
+    Winners.loadWinners(winners, lists); // Pass loaded data
     
-    // Load history UI
+    // Load history UI with already loaded data
     loadHistoryUI(history);
     updateHistoryStatsUI(history, winners);
+    
+    // Populate quick selects with already loaded data
+    UI.populateQuickSelects(lists, prizes);
   } catch (error) {
     console.error('Error loading data:', error);
   }
@@ -91,15 +93,18 @@ async function loadDataInBackground() {
 export async function initializeApp() {
   try {
     await Database.initDB();
-    
+
     // Load settings first, then load data - this ensures proper dropdown restoration
     await Settings.loadSettings();
     Settings.setupTheme(); // Apply theme once settings are loaded
     console.log('Settings loaded:', settings);
     
+    // Apply visibility settings based on loaded settings
+    UI.applyVisibilitySettings();
+
     // Load all data once in background
     loadDataInBackground();
-    
+
     // Initialize sound system
     Sounds.initSounds();
 
@@ -109,7 +114,7 @@ export async function initializeApp() {
       if (modalElement) {
         appModal = new bootstrap.Modal(modalElement);
         window.appModal = appModal; // Make available globally
-        console.log('Bootstrap modal initialized and assigned to window.appModal');
+        if (settings.enableDebugLogs) { console.log('Bootstrap modal initialized and assigned to window.appModal'); }
       } else {
         console.error('Modal element #appModal not found');
       }
@@ -139,7 +144,7 @@ function setupTabListeners() {
   // Ensure proper tab activation with show class
   const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
   tabButtons.forEach(button => {
-    button.addEventListener('shown.bs.tab', function(event) {
+    button.addEventListener('shown.bs.tab', function (event) {
       // Ensure the show class is properly applied
       const targetId = event.target.getAttribute('data-bs-target');
       const targetPane = document.querySelector(targetId);
@@ -153,23 +158,8 @@ function setupTabListeners() {
       }
     });
   });
-  
-  // Reload data when tabs are shown to ensure content is visible
-  document.getElementById('lists-tab')?.addEventListener('shown.bs.tab', function() {
-    Lists.loadLists();
-  });
-  
-  document.getElementById('prizes-tab')?.addEventListener('shown.bs.tab', function() {
-    Prizes.loadPrizes();
-  });
-  
-  document.getElementById('winners-tab')?.addEventListener('shown.bs.tab', function() {
-    Winners.loadWinners();
-  });
-  
-  document.getElementById('history-tab')?.addEventListener('shown.bs.tab', function() {
-    loadHistory();
-  });
+
+  // All data is loaded once on startup - no tab reload listeners needed
 }
 
 function setupInterfaceToggles() {
@@ -215,7 +205,7 @@ function setupInterfaceToggles() {
 function setupQuickSelection() {
   // Quick selection fields (quickListSelect, quickPrizeSelect, quickWinnersCount) 
   // are now handled by the unified Settings.setupQuickSetupAutoSave() system
-  
+
   const bigPlayButton = document.getElementById('bigPlayButton');
   const newSelectionBtn = document.getElementById('newSelectionBtn');
   const undoSelectionBtn = document.getElementById('undoSelectionBtn');
@@ -243,11 +233,11 @@ function setupManagementListeners() {
   // Prize Management
   const addPrizeBtn = document.getElementById('addPrizeBtn');
   if (addPrizeBtn) addPrizeBtn.addEventListener('click', Prizes.handleAddPrize);
-  
+
   // New Add Prize Modal Button
   const addPrizeModalBtn = document.getElementById('addPrizeModalBtn');
   if (addPrizeModalBtn) addPrizeModalBtn.addEventListener('click', Prizes.showAddPrizeModal);
-  
+
   // Upload List Button - Opens file browser directly
   const uploadListModalBtn = document.getElementById('uploadListModalBtn');
   if (uploadListModalBtn) {
@@ -259,23 +249,23 @@ function setupManagementListeners() {
       }
     });
   }
-  
+
 
   // Settings are now auto-saved, no manual save button needed
-  
+
   // Preview delay button
   const previewDelayBtn = document.getElementById('previewDelayBtn');
   if (previewDelayBtn) previewDelayBtn.addEventListener('click', Settings.testDelay);
-  
+
   // Setup webhook toggle functionality
   Settings.setupWebhookToggle();
-  
+
   // Setup SMS template character counter
   Settings.setupSMSTemplateCounter();
-  
+
   // Setup auto-save for quick setup fields
   Settings.setupQuickSetupAutoSave();
-  
+
   // Setup auto-save for all settings fields
   Settings.setupAllSettingsAutoSave();
 
@@ -287,7 +277,7 @@ function setupManagementListeners() {
   themePresets.forEach(button => {
     button.addEventListener('click', Settings.handleThemePreset);
   });
-  
+
   // Sound dropdowns are already populated on init, no need to refresh on tab show
 
   // Celebration test button
@@ -295,7 +285,7 @@ function setupManagementListeners() {
   if (testCelebrationBtn) {
     testCelebrationBtn.addEventListener('click', () => {
       const celebrationEffect = document.getElementById('celebrationEffect')?.value || 'confetti';
-      
+
       if (celebrationEffect === 'confetti' || celebrationEffect === 'both') {
         if (window.Animations && window.Animations.startConfettiAnimation) {
           window.Animations.startConfettiAnimation();
@@ -303,13 +293,13 @@ function setupManagementListeners() {
           console.error('❌ Animations.startConfettiAnimation not available');
         }
       }
-      
+
       if (celebrationEffect === 'coins' || celebrationEffect === 'both') {
         // Coin animation would trigger here if implemented
       }
     });
   }
-  
+
   // Sound dropdowns are already populated on init, no need to refresh on tab show
 
   // Export/Import
@@ -328,7 +318,7 @@ function setupManagementListeners() {
   if (backupOnline) backupOnline.addEventListener('click', Export.handleBackupOnline);
   if (restoreOnline) restoreOnline.addEventListener('click', Export.handleRestoreOnline);
   if (undoLastSelection) undoLastSelection.addEventListener('click', Winners.undoLastSelection);
-  
+
   // Clear filters button
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
   if (clearFiltersBtn) {
@@ -348,10 +338,10 @@ function setupWinnerFilters() {
   const selectionFilter = document.getElementById('filterSelection');
   const dateFilter = document.getElementById('filterDate');
 
-  if (prizeFilter) prizeFilter.addEventListener('change', Winners.loadWinners);
-  if (listFilter) listFilter.addEventListener('change', Winners.loadWinners);
-  if (selectionFilter) selectionFilter.addEventListener('change', Winners.loadWinners);
-  if (dateFilter) dateFilter.addEventListener('change', Winners.loadWinners);
+  if (prizeFilter) prizeFilter.addEventListener('change', () => Winners.loadWinners());
+  if (listFilter) listFilter.addEventListener('change', () => Winners.loadWinners());
+  if (selectionFilter) selectionFilter.addEventListener('change', () => Winners.loadWinners());
+  if (dateFilter) dateFilter.addEventListener('change', () => Winners.loadWinners());
 }
 
 function setupDisplayMode() {

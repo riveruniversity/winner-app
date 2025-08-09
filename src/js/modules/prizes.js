@@ -6,9 +6,9 @@ import { Database } from './firestore.js';
 import { UI } from './ui.js';
 import { settings, Settings } from './settings.js';
 
-async function loadPrizes() {
+async function loadPrizes(prizesData = null) {
     try {
-      const prizes = await Database.getFromStore('prizes');
+      const prizes = prizesData || await Database.getFromStore('prizes');
       const gridContainer = document.getElementById('prizesGrid');
       const noPrizesMessage = document.getElementById('noPrizesMessage');
       

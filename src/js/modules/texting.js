@@ -8,61 +8,6 @@ import { UI } from './ui.js';
 import { getCurrentWinners } from '../app.js';
 import { settings } from './settings.js';
 
-// Rate limiting configuration
-const RATE_LIMIT = {
-  maxRequestsPerMinute: 200,
-  requestWindow: 60 * 1000, // 60 seconds in milliseconds
-  safetyBuffer: 0.9 // Use 90% of limit to be safe (180 requests/minute)
-};
-
-// Rate limiting tracker
-class RateLimiter {
-  constructor() {
-    this.requests = []; // Array of request timestamps
-  }
-
-  // Remove old requests outside the current window
-  cleanOldRequests() {
-    const now = Date.now();
-    const windowStart = now - RATE_LIMIT.requestWindow;
-    this.requests = this.requests.filter(timestamp => timestamp > windowStart);
-  }
-
-  // Check if we can make a request
-  canMakeRequest() {
-    this.cleanOldRequests();
-    const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
-    return this.requests.length < maxRequests;
-  }
-
-  // Calculate how long to wait before next request
-  getWaitTime() {
-    this.cleanOldRequests();
-    if (this.canMakeRequest()) {
-      return 0;
-    }
-    
-    // Find the oldest request that would need to expire
-    const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
-    const oldestRelevantRequest = this.requests[this.requests.length - maxRequests];
-    const waitUntil = oldestRelevantRequest + RATE_LIMIT.requestWindow;
-    return Math.max(0, waitUntil - Date.now());
-  }
-
-  // Record a successful request
-  recordRequest() {
-    this.requests.push(Date.now());
-  }
-
-  // Get current request count in the window
-  getCurrentCount() {
-    this.cleanOldRequests();
-    return this.requests.length;
-  }
-}
-
-// Global rate limiter instance
-const rateLimiter = new RateLimiter();
 
 class TextingService {
   constructor() {
@@ -75,9 +20,6 @@ class TextingService {
    * Returns immediately after sending, doesn't wait for response
    */
   makeRequestFireAndForget(body, winnerId = null) {
-    // Record the request attempt
-    rateLimiter.recordRequest();
-
     // Fire the request without awaiting
     fetch('/.netlify/functions/ez-texting', {
       method: 'POST',
@@ -124,21 +66,9 @@ class TextingService {
   }
 
   /**
-   * Makes a POST request to the EZ Texting Netlify function with rate limiting (awaitable)
+   * Makes a POST request to the EZ Texting Netlify function (awaitable)
    */
   async makeRequest(body) {
-    // Check rate limit and wait if necessary
-    const waitTime = rateLimiter.getWaitTime();
-    if (waitTime > 0) {
-      const waitSeconds = Math.ceil(waitTime / 1000);
-      console.log(`Rate limit reached. Waiting ${waitSeconds} seconds...`);
-      UI.updateProgress(null, `Rate limit reached. Waiting ${waitSeconds} seconds...`);
-      await this.delay(waitTime);
-    }
-
-    // Record the request attempt
-    rateLimiter.recordRequest();
-
     const response = await fetch('/.netlify/functions/ez-texting', {
       method: 'POST',
       headers: {
@@ -158,7 +88,7 @@ class TextingService {
 
 
   /**
-   * Sends SMS to multiple recipients with fire-and-forget pattern (200 requests/minute)
+   * Sends SMS to multiple recipients with fire-and-forget pattern
    */
   async sendBatchTexts(recipients, messageTemplate, options = {}) {
     const results = {
@@ -171,17 +101,16 @@ class TextingService {
 
     // Track SMS status immediately
     let sent = 0;
-    let batchStartTime = Date.now();
-    const batchSize = 195; // 195 requests per minute (safety buffer)
     
-    // Process recipients in batches to respect rate limit
+    // Process recipients
     for (let i = 0; i < recipients.length; i++) {
       const recipient = recipients[i];
       
       // Check if cancelled
       if (this.abortController?.signal.aborted) {
         if (recipient.winnerId) {
-          await this.updateWinnerSMSStatus(recipient.winnerId, {
+          // Fire and forget - don't await
+          this.updateWinnerSMSStatus(recipient.winnerId, {
             sent: false,
             success: false,
             timestamp: Date.now(),
@@ -198,7 +127,8 @@ class TextingService {
           error: 'No phone number'
         });
         if (recipient.winnerId) {
-          await this.updateWinnerSMSStatus(recipient.winnerId, {
+          // Fire and forget - don't await
+          this.updateWinnerSMSStatus(recipient.winnerId, {
             sent: false,
             success: false,
             timestamp: Date.now(),
@@ -215,20 +145,6 @@ class TextingService {
       personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
       personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
 
-      // Check rate limit
-      if (!rateLimiter.canMakeRequest()) {
-        // Wait until next minute if we've hit the limit
-        const waitTime = rateLimiter.getWaitTime();
-        if (waitTime > 0) {
-          const waitSeconds = Math.ceil(waitTime / 1000);
-          UI.updateProgress(
-            Math.round((sent / recipients.length) * 100),
-            `Rate limit reached. Waiting ${waitSeconds}s... (${sent}/${recipients.length} sent)`
-          );
-          await this.delay(waitTime);
-        }
-      }
-
       // Fire request without awaiting (fire-and-forget)
       const body = {
         action: 'sendMessage',
@@ -241,7 +157,8 @@ class TextingService {
 
       // Mark as sending
       if (recipient.winnerId) {
-        await this.updateWinnerSMSStatus(recipient.winnerId, {
+        // Fire and forget - don't await
+        this.updateWinnerSMSStatus(recipient.winnerId, {
           sent: true,
           success: null, // Pending
           timestamp: Date.now(),
@@ -258,12 +175,10 @@ class TextingService {
       
       // Update progress
       const progress = Math.round((sent / recipients.length) * 100);
-      const currentCount = rateLimiter.getCurrentCount();
-      const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
       
       UI.updateProgress(
         progress,
-        `Sent ${sent}/${recipients.length} (Rate: ${currentCount}/${maxRequests} req/min)`
+        `Sent ${sent}/${recipients.length}`
       );
 
       // Small delay between requests to avoid overwhelming (10 requests per second max)
@@ -597,24 +512,6 @@ class TextingService {
     }
   }
 
-  /**
-   * Gets current rate limiting status
-   */
-  getRateLimitStatus() {
-    const currentCount = rateLimiter.getCurrentCount();
-    const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
-    const waitTime = rateLimiter.getWaitTime();
-    const canMakeRequest = rateLimiter.canMakeRequest();
-    
-    return {
-      currentRequests: currentCount,
-      maxRequests: maxRequests,
-      remaining: maxRequests - currentCount,
-      waitTime: waitTime,
-      canMakeRequest: canMakeRequest,
-      percentageUsed: Math.round((currentCount / maxRequests) * 100)
-    };
-  }
 
   /**
    * Gets SMS sending statistics
