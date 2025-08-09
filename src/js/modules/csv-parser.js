@@ -188,7 +188,7 @@ function showCSVPreview(data, listName) {
   if (!previewCard) {
     return;
   }
-  
+
   previewCard.style.display = 'block';
   const headers = Object.keys(data[0]);
 
@@ -208,13 +208,13 @@ function showCSVPreview(data, listName) {
   previewTitle.innerHTML = `Data Preview - <span class="list-name">"${listName}"</span> <span class="list-count">(${data.length} total records, showing first ${previewData.length})</span>`;
 
   showNameConfiguration(headers, data[0]);
-  
+
   // Scroll to configuration card instead of preview since config is on top
   const nameConfigCard = document.getElementById('nameConfigCard');
   if (nameConfigCard) {
     nameConfigCard.scrollIntoView({ behavior: 'smooth' });
   }
-  
+
   UI.showToast(`Preview ready! Showing first ${previewData.length} of ${data.length} records`, 'info');
 }
 
@@ -231,16 +231,16 @@ function showNameConfiguration(headers, firstRow) {
 
   nameConfigCard.style.display = 'block';
   availableFields.innerHTML = '';
-  
+
   // Load the skipExistingWinners setting
   if (skipExistingWinnersCheckbox) {
     console.log('Skip winners checkbox found, setting to:', settings.skipExistingWinners);
     skipExistingWinnersCheckbox.checked = settings.skipExistingWinners || false;
-    
+
     // Add change listener to save the setting
     skipExistingWinnersCheckbox.removeEventListener('change', handleSkipWinnersChange);
     skipExistingWinnersCheckbox.addEventListener('change', handleSkipWinnersChange);
-    
+
     // Make sure the checkbox and its container are visible
     skipExistingWinnersCheckbox.style.display = 'inline-block';
     const checkboxContainer = skipExistingWinnersCheckbox.closest('.mb-3');
@@ -272,14 +272,14 @@ function showNameConfiguration(headers, firstRow) {
   const info1Template = document.getElementById('info1Template');
   const info2Template = document.getElementById('info2Template');
   const info3Template = document.getElementById('info3Template');
-  
+
   // Track which info field was last focused
   let lastFocusedInfoField = info1Template;
-  
+
   info1Template.addEventListener('focus', () => lastFocusedInfoField = info1Template);
   info2Template.addEventListener('focus', () => lastFocusedInfoField = info2Template);
   info3Template.addEventListener('focus', () => lastFocusedInfoField = info3Template);
-  
+
   infoAvailableFields.innerHTML = '';
   headers.forEach(header => {
     const fieldBtn = document.createElement('button');
@@ -287,7 +287,7 @@ function showNameConfiguration(headers, firstRow) {
     fieldBtn.textContent = header;
     fieldBtn.onclick = (e) => {
       e.preventDefault();
-      
+
       // Add field to the last focused info template
       const targetInput = lastFocusedInfoField;
       const cursorPos = targetInput.selectionStart || targetInput.value.length;
@@ -333,7 +333,7 @@ function showNameConfiguration(headers, firstRow) {
     const info1Preview = document.getElementById('info1Preview');
     const info2Preview = document.getElementById('info2Preview');
     const info3Preview = document.getElementById('info3Preview');
-    
+
     const info1Text = info1Template.value.replace(/\{([^}]+)\}/g, (match, key) => {
       return firstRow[key] || '';
     });
@@ -343,11 +343,11 @@ function showNameConfiguration(headers, firstRow) {
     const info3Text = info3Template.value.replace(/\{([^}]+)\}/g, (match, key) => {
       return firstRow[key] || '';
     });
-    
+
     info1Preview.textContent = info1Text || 'Info 1 preview';
     info2Preview.textContent = info2Text || 'Info 2 preview';
     info3Preview.textContent = info3Text || 'Info 3 preview';
-    
+
     // Hide empty previews
     info1Preview.style.display = info1Text ? 'block' : 'none';
     info2Preview.style.display = info2Text ? 'block' : 'none';
@@ -397,15 +397,15 @@ async function handleConfirmUpload() {
     // Read the list name from the input field (user may have changed it)
     const listNameInput = document.getElementById('listName');
     const finalListName = listNameInput.value.trim() || pendingCSVData.listName;
-    
+
     const nameConfig = getNameConfiguration();
     const infoConfig = getInfoConfiguration();
     const idConfig = getIdConfiguration();
-    
+
     // Get skipExistingWinners from checkbox if available, otherwise use settings
     const skipCheckbox = document.getElementById('skipExistingWinners');
     const skipExistingWinners = skipCheckbox ? skipCheckbox.checked : settings.skipExistingWinners;
-    
+
     console.log('Skip existing winners:', skipExistingWinners, 'Checkbox exists:', !!skipCheckbox);
 
     // Validate ID configuration if using column-based IDs
@@ -423,14 +423,14 @@ async function handleConfirmUpload() {
     // Filter out existing winners if the option is enabled
     let dataToUpload = pendingCSVData.data;
     let skippedCount = 0;
-    
+
     if (skipExistingWinners) {
       UI.updateProgress(30, 'Checking for existing winners...');
       const winners = await Database.getFromStore('winners');
       console.log('Total winners in database:', winners.length);
-      
+
       const winnerIds = new Set();
-      
+
       // Collect all winner IDs (unique IDs only, not names)
       winners.forEach(winner => {
         // Check for original entry ID (preferred)
@@ -446,30 +446,32 @@ async function handleConfirmUpload() {
           winnerIds.add(winner.winnerId);
         }
       });
-      
-      console.log('Winner IDs collected:', winnerIds.size);
+
+      if (settings.enableDebugLogs) { console.log('Winner IDs collected:', winnerIds.size); }
 
       // Filter the data - match by ID only
       dataToUpload = pendingCSVData.data.filter((row, index) => {
         const entryId = generateEntryId(row, index, idConfig);
-        
+
         const isWinner = winnerIds.has(entryId);
-        
+
         if (isWinner) {
           const displayName = nameConfig.replace(/\{([^}]+)\}/g, (match, key) => {
             return row[key.trim()] || '';
           }).trim();
-          console.log(`Skipping winner by ID match: "${displayName}" (ID: ${entryId})`);
+          if (settings.enableDebugLogs) {
+            console.log(`Skipping winner by ID match: "${displayName}" (ID: ${entryId})`);
+          }
           skippedCount++;
           return false;
         }
         return true;
       });
-      
+
       if (skippedCount > 0) {
         UI.showToast(`Skipping ${skippedCount} records that have already won prizes`, 'info');
       }
-      
+
       if (dataToUpload.length === 0) {
         UI.hideProgress();
         UI.showToast('All records in this file have already won prizes. No new records to upload.', 'warning');
@@ -502,27 +504,27 @@ async function handleConfirmUpload() {
     };
 
     UI.updateProgress(50, 'Saving locally...');
-    
+
     // Save list (handles sharding automatically for large lists)
     await Database.saveToStore('lists', listData, {
       onProgress: (progress, message) => {
         UI.updateProgress(50 + (progress * 0.4), message); // Scale progress to 50-90%
       }
     });
-    
+
     UI.updateProgress(100, 'Complete! Syncing to cloud in background...');
-    
+
     // Hide progress after a short delay to show completion
     setTimeout(() => {
       UI.hideProgress();
     }, 1000);
 
-    const entriesText = dataToUpload.length > 1000 ? 
+    const entriesText = dataToUpload.length > 1000 ?
       `${dataToUpload.length} entries (auto-sharded for optimal performance)` :
       `${dataToUpload.length} entries`;
-    
+
     const skippedText = skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : '';
-      
+
     UI.showToast(`List "${finalListName}" processed successfully with ${entriesText}${skippedText}! 📦 Syncing to cloud...`, 'success');
 
     // Clear form and hide preview
@@ -552,10 +554,10 @@ function getInfoConfiguration() {
   const info1Template = document.getElementById('info1Template');
   const info2Template = document.getElementById('info2Template');
   const info3Template = document.getElementById('info3Template');
-  
+
   return {
     info1: info1Template.value.trim(),
-    info2: info2Template.value.trim(), 
+    info2: info2Template.value.trim(),
     info3: info3Template.value.trim()
   };
 }

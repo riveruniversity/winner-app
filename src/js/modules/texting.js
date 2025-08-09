@@ -267,7 +267,7 @@ class TextingService {
       );
 
       // Small delay between requests to avoid overwhelming (10 requests per second max)
-      await this.delay(50);
+      await this.delay(20);
     }
 
     // Update final stats
