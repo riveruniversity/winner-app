@@ -344,11 +344,11 @@ class TextingService {
     }
 
     // Show confirmation modal with template preview
-    const confirmed = await this.showSMSConfirmationModal(currentWinners.length);
-    if (!confirmed) return;
+    // const confirmed = await this.showSMSConfirmationModal(currentWinners.length);
+    // if (!confirmed) return;
 
     // Use SMS template from settings
-    const message = settings.smsTemplate || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
+    const message = settings.smsTemplate;
     if (!message.trim()) {
       UI.showToast('SMS template is empty. Please set a template in Settings.', 'warning');
       return;
