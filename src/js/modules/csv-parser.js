@@ -313,13 +313,14 @@ function showNameConfiguration(headers, firstRow) {
   });
 
   // Set default name template
-  const defaultTemplate = headers.length > 1 ? `{${headers[0]}} {${headers[1]}}` : `{${headers[0]}}`;
+  const defaultTemplate = headers.length > 2 ? `{${headers[1]}} {${headers[2]}}` : `{${headers[0]}}`;
   nameTemplateInput.value = defaultTemplate;
 
   // Set default info templates
-  if (headers.length >= 1) info1Template.value = headers.length > 1 ? `{${headers[0]}} {${headers[1]}}` : `{${headers[0]}}`;
-  if (headers.length >= 3) info2Template.value = `{${headers[2]}}`;
-  if (headers.length >= 4) info3Template.value = `{${headers[3]}}`;
+  if (headers.length >= 1) info1Template.value = `{${headers[0]}}`;
+  if (headers.length >= 2) info2Template.value = `{${headers[1]}}`;
+  // Keep info3 blank by default
+  info3Template.value = '';
 
   function updatePreview() {
     const template = nameTemplateInput.value;
