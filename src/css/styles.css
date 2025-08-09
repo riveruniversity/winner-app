@@ -17,6 +17,16 @@
   --glass-border: rgba(255, 255, 255, 0.2);
 }
 
+/* Fix for Bootstrap tab visibility - use display instead of opacity */
+.tab-pane.fade:not(.show) {
+  display: none !important;
+}
+
+.tab-pane.fade.show {
+  display: block !important;
+  opacity: 1 !important;
+}
+
 /* Global Styles */
 * {
   box-sizing: border-box;

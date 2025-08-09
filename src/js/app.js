@@ -132,6 +132,44 @@ function setupEventListeners() {
   setupManagementListeners();
   setupWinnerFilters();
   setupDisplayMode();
+  setupTabListeners();
+}
+
+function setupTabListeners() {
+  // Ensure proper tab activation with show class
+  const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+  tabButtons.forEach(button => {
+    button.addEventListener('shown.bs.tab', function(event) {
+      // Ensure the show class is properly applied
+      const targetId = event.target.getAttribute('data-bs-target');
+      const targetPane = document.querySelector(targetId);
+      if (targetPane) {
+        // Remove show from all panes
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+          pane.classList.remove('show');
+        });
+        // Add show to active pane
+        targetPane.classList.add('show');
+      }
+    });
+  });
+  
+  // Reload data when tabs are shown to ensure content is visible
+  document.getElementById('lists-tab')?.addEventListener('shown.bs.tab', function() {
+    Lists.loadLists();
+  });
+  
+  document.getElementById('prizes-tab')?.addEventListener('shown.bs.tab', function() {
+    Prizes.loadPrizes();
+  });
+  
+  document.getElementById('winners-tab')?.addEventListener('shown.bs.tab', function() {
+    Winners.loadWinners();
+  });
+  
+  document.getElementById('history-tab')?.addEventListener('shown.bs.tab', function() {
+    loadHistory();
+  });
 }
 
 function setupInterfaceToggles() {

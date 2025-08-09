@@ -162,52 +162,47 @@
         <div class="tab-content mt-3" id="managementTabContent">
           <!-- Setup Tab -->
           <div class="tab-pane fade show active" id="quicksetup" role="tabpanel">
+            <!-- Quick Selection Setup Card -->
             <div class="card">
+              <div class="card-header">
+                <h5 class="card-title"><i class="bi bi-gear-fill me-2"></i>Quick Selection Setup</h5>
+              </div>
               <div class="card-body">
-                <h5 class="card-title">Quick Selection Setup</h5>
-                <p class="card-text text-muted">Configure the next public winner selection from here. The changes will reflect in the public view's info cards.</p>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Select List</label>
+                <p class="card-text text-muted mb-4">Configure the next public winner selection from here. The changes will reflect in the public view's info cards.</p>
+                <!-- Main Selection Controls Row -->
+                <div class="row g-3 mb-4">
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">Select List</label>
                     <select class="form-select form-select-lg" id="quickListSelect">
                       <option value="">Select List...</option>
                     </select>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Select Prize</label>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">Select Prize</label>
                     <select class="form-select form-select-lg" id="quickPrizeSelect">
                       <option value="">Select Prize...</option>
                     </select>
                   </div>
-                </div>
-                <hr class="my-4">
-                <h6 class="card-subtitle mb-3 text-muted">Selection & Presentation Settings</h6>
-                <!-- Basic Settings -->
-                <div class="row g-3 mb-4">
-                  <div class="col-md-6">
-                    <label class="form-label">Number of Winners</label>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold">Number of Winners</label>
                     <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" placeholder="Winners Count">
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">
-                      Selection Mode
-                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="How winners are selected and revealed"></i>
-                    </label>
-                    <select class="form-select form-select-lg" id="selectionMode">
-                      <option value="all-at-once">All at Once</option>
-                      <option value="sequential">Sequential Reveal</option>
-                      <option value="individual">Individual Selection</option>
-                    </select>
-                  </div>
                 </div>
-                <!-- Pre-Selection Delay -->
-                <div class="row g-3 mb-4">
-                  <div class="col-12">
-                    <h6 class="text-muted mb-3">Pre-Selection Delay</h6>
-                  </div>
+              </div>
+            </div>
+            <!-- Delay Settings Card -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <i class="bi bi-clock-fill me-2"></i>Delay Settings
+                  <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Configure pre-selection delay options"></i>
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">
-                      Delay Duration (seconds)
+                      Delay Duration
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Delay before selection begins"></i>
                     </label>
                     <input type="number" class="form-control form-control-lg" id="preSelectionDelay" value="0" min="0" max="30" step="0.5">
@@ -226,12 +221,30 @@
                     </select>
                   </div>
                 </div>
-                <!-- Winner Display Effects -->
-                <div class="row g-3 mb-4">
-                  <div class="col-12">
-                    <h6 class="text-muted mb-3">Winner Display Effects</h6>
+              </div>
+            </div>
+            <!-- Reveal Settings Card -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <i class="bi bi-eye-fill me-2"></i>Reveal Settings
+                  <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Configure how winners are revealed"></i>
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">
+                      Selection Mode
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="How winners are selected and revealed"></i>
+                    </label>
+                    <select class="form-select form-select-lg" id="selectionMode">
+                      <option value="all-at-once">All at Once</option>
+                      <option value="sequential">Sequential Reveal</option>
+                      <option value="individual">Individual Selection</option>
+                    </select>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label">
                       Display Effect
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="How winners appear on screen"></i>
@@ -244,7 +257,7 @@
                       <option value="bounce-in">Bounce In</option>
                     </select>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label">
                       Time Between Winners (seconds)
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Delay between each winner being revealed (sequential mode only)"></i>
@@ -252,11 +265,18 @@
                     <input type="number" class="form-control form-control-lg" id="displayDuration" value="0.5" min="0.1" max="5" step="0.1">
                   </div>
                 </div>
-                <!-- Sound Settings -->
-                <div class="row g-3 mb-4">
-                  <div class="col-12">
-                    <h6 class="text-muted mb-3">Sound Effects</h6>
-                  </div>
+              </div>
+            </div>
+            <!-- Sound Settings Card -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <i class="bi bi-volume-up-fill me-2"></i>Sound Settings
+                  <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Configure sound effects for the selection process"></i>
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
                   <div class="col-md-4">
                     <label class="form-label">
                       Sound During Delay
@@ -301,545 +321,545 @@
                     </div>
                   </div>
                 </div>
-                <!-- Celebration Animation Settings -->
-                <div class="card mb-3">
-                  <div class="card-header">
-                    <h6 class="mb-0">
-                      <i class="bi bi-star-fill me-2"></i>Celebration Effects
-                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Visual effects when winners are revealed"></i>
-                    </h6>
-                  </div>
-                  <div class="card-body">
-                    <div class="row">
-                      <div class="col-md-6">
-                        <label for="celebrationEffect" class="form-label">Celebration Animation</label>
-                        <select class="form-select" id="celebrationEffect">
-                          <option value="none">No Animation</option>
-                          <option value="confetti" selected>Confetti</option>
-                          <option value="coins">Gold Coins</option>
-                          <option value="both">Both Confetti & Coins</option>
-                        </select>
-                      </div>
-                      <div class="col-md-6">
-                        <label for="celebrationDuration" class="form-label">Animation Duration (seconds)</label>
-                        <input type="number" class="form-control" id="celebrationDuration" min="1" max="10" step="0.5" value="4">
-                      </div>
-                    </div>
-                    <div class="row mt-3">
-                      <div class="col-12">
-                        <div class="form-check">
-                          <input class="form-check-input" type="checkbox" id="celebrationAutoTrigger" checked>
-                          <label class="form-check-label" for="celebrationAutoTrigger">
-                            Auto-trigger celebration when winners are revealed
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="row mt-2">
-                      <div class="col-12">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="testCelebrationEffect">
-                          <i class="bi bi-play-fill me-1"></i>Test Celebration
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
-          <!-- Lists Tab -->
-          <div class="tab-pane fade" id="lists" role="tabpanel">
-            <div class="card">
+            <!-- Celebration Animation Settings -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <i class="bi bi-star-fill me-2"></i>Celebration Effects
+                  <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Visual effects when winners are revealed"></i>
+                </h6>
+              </div>
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                  <h5 class="card-title mb-0">List Management</h5>
-                  <button class="btn btn-primary" id="uploadListModalBtn">
-                    <i class="bi bi-plus-circle me-2"></i>
-                  </button>
-                </div>
-                <!-- Lists Grid -->
-                <div class="row g-3" id="listsGrid">
-                  <!-- List cards will be displayed here in grid format -->
-                </div>
-                <!-- Empty state -->
-                <div id="noListsMessage" class="text-center py-5" style="display: none;">
-                  <i class="bi bi-file-earmark-spreadsheet display-1 text-muted"></i>
-                  <p class="text-muted mt-3">No lists uploaded yet</p>
-                  <button class="btn btn-primary" onclick="document.getElementById('uploadListModalBtn').click()">
-                    <i class="bi bi-plus-circle me-2"></i>Upload Your First List
-                  </button>
-                </div>
-                <!-- Hidden input for CSV upload -->
-                <input type="file" id="csvFile" accept=".csv" style="display: none;">
-              </div>
-            </div>
-            <!-- Configuration Card - Full Width -->
-            <div class="row mt-3">
-              <div class="col-12">
-                <div class="card" id="nameConfigCard" style="display: none;">
-                  <div class="card-body">
-                    <div class="mb-3">
-                      <label for="listName" class="form-label">List Name (Optional)</label>
-                      <input type="text" class="form-control" id="listName" placeholder="Enter custom list name or leave empty to use filename">
-                      <div class="form-text">If left empty, the CSV filename will be used as the list name.</div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                      <div class="col-12 col-lg-6">
-                        <h5 class="card-subtitle mb-3 text-muted">Record ID Configuration</h5>
-                        <div class="mb-3">
-                          <label class="form-label">Record ID Source</label>
-                          <div class="form-check">
-                            <input class="form-check-input" type="radio" name="idSource" id="autoGenerateId" value="auto" checked>
-                            <label class="form-check-label" for="autoGenerateId">
-                              Auto-generate unique IDs
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <input class="form-check-input" type="radio" name="idSource" id="useColumnId" value="column">
-                            <label class="form-check-label" for="useColumnId">
-                              Use column as record ID
-                            </label>
-                          </div>
-                        </div>
-                        <div class="mb-3" id="columnIdSection" style="display: none;">
-                          <label for="idColumnSelect" class="form-label">Select ID Column</label>
-                          <select class="form-select" id="idColumnSelect">
-                            <option value="">Select a column...</option>
-                          </select>
-                          <div class="form-text">Selected column values must be unique for each record.</div>
-                        </div>
-                        <div class="mb-3 border rounded p-3 bg-light">
-                          <label class="form-label fw-bold">Upload Options</label>
-                          <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="skipExistingWinners">
-                            <label class="form-check-label" for="skipExistingWinners">
-                              <strong>Skip records that are already in the winner list</strong>
-                              <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="When enabled, records are matched by their unique ID only. Records with the same name but different IDs will still be uploaded."></i>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-12 col-lg-6">
-                        <h5 class="card-title mb-3">Name Display Configuration</h5>
-                        <p class="text-muted small">Click on the fields below to build your name template.</p>
-                        <div class="mb-3">
-                          <label for="nameTemplate" class="form-label">Name Template</label>
-                          <input type="text" class="form-control" id="nameTemplate" placeholder="{LastName}, {FirstName}">
-                        </div>
-                        <div class="mb-3">
-                          <label class="form-label">Available Fields</label>
-                          <div id="availableFields" class="d-flex flex-wrap gap-2"></div>
-                        </div>
-                        <div class="mb-3">
-                          <label class="form-label">Preview</label>
-                          <div class="p-2 bg-light border rounded" id="namePreview"></div>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- Info Field Configuration -->
-                    <div class="row mt-4">
-                      <div class="col-12">
-                        <h5 class="card-title mb-3">Winner Card Display Configuration</h5>
-                        <p class="text-muted small">Configure what information appears on winner cards. Each field can use multiple columns.</p>
-                        <div class="row">
-                          <div class="col-lg-4">
-                            <div class="mb-3">
-                              <label for="info1Template" class="form-label">Info 1 (Primary - Bold, Large)</label>
-                              <input type="text" class="form-control" id="info1Template" placeholder="{FirstName} {LastName}">
-                              <div class="form-text">Main identifier (e.g., full name)</div>
-                            </div>
-                          </div>
-                          <div class="col-lg-4">
-                            <div class="mb-3">
-                              <label for="info2Template" class="form-label">Info 2 (Secondary - Medium)</label>
-                              <input type="text" class="form-control" id="info2Template" placeholder="{Department}">
-                              <div class="form-text">Secondary info (e.g., department, title)</div>
-                            </div>
-                          </div>
-                          <div class="col-lg-4">
-                            <div class="mb-3">
-                              <label for="info3Template" class="form-label">Info 3 (Tertiary - Small)</label>
-                              <input type="text" class="form-control" id="info3Template" placeholder="{Email}">
-                              <div class="form-text">Additional info (e.g., email, phone)</div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="mb-3">
-                          <label class="form-label">Available Fields for Info Templates</label>
-                          <div id="infoAvailableFields" class="d-flex flex-wrap gap-2"></div>
-                        </div>
-                        <div class="mb-3">
-                          <label class="form-label">Winner Card Preview</label>
-                          <div class="p-3 bg-light border rounded">
-                            <div class="d-flex align-items-center gap-3">
-                              <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 1rem;">1</div>
-                              <div>
-                                <div id="info1Preview" style="font-weight: 700; font-size: 1.1rem; color: #333; margin-bottom: 2px;">John Doe</div>
-                                <div id="info2Preview" style="font-weight: 500; font-size: 0.9rem; color: #555; margin-bottom: 2px;">Engineering</div>
-                                <div id="info3Preview" style="font-weight: 400; font-size: 0.8rem; color: #666;">john.doe@company.com</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <hr>
-                    <div class="d-flex gap-2 justify-content-end">
-                      <button class="btn btn-success" id="confirmUpload">
-                        <i class="bi bi-check-lg me-2"></i>Confirm Upload
-                      </button>
-                      <button class="btn btn-secondary" id="cancelUpload">
-                        <i class="bi bi-x-lg me-2"></i>Cancel
-                      </button>
-                    </div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label for="celebrationEffect" class="form-label">Celebration Animation</label>
+                    <select class="form-select" id="celebrationEffect">
+                      <option value="none">No Animation</option>
+                      <option value="confetti" selected>Confetti</option>
+                      <option value="coins">Gold Coins</option>
+                      <option value="both">Both Confetti & Coins</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="celebrationDuration" class="form-label">Animation Duration (seconds)</label>
+                    <input type="number" class="form-control" id="celebrationDuration" min="1" max="10" step="0.5" value="4">
                   </div>
                 </div>
-              </div>
-            </div>
-            <!-- Data Preview Card - Full Width -->
-            <div class="row mt-3">
-              <div class="col-12">
-                <div class="card" id="dataPreviewCard" style="display: none;">
-                  <div class="card-body">
-                    <h5 class="card-title">Data Preview</h5>
-                    <div class="table-responsive">
-                      <table class="table table-sm" id="previewTable">
-                        <thead id="previewHeaders"></thead>
-                        <tbody id="previewBody"></tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Prizes Tab -->
-          <div class="tab-pane fade" id="prizes" role="tabpanel">
-            <div class="card">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                  <h5 class="card-title mb-0">Prize Management</h5>
-                  <button class="btn btn-primary" id="addPrizeModalBtn">
-                    <i class="bi bi-plus-circle me-2"></i>
-                  </button>
-                </div>
-                <!-- Prizes Grid -->
-                <div class="row g-3" id="prizesGrid">
-                  <!-- Prize cards will be displayed here in grid format -->
-                </div>
-                <!-- Empty state -->
-                <div id="noPrizesMessage" class="text-center py-5" style="display: none;">
-                  <i class="bi bi-gift display-1 text-muted"></i>
-                  <p class="text-muted mt-3">No prizes added yet</p>
-                  <button class="btn btn-primary" onclick="document.getElementById('addPrizeModalBtn').click()">
-                    <i class="bi bi-plus-circle me-2"></i>Add Your First Prize
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Winners Tab -->
-          <div class="tab-pane fade" id="winners" role="tabpanel">
-            <div class="card">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h5 class="card-title mb-0">All Winners</h5>
-                  <div class="btn-group">
-                    <button class="btn btn-outline-success" id="exportWinnersBtn">
-                      <i class="bi bi-download me-2"></i>Export CSV
-                    </button>
-                    <button class="btn btn-outline-danger" id="clearWinnersBtn">
-                      <i class="bi bi-trash me-2"></i>Clear All
-                    </button>
-                  </div>
-                </div>
-                <div class="row mb-2">
+                <div class="row mt-3">
                   <div class="col-12">
-                    <label class="form-label">Filters</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="celebrationAutoTrigger" checked>
+                      <label class="form-check-label" for="celebrationAutoTrigger">
+                        Auto-trigger celebration when winners are revealed
+                      </label>
+                    </div>
                   </div>
                 </div>
-                <div class="row mb-3">
-                  <div class="col-md">
-                    <select id="filterPrize" class="form-select form-select-sm">
-                      <option value="">All Prizes</option>
-                    </select>
-                  </div>
-                  <div class="col-md">
-                    <select id="filterList" class="form-select form-select-sm">
-                      <option value="">All Lists</option>
-                    </select>
-                  </div>
-                  <div class="col-md">
-                    <select id="filterSelection" class="form-select form-select-sm">
-                      <option value="">All Batches</option>
-                    </select>
-                  </div>
-                  <div class="col-md">
-                    <input type="date" id="filterDate" class="form-control form-control-sm" placeholder="Filter by date">
-                  </div>
-                  <div class="col-md-auto">
-                    <button class="btn btn-sm btn-outline-secondary" id="clearFiltersBtn">
-                      <i class="bi bi-x-circle me-1"></i>Clear All
+                <div class="row mt-2">
+                  <div class="col-12">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="testCelebrationEffect">
+                      <i class="bi bi-play-fill me-1"></i>Test Celebration
                     </button>
                   </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="text-muted">
-                    <small id="winnersCount">Showing 0 winners</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Lists Tab -->
+      <div class="tab-pane fade" id="lists" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="card-title mb-0">List Management</h5>
+              <button class="btn btn-primary" id="uploadListModalBtn">
+                <i class="bi bi-plus-circle me-2"></i>Add
+              </button>
+            </div>
+            <!-- Lists Grid -->
+            <div class="row g-3" id="listsGrid">
+              <!-- List cards will be displayed here in grid format -->
+            </div>
+            <!-- Empty state -->
+            <div id="noListsMessage" class="text-center py-5" style="display: none;">
+              <i class="bi bi-file-earmark-spreadsheet display-1 text-muted"></i>
+              <p class="text-muted mt-3">No lists uploaded yet</p>
+              <button class="btn btn-primary" onclick="document.getElementById('uploadListModalBtn').click()">
+                <i class="bi bi-plus-circle me-2"></i>Add
+              </button>
+            </div>
+            <!-- Hidden input for CSV upload -->
+            <input type="file" id="csvFile" accept=".csv" style="display: none;">
+          </div>
+        </div>
+        <!-- Configuration Card - Full Width -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card" id="nameConfigCard" style="display: none;">
+              <div class="card-body">
+                <div class="mb-3">
+                  <label for="listName" class="form-label">List Name (Optional)</label>
+                  <input type="text" class="form-control" id="listName" placeholder="Enter custom list name or leave empty to use filename">
+                  <div class="form-text">If left empty, the CSV filename will be used as the list name.</div>
+                </div>
+                <hr>
+                <div class="row">
+                  <div class="col-12 col-lg-6">
+                    <h5 class="card-subtitle mb-3 text-muted">Record ID Configuration</h5>
+                    <div class="mb-3">
+                      <label class="form-label">Record ID Source</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="idSource" id="autoGenerateId" value="auto" checked>
+                        <label class="form-check-label" for="autoGenerateId">
+                          Auto-generate unique IDs
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="idSource" id="useColumnId" value="column">
+                        <label class="form-check-label" for="useColumnId">
+                          Use column as record ID
+                        </label>
+                      </div>
+                    </div>
+                    <div class="mb-3" id="columnIdSection" style="display: none;">
+                      <label for="idColumnSelect" class="form-label">Select ID Column</label>
+                      <select class="form-select" id="idColumnSelect">
+                        <option value="">Select a column...</option>
+                      </select>
+                      <div class="form-text">Selected column values must be unique for each record.</div>
+                    </div>
+                    <div class="mb-3 border rounded p-3 bg-light">
+                      <label class="form-label fw-bold">Upload Options</label>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="skipExistingWinners">
+                        <label class="form-check-label" for="skipExistingWinners">
+                          <strong>Skip records that are already in the winner list</strong>
+                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="When enabled, records are matched by their unique ID only. Records with the same name but different IDs will still be uploaded."></i>
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <div class="text-muted">
-                    <small>
-                      <span id="filterStatus"></span>
-                    </small>
+                  <div class="col-12 col-lg-6">
+                    <h5 class="card-title mb-3">Name Display Configuration</h5>
+                    <p class="text-muted small">Click on the fields below to build your name template.</p>
+                    <div class="mb-3">
+                      <label for="nameTemplate" class="form-label">Name Template</label>
+                      <input type="text" class="form-control" id="nameTemplate" placeholder="{LastName}, {FirstName}">
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Available Fields</label>
+                      <div id="availableFields" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Preview</label>
+                      <div class="p-2 bg-light border rounded" id="namePreview"></div>
+                    </div>
                   </div>
                 </div>
+                <!-- Info Field Configuration -->
+                <div class="row mt-4">
+                  <div class="col-12">
+                    <h5 class="card-title mb-3">Winner Card Display Configuration</h5>
+                    <p class="text-muted small">Configure what information appears on winner cards. Each field can use multiple columns.</p>
+                    <div class="row">
+                      <div class="col-lg-4">
+                        <div class="mb-3">
+                          <label for="info1Template" class="form-label">Info 1 (Primary - Bold, Large)</label>
+                          <input type="text" class="form-control" id="info1Template" placeholder="{FirstName} {LastName}">
+                          <div class="form-text">Main identifier (e.g., full name)</div>
+                        </div>
+                      </div>
+                      <div class="col-lg-4">
+                        <div class="mb-3">
+                          <label for="info2Template" class="form-label">Info 2 (Secondary - Medium)</label>
+                          <input type="text" class="form-control" id="info2Template" placeholder="{Department}">
+                          <div class="form-text">Secondary info (e.g., department, title)</div>
+                        </div>
+                      </div>
+                      <div class="col-lg-4">
+                        <div class="mb-3">
+                          <label for="info3Template" class="form-label">Info 3 (Tertiary - Small)</label>
+                          <input type="text" class="form-control" id="info3Template" placeholder="{Email}">
+                          <div class="form-text">Additional info (e.g., email, phone)</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Available Fields for Info Templates</label>
+                      <div id="infoAvailableFields" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Winner Card Preview</label>
+                      <div class="p-3 bg-light border rounded">
+                        <div class="d-flex align-items-center gap-3">
+                          <div class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 1rem;">1</div>
+                          <div>
+                            <div id="info1Preview" style="font-weight: 700; font-size: 1.1rem; color: #333; margin-bottom: 2px;">John Doe</div>
+                            <div id="info2Preview" style="font-weight: 500; font-size: 0.9rem; color: #555; margin-bottom: 2px;">Engineering</div>
+                            <div id="info3Preview" style="font-weight: 400; font-size: 0.8rem; color: #666;">john.doe@company.com</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr>
+                <div class="d-flex gap-2 justify-content-end">
+                  <button class="btn btn-success" id="confirmUpload">
+                    <i class="bi bi-check-lg me-2"></i>Confirm Upload
+                  </button>
+                  <button class="btn btn-secondary" id="cancelUpload">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Data Preview Card - Full Width -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="card" id="dataPreviewCard" style="display: none;">
+              <div class="card-body">
+                <h5 class="card-title">Data Preview</h5>
                 <div class="table-responsive">
-                  <table class="table table-striped">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Prize</th>
-                        <th>Date</th>
-                        <th>List</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="winnersTableBody">
-                    </tbody>
+                  <table class="table table-sm" id="previewTable">
+                    <thead id="previewHeaders"></thead>
+                    <tbody id="previewBody"></tbody>
                   </table>
                 </div>
               </div>
             </div>
           </div>
-          <!-- History Tab -->
-          <div class="tab-pane fade" id="history" role="tabpanel">
+        </div>
+      </div>
+      <!-- Prizes Tab -->
+      <div class="tab-pane fade" id="prizes" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="card-title mb-0">Prize Management</h5>
+              <button class="btn btn-primary" id="addPrizeModalBtn">
+                <i class="bi bi-plus-circle me-2"></i>Add
+              </button>
+            </div>
+            <!-- Prizes Grid -->
+            <div class="row g-3" id="prizesGrid">
+              <!-- Prize cards will be displayed here in grid format -->
+            </div>
+            <!-- Empty state -->
+            <div id="noPrizesMessage" class="text-center py-5" style="display: none;">
+              <i class="bi bi-gift display-1 text-muted"></i>
+              <p class="text-muted mt-3">No prizes added yet</p>
+              <button class="btn btn-primary" onclick="document.getElementById('addPrizeModalBtn').click()">
+                <i class="bi bi-plus-circle me-2"></i>Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Winners Tab -->
+      <div class="tab-pane fade" id="winners" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="card-title mb-0">All Winners</h5>
+              <div class="btn-group">
+                <button class="btn btn-outline-success" id="exportWinnersBtn">
+                  <i class="bi bi-download me-2"></i>Export CSV
+                </button>
+                <button class="btn btn-outline-danger" id="clearWinnersBtn">
+                  <i class="bi bi-trash me-2"></i>Clear All
+                </button>
+              </div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-12">
+                <label class="form-label">Filters</label>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md">
+                <select id="filterPrize" class="form-select form-select-sm">
+                  <option value="">All Prizes</option>
+                </select>
+              </div>
+              <div class="col-md">
+                <select id="filterList" class="form-select form-select-sm">
+                  <option value="">All Lists</option>
+                </select>
+              </div>
+              <div class="col-md">
+                <select id="filterSelection" class="form-select form-select-sm">
+                  <option value="">All Batches</option>
+                </select>
+              </div>
+              <div class="col-md">
+                <input type="date" id="filterDate" class="form-control form-control-sm" placeholder="Filter by date">
+              </div>
+              <div class="col-md-auto">
+                <button class="btn btn-sm btn-outline-secondary" id="clearFiltersBtn">
+                  <i class="bi bi-x-circle me-1"></i>Clear All
+                </button>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="text-muted">
+                <small id="winnersCount">Showing 0 winners</small>
+              </div>
+              <div class="text-muted">
+                <small>
+                  <span id="filterStatus"></span>
+                </small>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Prize</th>
+                    <th>Date</th>
+                    <th>List</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="winnersTableBody">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- History Tab -->
+      <div class="tab-pane fade" id="history" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Selection History & Statistics</h5>
+            <div class="history-stats" id="historyStats">
+              <div class="stat-card">
+                <div class="stat-number" id="totalSelections">0</div>
+                <div class="stat-label">Total Selections</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="totalWinners">0</div>
+                <div class="stat-label">Total Winners</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="averageWinners">0</div>
+                <div class="stat-label">Avg Winners/Selection</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="mostUsedPrize">-</div>
+                <div class="stat-label">Most Used Prize</div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Filter by List</label>
+              <select class="form-select" id="historyListFilter">
+                <option value="">All Lists</option>
+              </select>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>List</th>
+                    <th>Prize</th>
+                    <th>Winners Count</th>
+                    <th>Winners</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Settings Tab -->
+      <div class="tab-pane fade" id="settings" role="tabpanel">
+        <div class="row">
+          <div class="col-lg-6">
+            <!-- Display Settings -->
             <div class="card">
               <div class="card-body">
-                <h5 class="card-title">Selection History & Statistics</h5>
-                <div class="history-stats" id="historyStats">
-                  <div class="stat-card">
-                    <div class="stat-number" id="totalSelections">0</div>
-                    <div class="stat-label">Total Selections</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-number" id="totalWinners">0</div>
-                    <div class="stat-label">Total Winners</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-number" id="averageWinners">0</div>
-                    <div class="stat-label">Avg Winners/Selection</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="stat-number" id="mostUsedPrize">-</div>
-                    <div class="stat-label">Most Used Prize</div>
+                <h5 class="card-title">General Settings</h5>
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="preventDuplicates">
+                    <label class="form-check-label" for="preventDuplicates">
+                      Remove winners from source list
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Prevent the same person from winning multiple times"></i>
+                    </label>
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">Filter by List</label>
-                  <select class="form-select" id="historyListFilter">
-                    <option value="">All Lists</option>
-                  </select>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="hideEntryCounts">
+                    <label class="form-check-label" for="hideEntryCounts">
+                      Hide Entry Counts
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of participants in public view"></i>
+                    </label>
+                  </div>
                 </div>
-                <div class="table-responsive">
-                  <table class="table table-striped">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>List</th>
-                        <th>Prize</th>
-                        <th>Winners Count</th>
-                        <th>Winners</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                    </tbody>
-                  </table>
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="enableDebugLogs">
+                    <label class="form-check-label" for="enableDebugLogs">
+                      Enable Debug Logs
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Show detailed console logs for debugging"></i>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Webhook Settings -->
+            <div class="card mt-3">
+              <div class="card-body">
+                <h5 class="card-title">Webhook Settings</h5>
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="enableWebhook">
+                    <label class="form-check-label" for="enableWebhook">
+                      Enable Webhook Notifications
+                      <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Send HTTP POST requests when winners are selected"></i>
+                    </label>
+                  </div>
+                </div>
+                <div class="mb-3" id="webhookUrlSection">
+                  <label class="form-label" for="webhookUrl">
+                    Webhook URL
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="URL where winner selection notifications will be sent via POST request"></i>
+                  </label>
+                  <input type="url" class="form-control" id="webhookUrl" placeholder="https://example.com/webhook" disabled>
+                  <div class="form-text">Winners data will be sent as JSON in the request body</div>
+                </div>
+              </div>
+            </div>
+            <!-- Sound Files Settings -->
+            <div class="card mt-3">
+              <div class="card-body">
+                <h5 class="card-title">Sound Files</h5>
+                <div class="mb-3">
+                  <label class="form-label">Upload Sound Files</label>
+                  <input type="file" class="form-control" id="soundFileInput" accept=".mp3" multiple style="display: none;">
+                  <div class="form-text">Click the button below to select and upload MP3 files. All uploaded sounds will be available in all sound selection dropdowns.</div>
+                </div>
+                <button class="btn btn-primary" id="uploadSoundFilesBtn">
+                  <i class="bi bi-upload me-2"></i>Upload Sound Files
+                </button>
+                <div class="mb-3 mt-3">
+                  <label class="form-label">Available Sound Files</label>
+                  <div id="soundFilesList" class="d-flex flex-column gap-2">
+                    <!-- Sound files will be listed here -->
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- SMS Settings -->
+            <div class="card mt-3">
+              <div class="card-body">
+                <h5 class="card-title">SMS Settings</h5>
+                <div class="mb-3">
+                  <label class="form-label" for="smsTemplate">
+                    SMS Template
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Template for SMS messages sent to winners. Use placeholders: {name}, {prize}, {ticketCode}"></i>
+                  </label>
+                  <textarea class="form-control" id="smsTemplate" rows="3" placeholder="Congratulations {name}! You won {prize}. Your ticket: {ticketCode}">Congratulations {name}! You won {prize}. Your ticket: {ticketCode}</textarea>
+                  <div class="form-text">
+                    Available placeholders: <code>{name}</code>, <code>{prize}</code>, <code>{ticketCode}</code>
+                    <br><span id="smsCharCount">0 characters, 1 SMS</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <!-- Settings Tab -->
-          <div class="tab-pane fade" id="settings" role="tabpanel">
-            <div class="row">
-              <div class="col-lg-6">
-                <!-- Display Settings -->
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">General Settings</h5>
-                    <div class="mb-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="preventDuplicates">
-                        <label class="form-check-label" for="preventDuplicates">
-                          Remove winners from source list
-                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Prevent the same person from winning multiple times"></i>
-                        </label>
-                      </div>
+          <div class="col-lg-6">
+            <!-- Theme Settings -->
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Theme & Appearance</h5>
+                <div class="mb-3">
+                  <label class="form-label">
+                    Font Family
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose the main font for the application"></i>
+                  </label>
+                  <select class="form-select" id="fontFamily">
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Inter">Inter</option>
+                    <option value="Lato">Lato</option>
+                    <option value="Poppins">Poppins</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Theme Colors</label>
+                  <div class="row">
+                    <div class="col-6">
+                      <label class="form-label">Primary Color</label>
+                      <input type="color" class="form-control color-input" id="primaryColor" value="#6366f1">
                     </div>
-                    <div class="mb-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="hideEntryCounts">
-                        <label class="form-check-label" for="hideEntryCounts">
-                          Hide Entry Counts
-                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of participants in public view"></i>
-                        </label>
-                      </div>
-                    </div>
-                    <div class="mb-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="enableDebugLogs">
-                        <label class="form-check-label" for="enableDebugLogs">
-                          Enable Debug Logs
-                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Show detailed console logs for debugging"></i>
-                        </label>
-                      </div>
+                    <div class="col-6">
+                      <label class="form-label">Secondary Color</label>
+                      <input type="color" class="form-control color-input" id="secondaryColor" value="#8b5cf6">
                     </div>
                   </div>
                 </div>
-                <!-- Webhook Settings -->
-                <div class="card mt-3">
-                  <div class="card-body">
-                    <h5 class="card-title">Webhook Settings</h5>
-                    <div class="mb-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="enableWebhook">
-                        <label class="form-check-label" for="enableWebhook">
-                          Enable Webhook Notifications
-                          <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Send HTTP POST requests when winners are selected"></i>
-                        </label>
-                      </div>
-                    </div>
-                    <div class="mb-3" id="webhookUrlSection">
-                      <label class="form-label" for="webhookUrl">
-                        Webhook URL
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="URL where winner selection notifications will be sent via POST request"></i>
-                      </label>
-                      <input type="url" class="form-control" id="webhookUrl" placeholder="https://example.com/webhook" disabled>
-                      <div class="form-text">Winners data will be sent as JSON in the request body</div>
-                    </div>
-                  </div>
+                <div class="mb-3">
+                  <label class="form-label">
+                    Background Type
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose background style for winner display"></i>
+                  </label>
+                  <select class="form-select" id="backgroundType">
+                    <option value="gradient">Gradient</option>
+                    <option value="solid">Solid Color</option>
+                    <option value="image">Custom Image</option>
+                  </select>
                 </div>
-                <!-- Sound Files Settings -->
-                <div class="card mt-3">
-                  <div class="card-body">
-                    <h5 class="card-title">Sound Files</h5>
-                    <div class="mb-3">
-                      <label class="form-label">Upload Sound Files</label>
-                      <input type="file" class="form-control" id="soundFileInput" accept=".mp3" multiple style="display: none;">
-                      <div class="form-text">Click the button below to select and upload MP3 files. All uploaded sounds will be available in all sound selection dropdowns.</div>
-                    </div>
-                    <button class="btn btn-primary" id="uploadSoundFilesBtn">
-                      <i class="bi bi-upload me-2"></i>Upload Sound Files
-                    </button>
-                    <div class="mb-3 mt-3">
-                      <label class="form-label">Available Sound Files</label>
-                      <div id="soundFilesList" class="d-flex flex-column gap-2">
-                        <!-- Sound files will be listed here -->
-                      </div>
-                    </div>
-                  </div>
+                <div class="mb-3" id="backgroundImageUpload" style="display: none;">
+                  <label class="form-label">Upload Background Image</label>
+                  <input type="file" class="form-control" id="backgroundImage" accept="image/*">
                 </div>
-                <!-- SMS Settings -->
-                <div class="card mt-3">
-                  <div class="card-body">
-                    <h5 class="card-title">SMS Settings</h5>
-                    <div class="mb-3">
-                      <label class="form-label" for="smsTemplate">
-                        SMS Template
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Template for SMS messages sent to winners. Use placeholders: {name}, {prize}, {ticketCode}"></i>
-                      </label>
-                      <textarea class="form-control" id="smsTemplate" rows="3" placeholder="Congratulations {name}! You won {prize}. Your ticket: {ticketCode}">Congratulations {name}! You won {prize}. Your ticket: {ticketCode}</textarea>
-                      <div class="form-text">
-                        Available placeholders: <code>{name}</code>, <code>{prize}</code>, <code>{ticketCode}</code>
-                        <br><span id="smsCharCount">0 characters, 1 SMS</span>
-                      </div>
+                <div class="mb-3">
+                  <label class="form-label">Theme Presets</label>
+                  <div class="row g-2">
+                    <div class="col-4">
+                      <button class="btn btn-outline-primary w-100 theme-preset" data-theme="default">
+                        <i class="bi bi-palette me-1"></i>Default
+                      </button>
                     </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-lg-6">
-                <!-- Theme Settings -->
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Theme & Appearance</h5>
-                    <div class="mb-3">
-                      <label class="form-label">
-                        Font Family
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose the main font for the application"></i>
-                      </label>
-                      <select class="form-select" id="fontFamily">
-                        <option value="Open Sans">Open Sans</option>
-                        <option value="Roboto">Roboto</option>
-                        <option value="Inter">Inter</option>
-                        <option value="Lato">Lato</option>
-                        <option value="Poppins">Poppins</option>
-                      </select>
+                    <div class="col-4">
+                      <button class="btn btn-outline-success w-100 theme-preset" data-theme="emerald">
+                        <i class="bi bi-gem me-1"></i>Emerald
+                      </button>
                     </div>
-                    <div class="mb-3">
-                      <label class="form-label">Theme Colors</label>
-                      <div class="row">
-                        <div class="col-6">
-                          <label class="form-label">Primary Color</label>
-                          <input type="color" class="form-control color-input" id="primaryColor" value="#6366f1">
-                        </div>
-                        <div class="col-6">
-                          <label class="form-label">Secondary Color</label>
-                          <input type="color" class="form-control color-input" id="secondaryColor" value="#8b5cf6">
-                        </div>
-                      </div>
+                    <div class="col-4">
+                      <button class="btn btn-outline-danger w-100 theme-preset" data-theme="ruby">
+                        <i class="bi bi-diamond me-1"></i>Ruby
+                      </button>
                     </div>
-                    <div class="mb-3">
-                      <label class="form-label">
-                        Background Type
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose background style for winner display"></i>
-                      </label>
-                      <select class="form-select" id="backgroundType">
-                        <option value="gradient">Gradient</option>
-                        <option value="solid">Solid Color</option>
-                        <option value="image">Custom Image</option>
-                      </select>
+                    <div class="col-4">
+                      <button class="btn btn-outline-warning w-100 theme-preset" data-theme="gold">
+                        <i class="bi bi-star me-1"></i>Gold
+                      </button>
                     </div>
-                    <div class="mb-3" id="backgroundImageUpload" style="display: none;">
-                      <label class="form-label">Upload Background Image</label>
-                      <input type="file" class="form-control" id="backgroundImage" accept="image/*">
+                    <div class="col-4">
+                      <button class="btn btn-outline-info w-100 theme-preset" data-theme="ocean">
+                        <i class="bi bi-water me-1"></i>Ocean
+                      </button>
                     </div>
-                    <div class="mb-3">
-                      <label class="form-label">Theme Presets</label>
-                      <div class="row g-2">
-                        <div class="col-4">
-                          <button class="btn btn-outline-primary w-100 theme-preset" data-theme="default">
-                            <i class="bi bi-palette me-1"></i>Default
-                          </button>
-                        </div>
-                        <div class="col-4">
-                          <button class="btn btn-outline-success w-100 theme-preset" data-theme="emerald">
-                            <i class="bi bi-gem me-1"></i>Emerald
-                          </button>
-                        </div>
-                        <div class="col-4">
-                          <button class="btn btn-outline-danger w-100 theme-preset" data-theme="ruby">
-                            <i class="bi bi-diamond me-1"></i>Ruby
-                          </button>
-                        </div>
-                        <div class="col-4">
-                          <button class="btn btn-outline-warning w-100 theme-preset" data-theme="gold">
-                            <i class="bi bi-star me-1"></i>Gold
-                          </button>
-                        </div>
-                        <div class="col-4">
-                          <button class="btn btn-outline-info w-100 theme-preset" data-theme="ocean">
-                            <i class="bi bi-water me-1"></i>Ocean
-                          </button>
-                        </div>
-                        <div class="col-4">
-                          <button class="btn btn-outline-secondary w-100 theme-preset" data-theme="corporate">
-                            <i class="bi bi-building me-1"></i>Corporate
-                          </button>
-                        </div>
-                      </div>
+                    <div class="col-4">
+                      <button class="btn btn-outline-secondary w-100 theme-preset" data-theme="corporate">
+                        <i class="bi bi-building me-1"></i>Corporate
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -849,6 +869,8 @@
         </div>
       </div>
     </div>
+  </div>
+  </div>
   </div>
   <!-- Progress Overlay -->
   <div id="progressOverlay" class="progress-overlay d-none">

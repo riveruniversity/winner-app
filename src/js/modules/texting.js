@@ -156,27 +156,6 @@ class TextingService {
     return response.json();
   }
 
-  /**
-   * Sends a single SMS message
-   */
-  async sendSingleText(phoneNumber, message, options = {}) {
-    try {
-      const body = {
-        action: 'sendMessage',
-        data: {
-          message: message,
-          phoneNumbers: Array.isArray(phoneNumber) ? phoneNumber : [phoneNumber],
-          options: options
-        }
-      };
-
-      const result = await this.makeRequest(body);
-      return result;
-    } catch (error) {
-      console.error('Error sending single text:', error);
-      throw error;
-    }
-  }
 
   /**
    * Sends SMS to multiple recipients with fire-and-forget pattern (200 requests/minute)
@@ -193,7 +172,7 @@ class TextingService {
     // Track SMS status immediately
     let sent = 0;
     let batchStartTime = Date.now();
-    const batchSize = 180; // 180 requests per minute (safety buffer)
+    const batchSize = 195; // 195 requests per minute (safety buffer)
     
     // Process recipients in batches to respect rate limit
     for (let i = 0; i < recipients.length; i++) {
@@ -232,6 +211,7 @@ class TextingService {
       // Personalize message
       let personalizedMessage = messageTemplate;
       personalizedMessage = personalizedMessage.replace('{name}', recipient.displayName || recipient.name || 'Winner');
+      personalizedMessage = personalizedMessage.replace('{firstName}', recipient.firstName || recipient.displayName || recipient.name || 'Winner');
       personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
       personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
 
@@ -286,8 +266,8 @@ class TextingService {
         `Sent ${sent}/${recipients.length} (Rate: ${currentCount}/${maxRequests} req/min)`
       );
 
-      // Small delay between requests to avoid overwhelming (5 requests per second max)
-      await this.delay(200);
+      // Small delay between requests to avoid overwhelming (10 requests per second max)
+      await this.delay(50);
     }
 
     // Update final stats
