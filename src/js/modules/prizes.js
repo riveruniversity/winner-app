@@ -31,7 +31,7 @@ async function loadPrizes() {
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-start mb-2">
                 <h5 class="card-title mb-0">${prize.name}</h5>
-                <span class="badge bg-primary">Qty: ${prize.quantity}</span>
+                <span class="badge bg-primary">${prize.quantity}</span>
               </div>
               ${prize.description ? `<p class="card-text text-muted small">${prize.description}</p>` : '<p class="card-text text-muted small">No description</p>'}
               <div class="mt-auto pt-3">
@@ -58,7 +58,7 @@ async function loadPrizes() {
             <div class="card-body">
               <h6 class="card-title">${prize.name}</h6>
               <p class="card-text">
-                <span class="badge bg-primary">Qty: ${prize.quantity}</span>
+                <span class="badge bg-primary">${prize.quantity}</span>
                 ${prize.description ? `<br><small class="text-muted">${prize.description}</small>` : ''}
               </p>
               <div class="btn-group btn-group-sm">

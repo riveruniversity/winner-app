@@ -108,11 +108,18 @@ async function populateQuickSelects(lists = null, prizes = null) {
 
     if (quickListSelect) {
       quickListSelect.innerHTML = '<option value="">Select List...</option>';
-      listsData.forEach(list => {
+      // Sort lists by timestamp (most recent first)
+      const sortedLists = [...listsData].sort((a, b) => {
+        const dateA = a.metadata?.timestamp || 0;
+        const dateB = b.metadata?.timestamp || 0;
+        return dateB - dateA;
+      });
+      sortedLists.forEach(list => {
         const listId = list.listId || list.metadata.listId;
+        const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
         const option = document.createElement('option');
         option.value = listId;
-        option.textContent = `${list.metadata.name} (${list.entries.length})`;
+        option.textContent = `${list.metadata.name} (${entryCount})`;
         quickListSelect.appendChild(option);
       });
       

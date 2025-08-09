@@ -248,18 +248,15 @@ function startAnimation() {
 
 // Confetti Celebration Animation
 function startConfettiAnimation() {
-  console.log('🎊 startConfettiAnimation called');
   const canvas = document.getElementById('animationCanvas');
   if (!canvas) {
-    console.error('❌ Canvas element not found!');
+    console.error('Canvas element not found!');
     return;
   }
-  console.log('✅ Canvas found:', canvas);
   
   // Set canvas dimensions BEFORE using them
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  console.log('📐 Canvas dimensions set to:', canvas.width, 'x', canvas.height);
 
   // Convert hex to RGB
   function hexToRgb(hex) {
@@ -319,7 +316,6 @@ function startConfettiAnimation() {
   }
 
   // Create initial burst of confetti
-  console.log('📦 Creating initial confetti burst');
   // Create immediate burst
   for (let i = 0; i < 50; i++) { // Create 50 pieces immediately
     confettiPieces.push(new ConfettiPiece());
@@ -329,16 +325,12 @@ function startConfettiAnimation() {
   for (let i = 0; i < 20; i++) { // Create 20 more batches
     setTimeout(() => {
       createConfetti();
-      console.log(`🎉 Created confetti batch ${i+1}/20, total pieces: ${confettiPieces.length}`);
     }, i * 100); // Create over 2 seconds
   }
 
   // Start the shared animation loop if not already running
   if (!animationFrameId) {
-    console.log('🎬 Starting animation loop');
     startAnimation();
-  } else {
-    console.log('⚠️ Animation already running');
   }
 }
 

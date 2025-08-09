@@ -522,7 +522,6 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
   if (celebrationAutoTrigger && celebrationEffect && celebrationEffect !== 'none') {
     // Only trigger confetti if confetti is selected (not for coins-only)
     if ((celebrationEffect === 'confetti' || celebrationEffect === 'both') && Animations && Animations.startConfettiAnimation) {
-      console.log('🎉 Triggering confetti animation');
       Animations.startConfettiAnimation();
     }
   }

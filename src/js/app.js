@@ -63,11 +63,28 @@ export function clearCurrentWinners() {
 }
 
 // Load data in background without blocking UI
-function loadDataInBackground() {
-  // Fire and forget - components will load their own data from cache
-  Lists.loadLists();
-  Prizes.loadPrizes();
-  UI.syncUI(); // This will populate selects AND apply visibility settings
+async function loadDataInBackground() {
+  try {
+    // Load data once and share it
+    const [lists, prizes, winners, history] = await Promise.all([
+      Database.getFromStore('lists'),
+      Database.getFromStore('prizes'),
+      Database.getFromStore('winners'),
+      Database.getFromStore('history')
+    ]);
+    
+    // Pass loaded data to avoid duplicate loads
+    Lists.loadLists(); // This updates the UI
+    Prizes.loadPrizes(); // This updates the UI
+    UI.syncUI(lists, prizes); // Pass data to avoid reload
+    Winners.loadWinners(); // This updates the UI
+    
+    // Load history UI
+    loadHistoryUI(history);
+    updateHistoryStatsUI(history, winners);
+  } catch (error) {
+    console.error('Error loading data:', error);
+  }
 }
 
 // Application initialization
@@ -80,13 +97,8 @@ export async function initializeApp() {
     Settings.setupTheme(); // Apply theme once settings are loaded
     console.log('Settings loaded:', settings);
     
-    // Load data once and share the results
+    // Load all data once in background
     loadDataInBackground();
-    
-    // Load other data in background too (don't await)
-    Winners.loadWinners();
-    loadHistory();
-    updateHistoryStats();
     
     // Initialize sound system
     Sounds.initSounds();
@@ -104,7 +116,6 @@ export async function initializeApp() {
     }, 100);
 
     setupEventListeners();
-    Settings.setupTheme();
 
     // Firestore handles sync automatically with offline persistence
 
@@ -239,30 +250,16 @@ function setupManagementListeners() {
     button.addEventListener('click', Settings.handleThemePreset);
   });
   
-  // Update sound dropdowns when settings tab is shown
-  const settingsTab = document.getElementById('settings-tab');
-  if (settingsTab) {
-    settingsTab.addEventListener('shown.bs.tab', () => {
-      if (window.Sounds && window.Sounds.updateSoundDropdowns) {
-        window.Sounds.updateSoundDropdowns();
-        Settings.debugLog('Sound dropdowns refreshed on settings tab show');
-      }
-    });
-  }
+  // Sound dropdowns are already populated on init, no need to refresh on tab show
 
   // Celebration test button
   const testCelebrationBtn = document.getElementById('testCelebrationEffect');
   if (testCelebrationBtn) {
     testCelebrationBtn.addEventListener('click', () => {
       const celebrationEffect = document.getElementById('celebrationEffect')?.value || 'confetti';
-      console.log('🎊 Test celebration button clicked');
-      console.log('Effect selected:', celebrationEffect);
-      console.log('Animations available:', !!window.Animations);
-      console.log('startConfettiAnimation available:', !!(window.Animations && window.Animations.startConfettiAnimation));
       
       if (celebrationEffect === 'confetti' || celebrationEffect === 'both') {
         if (window.Animations && window.Animations.startConfettiAnimation) {
-          console.log('🎉 Triggering confetti animation from test button...');
           window.Animations.startConfettiAnimation();
         } else {
           console.error('❌ Animations.startConfettiAnimation not available');
@@ -270,21 +267,12 @@ function setupManagementListeners() {
       }
       
       if (celebrationEffect === 'coins' || celebrationEffect === 'both') {
-        console.log('🪙 Coin animation would trigger here if implemented');
+        // Coin animation would trigger here if implemented
       }
     });
   }
   
-  // Also update sound dropdowns when quick setup tab is shown
-  const quickSetupTab = document.getElementById('quicksetup-tab');
-  if (quickSetupTab) {
-    quickSetupTab.addEventListener('shown.bs.tab', () => {
-      if (window.Sounds && window.Sounds.updateSoundDropdowns) {
-        window.Sounds.updateSoundDropdowns();
-        Settings.debugLog('Sound dropdowns refreshed on quick setup tab show');
-      }
-    });
-  }
+  // Sound dropdowns are already populated on init, no need to refresh on tab show
 
   // Export/Import
   const exportWinnersBtn = document.getElementById('exportWinnersBtn');
@@ -334,9 +322,9 @@ function setupDisplayMode() {
 }
 
 // History Management (simplified for now)
-export async function loadHistory() {
+// New function that only updates UI without reloading data
+function loadHistoryUI(history) {
   try {
-    const history = await Database.getFromStore('history');
     const tbody = document.getElementById('historyTableBody');
 
     if (!tbody) return;
@@ -365,14 +353,23 @@ export async function loadHistory() {
     `).join('');
   } catch (error) {
     console.error('Error loading history:', error);
+  }
+}
+
+// Old function kept for external calls
+export async function loadHistory() {
+  try {
+    const history = await Database.getFromStore('history');
+    loadHistoryUI(history);
+  } catch (error) {
+    console.error('Error loading history:', error);
     UI.showToast('Error loading history: ' + error.message, 'error');
   }
 }
 
-export async function updateHistoryStats() {
+// New function that only updates UI without reloading data
+function updateHistoryStatsUI(history, winners) {
   try {
-    const history = await Database.getFromStore('history');
-    const winners = await Winners.getAllWinners();
 
     const totalSelections = history.length;
     const totalWinners = winners.length;
@@ -403,6 +400,17 @@ export async function updateHistoryStats() {
       }
     }
 
+  } catch (error) {
+    console.error('Error updating history stats:', error);
+  }
+}
+
+// Old function kept for external calls
+export async function updateHistoryStats() {
+  try {
+    const history = await Database.getFromStore('history');
+    const winners = await Winners.getAllWinners();
+    updateHistoryStatsUI(history, winners);
   } catch (error) {
     console.error('Error updating history stats:', error);
   }

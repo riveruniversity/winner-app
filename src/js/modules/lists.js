@@ -45,16 +45,20 @@ async function loadLists() {
       return dateB - dateA;
     });
 
-    const listCards = lists.map(list => `
+    const listCards = lists.map(list => {
+      // Use metadata.entryCount as fallback for sharded lists
+      const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
+      const badgeHtml = !settings.hideEntryCounts ? 
+        `<span class="badge bg-primary rounded-pill">${entryCount}</span>` : '';
+      
+      return `
       <div class="col-md-6 col-lg-4">
         <div class="card h-100">
           <div class="card-body">
-            <h5 class="card-title">${list.metadata.name}</h5>
-            ${!settings.hideEntryCounts ? `
-            <p class="card-text">
-              <strong>${list.entries.length}</strong> entries
-            </p>
-            ` : ''}
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="card-title">${list.metadata.name}</h5>
+              ${badgeHtml}
+            </div>
             <p class="card-text">
               <small class="text-muted">
                 Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
@@ -73,7 +77,8 @@ async function loadLists() {
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     if (gridContainer) {
       gridContainer.innerHTML = listCards;
@@ -85,7 +90,7 @@ async function loadLists() {
             <h6 class="card-title">${list.metadata.name}</h6>
             <p class="card-text">
               <small class="text-muted">
-                ${!settings.hideEntryCounts ? `${list.entries.length} entries • ` : ''}
+                ${!settings.hideEntryCounts ? `${list.entries?.length || list.metadata?.entryCount || 0} entries • ` : ''}
                 Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
               </small>
             </p>
@@ -199,7 +204,7 @@ async function viewList(listId) {
       modalBody.innerHTML = `
         ${!settings.hideEntryCounts ? `
         <div class="mb-3">
-          <strong>Total Entries:</strong> ${list.entries.length}
+          <strong>Total Entries:</strong> ${list.entries?.length || list.metadata?.entryCount || 0}
           ${list.metadata.skippedWinners ? `<span class="text-muted ms-2">(${list.metadata.skippedWinners} winners skipped during upload)</span>` : ''}
         </div>
         ` : ''}
@@ -233,10 +238,16 @@ async function viewList(listId) {
       
       window.appModal.show();
       
-      // Remove modal-xl class when modal is hidden
+      // Reset modal when it's hidden
       const modalElement = document.getElementById('appModal');
       modalElement.addEventListener('hidden.bs.modal', function() {
         modalDialog.classList.remove('modal-xl');
+        // Reset button states for other uses of the modal
+        confirmBtn.style.display = '';
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.className = 'btn btn-primary';
+        confirmBtn.onclick = null;
+        cancelBtn.textContent = 'Cancel';
       }, { once: true });
     }
   } catch (error) {

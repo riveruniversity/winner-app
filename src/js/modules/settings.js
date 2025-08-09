@@ -139,17 +139,9 @@ function setupTheme() {
   loadSettingsToForm();
   setupSoundTestButtons();
   
-  // Initialize sound dropdowns when available, then reload sound settings
+  // Reload sound settings after dropdowns are populated by initSounds
   setTimeout(() => {
-    if (window.Sounds && window.Sounds.updateSoundDropdowns) {
-      window.Sounds.updateSoundDropdowns();
-      debugLog('Sound dropdowns updated from setupTheme');
-      
-      // Reload sound settings after dropdowns are populated
-      loadSoundSettingsToForm();
-    } else {
-      debugLog('Sounds module not available yet in setupTheme');
-    }
+    loadSoundSettingsToForm();
   }, 500);
 }
 

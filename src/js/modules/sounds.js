@@ -335,7 +335,6 @@ async function deleteCustomSound(soundId) {
 
 // Update sound dropdowns with available options
 function updateSoundDropdowns() {
-  console.log('updateSoundDropdowns called. Available sounds:', availableSounds);
   
   const soundDropdowns = [
     'soundDuringDelay',

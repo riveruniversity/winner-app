@@ -101,13 +101,23 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   const selectionFilter = document.getElementById('filterSelection');
 
   const listNameMap = {};
+  const listTimestampMap = {};
   lists.forEach(list => {
     const listId = list.listId || list.metadata.listId;
     listNameMap[listId] = list.metadata.name;
+    listTimestampMap[list.metadata.name] = list.metadata?.timestamp || 0;
   });
 
   const prizes = [...new Set(winners.map(w => w.prize))].sort();
-  const listNames = [...new Set(winners.map(w => listNameMap[w.listId] || 'Unknown'))].sort();
+  
+  // Get unique list names and sort by timestamp (most recent first)
+  const uniqueListNames = [...new Set(winners.map(w => listNameMap[w.listId] || 'Unknown'))];
+  const sortedListNames = uniqueListNames.sort((a, b) => {
+    const timestampA = listTimestampMap[a] || 0;
+    const timestampB = listTimestampMap[b] || 0;
+    return timestampB - timestampA;
+  });
+  
   const selections = [...new Set(winners.map(w => w.historyId).filter(Boolean))];
 
   // Populate Prize Filter
@@ -118,9 +128,9 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   });
   prizeFilter.value = selectedPrize;
 
-  // Populate List Filter
+  // Populate List Filter (now sorted by timestamp)
   listFilter.innerHTML = '<option value="">All Lists</option>';
-  listNames.forEach(listName => {
+  sortedListNames.forEach(listName => {
     const count = winners.filter(w => (listNameMap[w.listId] || 'Unknown') === listName).length;
     listFilter.innerHTML += `<option value="${listName}">${listName} (${count})</option>`;
   });

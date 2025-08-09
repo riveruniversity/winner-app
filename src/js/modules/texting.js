@@ -367,6 +367,8 @@ class TextingService {
         </div>
       `;
 
+      // Ensure confirm button is visible and properly configured
+      confirmBtn.style.display = '';
       confirmBtn.textContent = 'Send Messages';
       confirmBtn.className = 'btn btn-success';
       confirmBtn.onclick = () => {
@@ -375,12 +377,15 @@ class TextingService {
       };
 
       // Add cancel functionality
-      const cancelBtn = document.getElementById('appModalCancelBtn') || this.createCancelButton();
-      cancelBtn.onclick = () => {
-        window.appModal.hide();
-        resolve(false);
-      };
-      cancelBtn.style.display = 'inline-block';
+      const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+      if (cancelBtn) {
+        cancelBtn.style.display = '';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = () => {
+          window.appModal.hide();
+          resolve(false);
+        };
+      }
 
       window.appModal.show();
     });

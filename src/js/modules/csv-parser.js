@@ -134,7 +134,6 @@ function parseCSVLine(line) {
 }
 
 async function handleCSVUpload() {
-  const listNameInput = document.getElementById('listName');
   const csvFileInput = document.getElementById('csvFile');
 
   if (!csvFileInput || !csvFileInput.files || csvFileInput.files.length === 0) {
@@ -143,7 +142,8 @@ async function handleCSVUpload() {
 
   const csvFile = csvFileInput.files[0];
   const fileName = csvFile.name.replace(/\.[^/.]+$/, "");
-  const listName = listNameInput.value.trim() || fileName;
+  // Don't read list name here - it will be read when confirming
+  const listName = fileName; // Use filename as temporary name for preview
 
   if (!csvFile) {
     UI.showToast('Please select a CSV file', 'warning');
@@ -394,6 +394,10 @@ async function handleConfirmUpload() {
   try {
     UI.showProgress('Processing List', 'Validating data...');
 
+    // Read the list name from the input field (user may have changed it)
+    const listNameInput = document.getElementById('listName');
+    const finalListName = listNameInput.value.trim() || pendingCSVData.listName;
+    
     const nameConfig = getNameConfiguration();
     const infoConfig = getInfoConfiguration();
     const idConfig = getIdConfiguration();
@@ -480,7 +484,7 @@ async function handleConfirmUpload() {
       listId: listId,
       metadata: {
         listId: listId,
-        name: pendingCSVData.listName,
+        name: finalListName,
         timestamp: Date.now(),
         originalFilename: pendingCSVData.fileName,
         entryCount: dataToUpload.length,
@@ -519,7 +523,7 @@ async function handleConfirmUpload() {
     
     const skippedText = skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : '';
       
-    UI.showToast(`List "${pendingCSVData.listName}" processed successfully with ${entriesText}${skippedText}! 📦 Syncing to cloud...`, 'success');
+    UI.showToast(`List "${finalListName}" processed successfully with ${entriesText}${skippedText}! 📦 Syncing to cloud...`, 'success');
 
     // Clear form and hide preview
     document.getElementById('listName').value = '';
