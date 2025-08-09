@@ -63,6 +63,18 @@ async function loadWinners() {
         `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
         `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
       
+      // Generate SMS status badge
+      let smsStatus = '';
+      if (winner.smsStatus) {
+        if (winner.smsStatus.success === true) {
+          smsStatus = '<span class="badge bg-success ms-1" title="SMS Sent"><i class="bi bi-envelope-check-fill"></i></span>';
+        } else if (winner.smsStatus.success === false) {
+          smsStatus = `<span class="badge bg-danger ms-1" title="SMS Failed: ${winner.smsStatus.error || 'Unknown error'}"><i class="bi bi-envelope-x-fill"></i></span>`;
+        } else if (winner.smsStatus.sent === true) {
+          smsStatus = '<span class="badge bg-info ms-1" title="SMS Sending..."><i class="bi bi-envelope-arrow-up-fill"></i></span>';
+        }
+      }
+      
       return `
         <tr>
           <td>
@@ -70,6 +82,7 @@ async function loadWinners() {
             <button class="btn btn-sm btn-outline-secondary ms-1" onclick="Winners.showQRCode('${winner.winnerId}')" title="Show QR Code">
               <i class="bi bi-qr-code"></i>
             </button>
+            ${smsStatus}
           </td>
           <td>${winner.displayName}</td>
           <td>${winner.prize}</td>

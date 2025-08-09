@@ -5,7 +5,6 @@
 
 import { Database } from './firestore.js';
 import { UI } from './ui.js';
-import { Winners } from './winners.js';
 import { getCurrentWinners } from '../app.js';
 import { settings } from './settings.js';
 
@@ -72,7 +71,50 @@ class TextingService {
   }
 
   /**
-   * Makes a POST request to the EZ Texting Netlify function with rate limiting
+   * Makes a POST request to the EZ Texting Netlify function (fire-and-forget)
+   * Returns immediately after sending, doesn't wait for response
+   */
+  makeRequestFireAndForget(body, winnerId = null) {
+    // Record the request attempt
+    rateLimiter.recordRequest();
+
+    // Fire the request without awaiting
+    fetch('/.netlify/functions/ez-texting', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      signal: this.abortController?.signal
+    })
+    .then(async response => {
+      const result = await response.json();
+      if (winnerId) {
+        // Update winner record with SMS status
+        await this.updateWinnerSMSStatus(winnerId, {
+          sent: true,
+          success: response.ok,
+          timestamp: Date.now(),
+          error: response.ok ? null : (result.error || `HTTP ${response.status}`)
+        });
+      }
+      return result;
+    })
+    .catch(async error => {
+      console.error('SMS send error:', error);
+      if (winnerId) {
+        await this.updateWinnerSMSStatus(winnerId, {
+          sent: true,
+          success: false,
+          timestamp: Date.now(),
+          error: error.message
+        });
+      }
+    });
+  }
+
+  /**
+   * Makes a POST request to the EZ Texting Netlify function with rate limiting (awaitable)
    */
   async makeRequest(body) {
     // Check rate limit and wait if necessary
@@ -127,121 +169,151 @@ class TextingService {
   }
 
   /**
-   * Sends SMS to multiple recipients with async rate limiting (200 requests/minute)
+   * Sends SMS to multiple recipients with fire-and-forget pattern (200 requests/minute)
    */
   async sendBatchTexts(recipients, messageTemplate, options = {}) {
     const results = {
       successful: [],
       failed: [],
-      total: recipients.length
+      total: recipients.length,
+      sent: 0,
+      pending: recipients.length
     };
 
-    // Create all SMS tasks
-    const smsTasks = recipients.map((recipient, index) => ({
-      recipient,
-      index,
-      task: async () => {
-        try {
-          // Check if sending was cancelled
-          if (this.abortController?.signal.aborted) {
-            return {
-              success: false,
-              recipient,
-              error: 'Cancelled by user'
-            };
-          }
-
-          // Check if recipient has a phone number
-          if (!recipient.phone) {
-            return {
-              success: false,
-              recipient,
-              error: 'No phone number'
-            };
-          }
-
-          // Personalize message for this recipient
-          let personalizedMessage = messageTemplate;
-          personalizedMessage = personalizedMessage.replace('{name}', recipient.displayName || recipient.name || 'Winner');
-          personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
-          personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
-
-          // Send individual message (rate limiting handled in makeRequest)
-          const body = {
-            action: 'sendMessage',
-            data: {
-              message: personalizedMessage,
-              phoneNumbers: [recipient.phone],
-              options: options
-            }
-          };
-
-          const result = await this.makeRequest(body);
-          
-          return {
-            success: result.success,
-            recipient,
-            error: result.success ? null : (result.error || 'Unknown error')
-          };
-
-        } catch (error) {
-          return {
-            success: false,
-            recipient,
-            error: error.message
-          };
-        }
-      }
-    }));
-
-    // Process tasks with controlled concurrency and rate limiting
-    let completed = 0;
-    const promises = [];
+    // Track SMS status immediately
+    let sent = 0;
+    let batchStartTime = Date.now();
+    const batchSize = 180; // 180 requests per minute (safety buffer)
     
-    for (const smsTask of smsTasks) {
-      // Wait for rate limit if needed
-      const waitTime = rateLimiter.getWaitTime();
-      if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
-
-      // Start the SMS task (don't await here)
-      const promise = smsTask.task().then(result => {
-        completed++;
-        
-        // Update progress
-        const progress = Math.round((completed / recipients.length) * 100);
-        const currentCount = rateLimiter.getCurrentCount();
-        const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
-        
-        UI.updateProgress(
-          progress,
-          `Sending ${completed}/${recipients.length} (Rate: ${currentCount}/${maxRequests} requests/min)`
-        );
-
-        // Store result
-        if (result.success) {
-          results.successful.push(result.recipient);
-        } else {
-          results.failed.push({
-            recipient: result.recipient,
-            error: result.error
+    // Process recipients in batches to respect rate limit
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      
+      // Check if cancelled
+      if (this.abortController?.signal.aborted) {
+        if (recipient.winnerId) {
+          await this.updateWinnerSMSStatus(recipient.winnerId, {
+            sent: false,
+            success: false,
+            timestamp: Date.now(),
+            error: 'Cancelled'
           });
         }
+        continue;
+      }
 
-        return result;
-      });
+      // Check if recipient has a phone number
+      if (!recipient.phone) {
+        results.failed.push({
+          recipient,
+          error: 'No phone number'
+        });
+        if (recipient.winnerId) {
+          await this.updateWinnerSMSStatus(recipient.winnerId, {
+            sent: false,
+            success: false,
+            timestamp: Date.now(),
+            error: 'No phone number'
+          });
+        }
+        continue;
+      }
 
-      promises.push(promise);
+      // Personalize message
+      let personalizedMessage = messageTemplate;
+      personalizedMessage = personalizedMessage.replace('{name}', recipient.displayName || recipient.name || 'Winner');
+      personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
+      personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
 
-      // Small delay between starting requests (300ms = 200 requests/minute)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Check rate limit
+      if (!rateLimiter.canMakeRequest()) {
+        // Wait until next minute if we've hit the limit
+        const waitTime = rateLimiter.getWaitTime();
+        if (waitTime > 0) {
+          const waitSeconds = Math.ceil(waitTime / 1000);
+          UI.updateProgress(
+            Math.round((sent / recipients.length) * 100),
+            `Rate limit reached. Waiting ${waitSeconds}s... (${sent}/${recipients.length} sent)`
+          );
+          await this.delay(waitTime);
+        }
+      }
+
+      // Fire request without awaiting (fire-and-forget)
+      const body = {
+        action: 'sendMessage',
+        data: {
+          message: personalizedMessage,
+          phoneNumbers: [recipient.phone],
+          options: options
+        }
+      };
+
+      // Mark as sending
+      if (recipient.winnerId) {
+        await this.updateWinnerSMSStatus(recipient.winnerId, {
+          sent: true,
+          success: null, // Pending
+          timestamp: Date.now(),
+          error: null
+        });
+      }
+
+      // Fire and forget - don't await
+      this.makeRequestFireAndForget(body, recipient.winnerId);
+      
+      sent++;
+      results.sent = sent;
+      results.pending = recipients.length - sent;
+      
+      // Update progress
+      const progress = Math.round((sent / recipients.length) * 100);
+      const currentCount = rateLimiter.getCurrentCount();
+      const maxRequests = Math.floor(RATE_LIMIT.maxRequestsPerMinute * RATE_LIMIT.safetyBuffer);
+      
+      UI.updateProgress(
+        progress,
+        `Sent ${sent}/${recipients.length} (Rate: ${currentCount}/${maxRequests} req/min)`
+      );
+
+      // Small delay between requests to avoid overwhelming (5 requests per second max)
+      await this.delay(200);
     }
 
-    // Wait for all SMS tasks to complete
-    await Promise.all(promises);
-
+    // Update final stats
+    results.sent = sent;
+    UI.showToast(`SMS messages sent: ${sent} messages dispatched`, 'success');
+    
     return results;
+  }
+
+  /**
+   * Updates winner record with SMS status
+   */
+  async updateWinnerSMSStatus(winnerId, smsStatus) {
+    try {
+      // Get the winner record
+      const winners = await Database.getFromStore('winners');
+      const winner = winners.find(w => w.winnerId === winnerId);
+      
+      if (winner) {
+        // Update SMS status
+        winner.smsStatus = smsStatus;
+        
+        // Save back to database
+        await Database.saveToStore('winners', winners);
+        
+        // Trigger UI update if on winners tab
+        const activeTab = document.querySelector('.nav-link.active');
+        if (activeTab && activeTab.textContent.includes('Winners')) {
+          // Dynamically import Winners to avoid circular dependency
+          const { Winners } = await import('./winners.js');
+          await Winners.loadWinners();
+        }
+      }
+    } catch (error) {
+      console.error('Error updating winner SMS status:', error);
+    }
   }
 
   /**
