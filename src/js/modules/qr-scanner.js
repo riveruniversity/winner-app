@@ -34,7 +34,7 @@ export class QRScannerModule {
         {
           returnDetailedScanResult: true,
           highlightScanRegion: true,
-          highlightCodeOutline: true,
+          highlightCodeOutline: false,
         }
       );
 
