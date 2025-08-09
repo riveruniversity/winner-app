@@ -320,168 +320,88 @@
       color: #aaa;
     }
 
-    /* Modern Winner Info Styles - Matching Main Public Page */
-    .winner-info-modern {
-      background: #f8f9fa;
-      position: fixed;
-      top: 50px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      overflow-y: auto;
-      z-index: 100;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Unified Winner Card Styles */
+    .winner-card-unified {
+      max-width: 700px;
+      margin: 1rem auto;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      animation: fadeInUp 0.3s ease-out;
     }
 
-    .winner-display-container {
-      max-width: 1200px;
-      margin: 0 auto;
+    .winner-card-unified .card-body {
       padding: 1.5rem;
-      animation: fadeInUp 0.6s ease-out;
     }
 
-    .winner-display-header {
-      background: linear-gradient(135deg, #0A4f7B 0%, #5FA1F7 100%);
-      color: white;
-      padding: 2rem;
-      border-radius: 20px;
+    .winner-header-section {
       text-align: center;
-      box-shadow: 0 20px 40px rgba(10, 79, 123, 0.3);
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
-    .winner-name-display {
-      font-size: 2rem;
+    .winner-name-title {
+      font-size: 1.75rem;
       font-weight: 700;
-      margin-bottom: 0.75rem;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      color: #0A4f7B;
+      margin-bottom: 1rem;
     }
 
-    .winner-meta-display {
+    .winner-meta-info {
       display: flex;
       justify-content: center;
-      gap: 2rem;
-      font-size: 1rem;
-      color: rgba(255, 255, 255, 0.9);
+      gap: 1.5rem;
+      font-size: 0.95rem;
+      color: #666;
       flex-wrap: wrap;
     }
 
     .winner-meta-item {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .winner-meta-item i {
-      font-size: 1rem;
-      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.9rem;
+      color: #0A4f7B;
     }
 
-    .prizes-content-container {
-      background: white;
-      border-radius: 20px;
-      padding: 2rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      margin-bottom: 1.5rem;
+    .prizes-section {
+      margin-top: 1rem;
     }
 
-    .prizes-display-header {
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .prizes-display-title {
-      font-size: 1.75rem;
-      font-weight: 700;
+    .prizes-title {
+      font-size: 1.25rem;
+      font-weight: 600;
       color: #333;
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .prizes-list {
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       gap: 0.75rem;
     }
 
-    .prizes-display-subtitle {
-      font-size: 1rem;
-      color: #666;
-    }
-
-    .back-btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      color: white;
-      font-weight: 600;
-      font-size: 1rem;
-      padding: 0.75rem 2rem;
-      border-radius: 50px;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      backdrop-filter: blur(10px);
-    }
-
-    .back-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.5);
-      color: white;
-      transform: scale(1.05);
-    }
-
-    .back-btn i {
-      font-size: 1.1rem;
-    }
-
-    .prizes-display-grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    }
-
-    .prize-card-display {
+    .prize-item-card {
       background: #f8f9fa;
       border: 1px solid #e9ecef;
-      border-radius: 15px;
-      padding: 1.25rem;
-      transition: all 0.3s ease;
-      animation: fadeInUp 0.6s ease-out;
-      opacity: 0;
-      animation-fill-mode: forwards;
+      border-radius: 10px;
+      padding: 1rem;
+      transition: all 0.2s ease;
       position: relative;
-      height: fit-content;
     }
 
-    .prize-card-display:nth-child(1) {
-      animation-delay: 0.1s;
+    .prize-item-card:hover {
+      background: #f0f0f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
-    .prize-card-display:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .prize-card-display:nth-child(3) {
-      animation-delay: 0.3s;
-    }
-
-    .prize-card-display:nth-child(4) {
-      animation-delay: 0.4s;
-    }
-
-    .prize-card-display:nth-child(5) {
-      animation-delay: 0.5s;
-    }
-
-    .prize-card-display:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .prize-card-display.picked-up {
+    .prize-item-card.picked-up {
       background: #e8f5e9;
       border-color: #4caf50;
     }
 
-    .prize-card-display.picked-up::before {
+    .prize-item-card.picked-up::before {
       content: '';
       position: absolute;
       top: 0;
@@ -489,19 +409,19 @@
       right: 0;
       height: 3px;
       background: #4caf50;
-      border-radius: 15px 15px 0 0;
+      border-radius: 10px 10px 0 0;
     }
 
-    .prize-display-header {
+    .prize-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
     }
 
-    .prize-display-title {
-      font-size: 1.25rem;
-      font-weight: 700;
+    .prize-name {
+      font-size: 1.1rem;
+      font-weight: 600;
       color: #333;
       margin: 0;
       flex: 1;
@@ -531,26 +451,26 @@
       border: 1px solid #c3e6cb;
     }
 
-    .prize-display-meta {
+    .prize-meta {
       color: #666;
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
     }
 
-    .prize-display-meta-item {
+    .prize-meta-item {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
+      gap: 0.4rem;
+      margin-bottom: 0.3rem;
     }
 
-    .prize-display-meta-item i {
-      font-size: 0.9rem;
+    .prize-meta-item i {
+      font-size: 0.85rem;
       color: #999;
     }
 
-    .prize-actions-display {
-      margin-top: 1rem;
+    .prize-actions {
+      margin-top: 0.75rem;
     }
 
     .pickup-btn {
@@ -575,38 +495,6 @@
       transform: translateY(0);
     }
 
-    .action-footer-display {
-      background: linear-gradient(135deg, #0A4f7B 0%, #5FA1F7 100%);
-      color: white;
-      padding: 2rem 3rem;
-      border-radius: 20px;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(10, 79, 123, 0.3);
-    }
-
-    .action-buttons {
-      display: flex;
-      justify-content: center;
-    }
-
-    .scan-another-btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      color: white;
-      font-weight: 600;
-      font-size: 1rem;
-      padding: 0.75rem 2rem;
-      border-radius: 50px;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
-    }
-
-    .scan-another-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.5);
-      transform: scale(1.05);
-      color: white;
-    }
 
     /* Animation keyframe */
     @keyframes fadeInUp {
@@ -626,47 +514,56 @@
       background: linear-gradient(135deg, #1a1e21 0%, #2c3136 100%) !important;
     }
 
-    [data-theme="dark"] .winner-info-modern {
-      background: linear-gradient(135deg, #1a1e21 0%, #2c3136 100%);
+    [data-theme="dark"] .winner-card-unified {
+      background: #2d2d2d;
+      color: #fff;
     }
 
-    [data-theme="dark"] .winner-display-header,
-    [data-theme="dark"] .prize-card-display {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
+    [data-theme="dark"] .winner-card-unified .card-body {
+      background: #2d2d2d;
+      color: #fff;
     }
 
-    [data-theme="dark"] .prize-card-display:hover {
-      background: rgba(255, 255, 255, 0.15);
+    [data-theme="dark"] .winner-name-title {
+      color: #5FA1F7;
     }
 
-    [data-theme="dark"] .prize-card-display.picked-up {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: rgba(16, 185, 129, 0.4);
-    }
-
-    [data-theme="dark"] .back-btn {
-      background: transparent;
-      border-color: #495057;
-      color: #adb5bd;
-    }
-
-    [data-theme="dark"] .back-btn:hover {
-      background: #343a40;
-      border-color: #495057;
-      color: #e9ecef;
-    }
-
-    [data-theme="dark"] .winner-name-display,
-    [data-theme="dark"] .prize-display-title,
-    [data-theme="dark"] .prizes-display-title {
-      color: white;
-    }
-
-    [data-theme="dark"] .winner-meta-display,
-    [data-theme="dark"] .prize-display-meta,
-    [data-theme="dark"] .prizes-display-subtitle {
+    [data-theme="dark"] .winner-meta-info {
       color: rgba(255, 255, 255, 0.8);
+    }
+
+    [data-theme="dark"] .winner-meta-item i {
+      color: #5FA1F7;
+    }
+
+    [data-theme="dark"] .prizes-title {
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-item-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .prize-item-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .prize-item-card.picked-up {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    [data-theme="dark"] .prize-name {
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-meta {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="dark"] hr {
+      border-color: rgba(255, 255, 255, 0.1);
     }
 
     [data-theme="dark"] .badge.bg-warning {
@@ -750,82 +647,45 @@
 
     /* Mobile Portrait Friendly Design */
     @media (max-width: 768px) {
-      .winner-info-modern {
-        top: 48px;
+      .winner-card-unified {
+        margin: 0.5rem;
+        border-radius: 12px;
       }
 
-      .winner-display-container {
-        padding: 0.75rem;
-      }
-
-      .winner-display-header {
-        padding: 1.5rem 1rem;
-        margin-bottom: 1rem;
-      }
-
-      .winner-name-display {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-      }
-
-      .winner-meta-display {
-        flex-direction: column;
-        gap: 0.75rem;
-        font-size: 0.9rem;
-      }
-
-      .prizes-content-container {
-        padding: 1.5rem 1rem;
-        margin-bottom: 1rem;
-      }
-
-      .prizes-display-header {
-        margin-bottom: 1rem;
-      }
-
-      .prizes-display-title {
-        font-size: 1.25rem;
-        flex-direction: column;
-        gap: 0.25rem;
-      }
-
-      .prizes-display-subtitle {
-        font-size: 0.9rem;
-      }
-
-      .prizes-display-grid {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-      }
-
-      .prize-card-display {
+      .winner-card-unified .card-body {
         padding: 1rem;
       }
 
-      .prize-display-title {
-        font-size: 1.1rem;
+      .winner-name-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
       }
 
-      .action-footer-display {
-        padding: 1.5rem 1rem;
-      }
-
-      .scan-another-btn {
-        width: 100%;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
+      .winner-meta-info {
+        flex-direction: column;
+        gap: 0.5rem;
         font-size: 0.9rem;
       }
 
-      /* Mobile button styles */
-      .scan-another-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      .prizes-title {
+        font-size: 1.1rem;
       }
 
-      .scan-another-btn i {
-        font-size: 1.1rem;
+      .prize-item-card {
+        padding: 0.75rem;
+      }
+
+      .prize-name {
+        font-size: 1rem;
+      }
+
+      .prize-meta {
+        font-size: 0.8rem;
+      }
+
+      .pickup-btn {
+        font-size: 0.9rem;
+        padding: 0.5rem;
       }
     }
   </style>
@@ -881,32 +741,28 @@
     </div>
     <!-- Winner Information Section (Hidden initially) -->
     <div id="winnerInfo" class="d-none">
-      <div class="winner-info-modern">
-        <div class="winner-display-container">
-          <!-- Winner Header -->
-          <div class="winner-display-header">
-            <h1 id="winnerName" class="winner-name-display"></h1>
-            <div id="winnerDetails" class="winner-meta-display"></div>
+      <div class="card winner-card-unified">
+        <div class="card-body">
+          <!-- Back Button -->
+          <button class="btn btn-sm btn-outline-secondary mb-3" id="scanAnotherBtn">
+            <i class="bi bi-arrow-left"></i> Back to Scanner
+          </button>
+          
+          <!-- Winner Header Section -->
+          <div class="winner-header-section">
+            <h2 id="winnerName" class="winner-name-title"></h2>
+            <div id="winnerDetails" class="winner-meta-info"></div>
           </div>
-          <!-- Prizes Content Section -->
-          <div class="prizes-content-container">
-            <div class="prizes-display-header">
-              <h2 class="prizes-display-title">
-                <i class="bi bi-gift"></i>Prizes Won
-              </h2>
-              <p class="prizes-display-subtitle">Track pickup status for all prizes</p>
-            </div>
-            <div id="prizeList" class="prizes-display-grid">
+          
+          <hr class="my-4">
+          
+          <!-- Prizes Section -->
+          <div class="prizes-section">
+            <h4 class="prizes-title mb-3">
+              <i class="bi bi-gift-fill me-2"></i>Prizes Won
+            </h4>
+            <div id="prizeList" class="prizes-list">
               <!-- Prizes will be dynamically inserted here -->
-            </div>
-          </div>
-          <!-- Action Footer -->
-          <div class="action-footer-display">
-            <div class="action-buttons">
-              <button class="scan-another-btn" id="scanAnotherBtn">
-                <i class="bi bi-qr-code-scan"></i>
-                <span class="ms-2">Scan Another</span>
-              </button>
             </div>
           </div>
         </div>

@@ -282,6 +282,14 @@ async function performUndoBackgroundSync(lastAction) {
         currentList.listId = currentList.metadata.listId;
       }
       await Database.saveToStore('lists', currentList);
+      
+      // After saving, update UI components to reflect the change
+      // This ensures list counts are consistent everywhere
+      setTimeout(async () => {
+        await UI.populateQuickSelects();
+        const { Lists } = await import('./lists.js');
+        await Lists.loadLists();
+      }, 500); // Small delay to ensure database sync
     }
 
     console.log('Undo background sync completed successfully');
@@ -307,7 +315,7 @@ async function undoLastSelection() {
       try {
         // INSTANT UI FEEDBACK - Do this first, before any database operations
         UI.showToast('Selection undone successfully', 'success');
-        resetToSelectionMode();
+        await resetToSelectionMode();
         setLastAction(null); // Clear lastAction in app.js
         
         // Update UI immediately by reloading winners (this is fast from local cache)
@@ -325,7 +333,7 @@ async function undoLastSelection() {
   );
 }
 
-function resetToSelectionMode() {
+async function resetToSelectionMode() {
   document.getElementById('selectionControls').classList.remove('d-none');
   document.getElementById('prizeDisplay').classList.add('d-none');
   document.getElementById('winnersGrid').classList.add('d-none');
@@ -334,7 +342,13 @@ function resetToSelectionMode() {
   document.getElementById('newSelectionBtn').classList.add('d-none');
   // Clear current winners and hide SMS button
   clearCurrentWinners();
-  UI.populateQuickSelects();
+  
+  // Update both quick selects AND list cards to ensure consistency
+  await UI.populateQuickSelects();
+  
+  // Dynamically import Lists to refresh the list cards
+  const { Lists } = await import('./lists.js');
+  await Lists.loadLists();
 }
 
 async function returnToList(winnerId) {

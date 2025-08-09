@@ -4,6 +4,7 @@
 
 import { Database } from './firestore.js';
 import { UI } from './ui.js';
+import { settings, Settings } from './settings.js';
 
 async function loadPrizes() {
     try {
@@ -25,29 +26,47 @@ async function loadPrizes() {
 
       if (noPrizesMessage) noPrizesMessage.style.display = 'none';
 
-      const prizeCards = prizes.map(prize => `
+      const prizeCards = prizes.map(prize => {
+        const prizeId = prize.prizeId;
+        const isSelected = settings.selectedPrizeId === prizeId;
+        const isAvailable = prize.quantity > 0;
+        
+        return `
         <div class="col-md-6 col-lg-4">
-          <div class="card h-100">
-            <div class="card-header">
+          <div class="card h-100 ${isSelected ? 'border-success border-2' : ''}">
+            <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
               <div class="d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">${prize.name}</h5>
-                <span class="badge bg-primary">${prize.quantity}</span>
+                <div>
+                  ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i> Selected</span>' : ''}
+                  <span class="badge ${isAvailable ? 'bg-primary' : 'bg-secondary'}">${prize.quantity}</span>
+                </div>
               </div>
             </div>
             <div class="card-body d-flex flex-column">
               ${prize.description ? `<p class="card-text text-muted small">${prize.description}</p>` : '<p class="card-text text-muted small">No description</p>'}
-              <div class="mt-auto pt-3 text-end">
-                <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
-                  <i class="bi bi-pencil"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
-                  <i class="bi bi-trash"></i> Delete
-                </button>
+              <div class="mt-auto pt-3">
+                <div class="d-flex justify-content-between">
+                  <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
+                          onclick="Prizes.selectPrize('${prizeId}')" 
+                          ${isSelected || !isAvailable ? 'disabled' : ''}>
+                    <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
+                  </button>
+                  <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prizeId}" onclick="Prizes.editPrizeModal('${prizeId}')">
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" data-prize-id="${prizeId}" onclick="Prizes.deletePrizeConfirm('${prizeId}')">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       if (gridContainer) {
         gridContainer.innerHTML = prizeCards;
@@ -55,29 +74,47 @@ async function loadPrizes() {
       
       // Backward compatibility for old container
       if (oldContainer) {
-        oldContainer.innerHTML = prizes.map(prize => `
-          <div class="card mb-3">
-            <div class="card-header">
+        oldContainer.innerHTML = prizes.map(prize => {
+          const prizeId = prize.prizeId;
+          const isSelected = settings.selectedPrizeId === prizeId;
+          const isAvailable = prize.quantity > 0;
+          
+          return `
+          <div class="card mb-3 ${isSelected ? 'border-success border-2' : ''}">
+            <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
               <div class="d-flex justify-content-between align-items-center">
                 <h6 class="card-title mb-0">${prize.name}</h6>
-                <span class="badge bg-primary">${prize.quantity}</span>
+                <div>
+                  ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i></span>' : ''}
+                  <span class="badge ${isAvailable ? 'bg-primary' : 'bg-secondary'}">${prize.quantity}</span>
+                </div>
               </div>
             </div>
             <div class="card-body d-flex flex-column">
               <p class="card-text text-muted small">
                 ${prize.description || 'No description'}
               </p>
-              <div class="mt-auto pt-3 text-end">
-                <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
-                  <i class="bi bi-pencil"></i> Edit
-                </button>
-                <button class="btn btn-sm btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
-                  <i class="bi bi-trash"></i> Delete
-                </button>
+              <div class="mt-auto pt-3">
+                <div class="d-flex justify-content-between">
+                  <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
+                          onclick="Prizes.selectPrize('${prizeId}')" 
+                          ${isSelected || !isAvailable ? 'disabled' : ''}>
+                    <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
+                  </button>
+                  <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prizeId}" onclick="Prizes.editPrizeModal('${prizeId}')">
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" data-prize-id="${prizeId}" onclick="Prizes.deletePrizeConfirm('${prizeId}')">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
       }
     } catch (error) {
       console.error('Error loading prizes:', error);
@@ -275,13 +312,75 @@ async function loadPrizes() {
     });
   }
 
+// Function to select a prize (like selecting from the setup tab)
+async function selectPrize(prizeId) {
+  try {
+    // Get the prize to check if it's available
+    const prizes = await Database.getFromStore('prizes');
+    const selectedPrize = prizes.find(p => p.prizeId === prizeId);
+    
+    if (!selectedPrize) {
+      UI.showToast('Prize not found', 'error');
+      return;
+    }
+    
+    if (selectedPrize.quantity <= 0) {
+      UI.showToast('This prize is out of stock', 'warning');
+      return;
+    }
+    
+    // Update settings with the selected prize
+    settings.selectedPrizeId = prizeId;
+    
+    // Save settings
+    await Settings.saveSettings();
+    
+    // Update the quick select dropdown if it exists
+    const quickPrizeSelect = document.getElementById('quickPrizeSelect');
+    if (quickPrizeSelect) {
+      quickPrizeSelect.value = prizeId;
+    }
+    
+    // Update winners count based on prize quantity
+    const quickWinnersCount = document.getElementById('quickWinnersCount');
+    if (quickWinnersCount) {
+      const currentCount = parseInt(quickWinnersCount.value) || 1;
+      if (currentCount > selectedPrize.quantity) {
+        quickWinnersCount.value = selectedPrize.quantity;
+        settings.winnersCount = selectedPrize.quantity;
+      }
+      quickWinnersCount.max = selectedPrize.quantity;
+    }
+    
+    // Refresh the prizes display to show the selected state
+    await loadPrizes();
+    
+    // Update quick selects
+    await UI.populateQuickSelects();
+    
+    // Show success message
+    UI.showToast(`Prize "${selectedPrize.name}" selected (${selectedPrize.quantity} available)`, 'success');
+    
+    // Switch to Setup tab if not already there
+    const setupTab = document.querySelector('a[href="#setup"]');
+    if (setupTab && !setupTab.classList.contains('active')) {
+      setupTab.click();
+    }
+    
+  } catch (error) {
+    console.error('Error selecting prize:', error);
+    UI.showToast('Error selecting prize: ' + error.message, 'error');
+  }
+}
+
 export const Prizes = {
   loadPrizes,
   handleAddPrize,
   showAddPrizeModal,
   editPrize,
   editPrizeModal,
-  deletePrizeConfirm
+  deletePrizeConfirm,
+  selectPrize
 };
 
 window.Prizes = Prizes;

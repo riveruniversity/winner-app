@@ -88,14 +88,24 @@ class TextingService {
       signal: this.abortController?.signal
     })
     .then(async response => {
-      const result = await response.json();
+      let result = null;
+      try {
+        // Try to parse JSON response
+        const text = await response.text();
+        if (text) {
+          result = JSON.parse(text);
+        }
+      } catch (e) {
+        console.warn('Could not parse SMS response:', e);
+      }
+      
       if (winnerId) {
         // Update winner record with SMS status
         await this.updateWinnerSMSStatus(winnerId, {
           sent: true,
           success: response.ok,
           timestamp: Date.now(),
-          error: response.ok ? null : (result.error || `HTTP ${response.status}`)
+          error: response.ok ? null : (result?.error || `HTTP ${response.status}`)
         });
       }
       return result;
@@ -292,16 +302,15 @@ class TextingService {
    */
   async updateWinnerSMSStatus(winnerId, smsStatus) {
     try {
-      // Get the winner record
-      const winners = await Database.getFromStore('winners');
-      const winner = winners.find(w => w.winnerId === winnerId);
+      // Get the specific winner record directly
+      const winner = await Database.getFromStore('winners', winnerId);
       
       if (winner) {
-        // Update SMS status
+        // Update SMS status on the winner object
         winner.smsStatus = smsStatus;
         
-        // Save back to database
-        await Database.saveToStore('winners', winners);
+        // Save the updated winner back to database
+        await Database.saveToStore('winners', winner);
         
         // Trigger UI update if on winners tab
         const activeTab = document.querySelector('.nav-link.active');
@@ -310,6 +319,8 @@ class TextingService {
           const { Winners } = await import('./winners.js');
           await Winners.loadWinners();
         }
+      } else {
+        console.warn(`Winner ${winnerId} not found in database`);
       }
     } catch (error) {
       console.error('Error updating winner SMS status:', error);
@@ -380,9 +391,6 @@ class TextingService {
         }),
         message
       );
-
-      UI.showToast(`SMS sent: ${results.successful.length} successful, ${results.failed.length} failed`, 
-                   results.successful.length > 0 ? 'success' : 'error');
 
     } catch (error) {
       UI.showToast('Error sending messages: ' + error.message, 'error');

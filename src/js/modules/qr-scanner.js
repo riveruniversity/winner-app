@@ -168,7 +168,7 @@ export class QRScannerModule {
     // Display winner name
     winnerNameDiv.textContent = winner.displayName || 'Unknown Winner';
     
-    // Display winner details in public display style
+    // Display winner details
     const ticketCode = winner.originalEntry?.id || winner.entryId || winner.winnerId;
     const metaItems = [];
     
@@ -199,11 +199,11 @@ export class QRScannerModule {
     
     winnerDetailsDiv.innerHTML = metaItems.join('');
     
-    // Display prizes with public display style
+    // Display prizes in simplified card style
     const prizesHtml = prizes.map((prize, index) => `
-      <div class="prize-card-display ${prize.pickedUp ? 'picked-up' : ''}" data-winner-id="${prize.winnerId}">
-        <div class="prize-display-header">
-          <h3 class="prize-display-title">${prize.prize}</h3>
+      <div class="prize-item-card ${prize.pickedUp ? 'picked-up' : ''}" data-winner-id="${prize.winnerId}">
+        <div class="prize-header">
+          <h5 class="prize-name">${prize.prize}</h5>
           <div class="prize-status-badge">
             ${!prize.pickedUp ? `
               <span class="badge bg-warning">
@@ -217,19 +217,19 @@ export class QRScannerModule {
           </div>
         </div>
         
-        <div class="prize-display-meta">
-          <div class="prize-display-meta-item">
+        <div class="prize-meta">
+          <div class="prize-meta-item">
             <i class="bi bi-calendar-event"></i>
             Won: ${new Date(prize.timestamp).toLocaleDateString('en-US', { 
-              year: 'numeric', month: 'long', day: 'numeric',
+              month: 'short', day: 'numeric', year: 'numeric',
               hour: '2-digit', minute: '2-digit'
             })}
           </div>
           ${prize.pickedUp ? `
-            <div class="prize-display-meta-item">
+            <div class="prize-meta-item">
               <i class="bi bi-check-circle"></i>
               Picked up: ${new Date(prize.pickupTimestamp).toLocaleDateString('en-US', { 
-                year: 'numeric', month: 'long', day: 'numeric',
+                month: 'short', day: 'numeric', year: 'numeric',
                 hour: '2-digit', minute: '2-digit'
               })}
             </div>
@@ -237,8 +237,8 @@ export class QRScannerModule {
         </div>
         
         ${!prize.pickedUp ? `
-          <div class="prize-actions-display">
-            <button class="btn pickup-btn" data-winner-id="${prize.winnerId}">
+          <div class="prize-actions">
+            <button class="btn btn-sm pickup-btn w-100" data-winner-id="${prize.winnerId}">
               <i class="bi bi-check-circle me-2"></i>Mark as Picked Up
             </button>
           </div>
@@ -264,31 +264,98 @@ export class QRScannerModule {
 
   async markAsPickedUp(winnerId) {
     try {
+      // Immediately update UI for instant feedback
+      const prizeCard = document.querySelector(`.prize-item-card[data-winner-id="${winnerId}"]`);
+      if (prizeCard) {
+        // Add picked-up class immediately
+        prizeCard.classList.add('picked-up');
+        
+        // Update the badge immediately
+        const badgeContainer = prizeCard.querySelector('.prize-status-badge');
+        if (badgeContainer) {
+          badgeContainer.innerHTML = `
+            <span class="badge bg-success">
+              <i class="bi bi-check-circle-fill"></i> Picked Up
+            </span>
+          `;
+        }
+        
+        // Remove the pickup button immediately
+        const pickupBtn = prizeCard.querySelector('.pickup-btn');
+        if (pickupBtn) {
+          pickupBtn.disabled = true;
+          pickupBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Updating...';
+        }
+        
+        // Add pickup timestamp to the meta section
+        const metaSection = prizeCard.querySelector('.prize-meta');
+        const pickupTimestamp = new Date().toLocaleDateString('en-US', { 
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+        
+        if (metaSection && !metaSection.querySelector('.pickup-timestamp')) {
+          const pickupMetaItem = document.createElement('div');
+          pickupMetaItem.className = 'prize-meta-item pickup-timestamp';
+          pickupMetaItem.innerHTML = `
+            <i class="bi bi-check-circle"></i>
+            Picked up: ${pickupTimestamp}
+          `;
+          metaSection.appendChild(pickupMetaItem);
+        }
+        
+        // Remove the entire actions section
+        const actionsSection = prizeCard.querySelector('.prize-actions');
+        if (actionsSection) {
+          actionsSection.remove();
+        }
+      }
+      
       // Update winner record with pickup status
       const pickupData = {
         pickedUp: true,
         pickupTimestamp: new Date().toISOString()
       };
       
-      // Update in Firestore
-      await Database.updateWinner(winnerId, pickupData);
+      // Update in Firestore (fire and forget for speed)
+      Database.updateWinner(winnerId, pickupData).then(() => {
+        // Update the local currentWinnerData to reflect the change
+        if (this.currentWinnerData && this.currentWinnerData.prizes) {
+          const prizeIndex = this.currentWinnerData.prizes.findIndex(p => p.winnerId === winnerId);
+          if (prizeIndex !== -1) {
+            this.currentWinnerData.prizes[prizeIndex].pickedUp = true;
+            this.currentWinnerData.prizes[prizeIndex].pickupTimestamp = pickupData.pickupTimestamp;
+          }
+        }
+      }).catch(error => {
+        console.error('Error updating database:', error);
+        // Revert UI changes if database update fails
+        if (prizeCard) {
+          prizeCard.classList.remove('picked-up');
+          // Would need to restore original UI here, but for simplicity we'll reload
+          this.refreshCurrentDisplay();
+        }
+      });
       
       UI.showToast('Prize marked as picked up!', 'success');
       
-      // Refresh the display with updated data
-      if (this.currentWinnerData) {
-        const ticketCode = this.currentWinnerData.winner.originalEntry?.id || 
-                          this.currentWinnerData.winner.entryId || 
-                          this.currentWinnerData.winner.winnerId;
-        const updatedData = await this.findWinnerByTicketCode(ticketCode);
-        if (updatedData) {
-          this.currentWinnerData = updatedData;
-          await this.displayWinnerInfo(updatedData);
-        }
-      }
     } catch (error) {
       console.error('Error marking as picked up:', error);
       UI.showToast('Failed to update pickup status: ' + error.message, 'error');
+    }
+  }
+  
+  async refreshCurrentDisplay() {
+    // Helper method to refresh the current display if needed
+    if (this.currentWinnerData) {
+      const ticketCode = this.currentWinnerData.winner.originalEntry?.id || 
+                        this.currentWinnerData.winner.entryId || 
+                        this.currentWinnerData.winner.winnerId;
+      const updatedData = await this.findWinnerByTicketCode(ticketCode);
+      if (updatedData) {
+        this.currentWinnerData = updatedData;
+        await this.displayWinnerInfo(updatedData);
+      }
     }
   }
 

@@ -5,7 +5,7 @@
 // 1. Import dependencies
 import { Database } from './firestore.js';
 import { UI } from './ui.js';
-import { settings } from './settings.js';
+import { settings, Settings } from './settings.js';
 
 // 2. Define functions as standalone, not inside a closure
 // Cache-first loading with real-time updates
@@ -45,57 +45,91 @@ async function loadLists() {
       return dateB - dateA;
     });
 
-    const listCards = lists.map(list => `
+    const listCards = lists.map(list => {
+      const listId = list.listId || list.metadata.listId;
+      const isSelected = settings.selectedListId === listId;
+      
+      return `
       <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-          <div class="card-header">
+        <div class="card h-100 ${isSelected ? 'border-success border-2' : ''}">
+          <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
             <div class="d-flex justify-content-between align-items-center">
               <h5 class="card-title mb-0">${list.metadata.name}</h5>
-              <span class="badge bg-primary">${list.entries.length}</span>
+              <div>
+                ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i> Selected</span>' : ''}
+                <span class="badge bg-primary">${list.entries.length}</span>
+              </div>
             </div>
           </div>
           <div class="card-body d-flex flex-column">
             <p class="card-text text-muted small">Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}</p>
-            <div class="mt-auto pt-3 text-end">
-              <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${list.listId || list.metadata.listId}')">
-                <i class="bi bi-eye"></i> View
-              </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+            <div class="mt-auto pt-3">
+              <div class="d-flex justify-content-between">
+                <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
+                        onclick="Lists.selectList('${listId}')" 
+                        ${isSelected ? 'disabled' : ''}>
+                  <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
+                </button>
+                <div>
+                  <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${listId}')">
+                    <i class="bi bi-eye"></i> View
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${listId}')">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 
     if (gridContainer) {
       gridContainer.innerHTML = listCards;
     } else if (oldContainer) {
       // Fallback for old container
-      oldContainer.innerHTML = lists.map(list => `
-        <div class="card mb-3">
-          <div class="card-header">
+      oldContainer.innerHTML = lists.map(list => {
+        const listId = list.listId || list.metadata.listId;
+        const isSelected = settings.selectedListId === listId;
+        
+        return `
+        <div class="card mb-3 ${isSelected ? 'border-success border-2' : ''}">
+          <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
             <div class="d-flex justify-content-between align-items-center">
               <h6 class="card-title mb-0">${list.metadata.name}</h6>
-              ${!settings.hideEntryCounts ? `<span class="badge bg-primary">${list.entries?.length || list.metadata?.entryCount || 0}</span>` : ''}
+              <div>
+                ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i></span>' : ''}
+                ${!settings.hideEntryCounts ? `<span class="badge bg-primary">${list.entries?.length || list.metadata?.entryCount || 0}</span>` : ''}
+              </div>
             </div>
           </div>
           <div class="card-body d-flex flex-column">
             <p class="card-text text-muted small">
               Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
             </p>
-            <div class="mt-auto pt-3 text-end">
-              <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${list.listId || list.metadata.listId}')">
-                <i class="bi bi-eye"></i> View
-              </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+            <div class="mt-auto pt-3">
+              <div class="d-flex justify-content-between">
+                <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
+                        onclick="Lists.selectList('${listId}')" 
+                        ${isSelected ? 'disabled' : ''}>
+                  <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
+                </button>
+                <div>
+                  <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${listId}')">
+                    <i class="bi bi-eye"></i> View
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${listId}')">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
   } catch (error) {
     console.error('Error rendering lists:', error);
@@ -358,6 +392,51 @@ async function deleteListEntry(listId, entryId) {
   }
 }
 
+// Function to select a list (like selecting from the setup tab)
+async function selectList(listId) {
+  try {
+    // Update settings with the selected list
+    settings.selectedListId = listId;
+    
+    // Save settings
+    await Settings.saveSettings();
+    
+    // Update the quick select dropdown if it exists
+    const quickListSelect = document.getElementById('quickListSelect');
+    if (quickListSelect) {
+      quickListSelect.value = listId;
+    }
+    
+    // Update the current list in app.js
+    const lists = await Database.getFromStore('lists');
+    const selectedList = lists.find(l => (l.listId || l.metadata?.listId) === listId);
+    if (selectedList) {
+      // Import app.js functions
+      const { setCurrentList } = await import('../app.js');
+      setCurrentList(selectedList);
+    }
+    
+    // Refresh the lists display to show the selected state
+    await loadLists();
+    
+    // Update quick selects
+    await UI.populateQuickSelects();
+    
+    // Show success message
+    UI.showToast(`List "${selectedList?.metadata?.name}" selected`, 'success');
+    
+    // Switch to Setup tab if not already there
+    const setupTab = document.querySelector('a[href="#setup"]');
+    if (setupTab && !setupTab.classList.contains('active')) {
+      setupTab.click();
+    }
+    
+  } catch (error) {
+    console.error('Error selecting list:', error);
+    UI.showToast('Error selecting list: ' + error.message, 'error');
+  }
+}
+
 // 3. Export the functions you want to be public
 export const Lists = {
   loadLists,
@@ -365,7 +444,8 @@ export const Lists = {
   viewList,
   deleteListConfirm,
   deleteListEntry,
-  formatDisplayName
+  formatDisplayName,
+  selectList
 };
 
 // 4. Assign to window for legacy inline `onclick` handlers to work during transition
