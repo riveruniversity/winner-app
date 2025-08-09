@@ -70,9 +70,7 @@ export class QRScannerModule {
         this.currentWinnerData = winnerData;
         await this.displayWinnerInfo(winnerData);
       } else {
-        UI.showToast('No winner found with this ticket code', 'error');
-        // Resume scanning after a delay
-        setTimeout(() => this.startScanning(), 2000);
+        this.showNoWinnerAlert(ticketCode);
       }
     } catch (error) {
       console.error('Error processing scan result:', error);
@@ -300,6 +298,25 @@ export class QRScannerModule {
     document.getElementById('scannerSection')?.classList.remove('d-none');
     // Resume scanning since it was stopped when winner was displayed
     this.startScanning();
+  }
+
+  showNoWinnerAlert(ticketCode) {
+    const alertOverlay = document.getElementById('noWinnerAlert');
+    const alertCodeElement = document.getElementById('alertTicketCode');
+    
+    if (alertOverlay && alertCodeElement) {
+      alertCodeElement.textContent = `Ticket Code: ${ticketCode}`;
+      alertOverlay.classList.remove('d-none');
+    }
+  }
+
+  hideNoWinnerAlert() {
+    const alertOverlay = document.getElementById('noWinnerAlert');
+    if (alertOverlay) {
+      alertOverlay.classList.add('d-none');
+      // Resume scanning after hiding alert
+      this.startScanning();
+    }
   }
 }
 

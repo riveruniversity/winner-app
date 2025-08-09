@@ -88,6 +88,24 @@ function setupEventListeners() {
     
     manualSearchBtn.addEventListener('click', searchByTicketCode);
   }
+  
+  // Dismiss alert button
+  const dismissAlertBtn = document.getElementById('dismissAlertBtn');
+  if (dismissAlertBtn) {
+    dismissAlertBtn.addEventListener('click', () => {
+      QRScanner.hideNoWinnerAlert();
+    });
+  }
+  
+  // Also allow clicking the overlay to dismiss
+  const alertOverlay = document.getElementById('noWinnerAlert');
+  if (alertOverlay) {
+    alertOverlay.addEventListener('click', (e) => {
+      if (e.target === alertOverlay) {
+        QRScanner.hideNoWinnerAlert();
+      }
+    });
+  }
 }
 
 async function searchByTicketCode() {
@@ -106,7 +124,9 @@ async function searchByTicketCode() {
       // Clear the input
       document.getElementById('manualTicketCode').value = '';
     } else {
-      UI.showToast('No winner found with ticket code: ' + ticketCode, 'error');
+      QRScanner.showNoWinnerAlert(ticketCode);
+      // Clear the input
+      document.getElementById('manualTicketCode').value = '';
     }
   } catch (error) {
     console.error('Error searching by ticket code:', error);
