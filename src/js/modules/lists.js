@@ -45,40 +45,29 @@ async function loadLists() {
       return dateB - dateA;
     });
 
-    const listCards = lists.map(list => {
-      // Use metadata.entryCount as fallback for sharded lists
-      const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
-      const badgeHtml = !settings.hideEntryCounts ? 
-        `<span class="badge bg-primary rounded-pill">${entryCount}</span>` : '';
-      
-      return `
+    const listCards = lists.map(list => `
       <div class="col-md-6 col-lg-4">
         <div class="card h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-              <h5 class="card-title">${list.metadata.name}</h5>
-              ${badgeHtml}
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="card-title mb-0">${list.metadata.name}</h5>
+              <span class="badge bg-primary">${list.entries.length}</span>
             </div>
-            <p class="card-text">
-              <small class="text-muted">
-                Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
-              </small>
-            </p>
-            <div class="d-flex justify-content-between">
-              <button class="btn btn-sm btn-outline-primary" onclick="Lists.viewList('${list.listId || list.metadata.listId}')" 
-                      title="View list entries" data-bs-toggle="tooltip">
-                <i class="bi bi-eye"></i>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <p class="card-text text-muted small">Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}</p>
+            <div class="mt-auto pt-3 text-end">
+              <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${list.listId || list.metadata.listId}')">
+                <i class="bi bi-eye"></i> View
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')"
-                      title="Delete this list" data-bs-toggle="tooltip">
-                <i class="bi bi-trash"></i>
+              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')">
+                <i class="bi bi-trash"></i> Delete
               </button>
             </div>
           </div>
         </div>
       </div>
-    `;
-    }).join('');
+    `).join('');
 
     if (gridContainer) {
       gridContainer.innerHTML = listCards;
@@ -86,19 +75,21 @@ async function loadLists() {
       // Fallback for old container
       oldContainer.innerHTML = lists.map(list => `
         <div class="card mb-3">
-          <div class="card-body">
-            <h6 class="card-title">${list.metadata.name}</h6>
-            <p class="card-text">
-              <small class="text-muted">
-                ${!settings.hideEntryCounts ? `${list.entries?.length || list.metadata?.entryCount || 0} entries • ` : ''}
-                Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
-              </small>
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <h6 class="card-title mb-0">${list.metadata.name}</h6>
+              ${!settings.hideEntryCounts ? `<span class="badge bg-primary">${list.entries?.length || list.metadata?.entryCount || 0}</span>` : ''}
+            </div>
+          </div>
+          <div class="card-body d-flex flex-column">
+            <p class="card-text text-muted small">
+              Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
             </p>
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-primary" onclick="Lists.viewList('${list.listId || list.metadata.listId}')">
+            <div class="mt-auto pt-3 text-end">
+              <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${list.listId || list.metadata.listId}')">
                 <i class="bi bi-eye"></i> View
               </button>
-              <button class="btn btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')">
+              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${list.listId || list.metadata.listId}')">
                 <i class="bi bi-trash"></i> Delete
               </button>
             </div>
@@ -142,8 +133,10 @@ async function loadListsTraditional() {
 
     container.innerHTML = lists.map(list => `
       <div class="card mb-3">
+        <div class="card-header">
+          <h6 class="card-title mb-0">${list.metadata.name}</h6>
+        </div>
         <div class="card-body">
-          <h6 class="card-title">${list.metadata.name}</h6>
           <p class="card-text">
             <small class="text-muted">
               ${!settings.hideEntryCounts ? `${list.entries.length} entries • ` : ''}

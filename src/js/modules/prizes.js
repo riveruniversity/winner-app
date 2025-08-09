@@ -28,13 +28,15 @@ async function loadPrizes() {
       const prizeCards = prizes.map(prize => `
         <div class="col-md-6 col-lg-4">
           <div class="card h-100">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">${prize.name}</h5>
                 <span class="badge bg-primary">${prize.quantity}</span>
               </div>
+            </div>
+            <div class="card-body d-flex flex-column">
               ${prize.description ? `<p class="card-text text-muted small">${prize.description}</p>` : '<p class="card-text text-muted small">No description</p>'}
-              <div class="mt-auto pt-3">
+              <div class="mt-auto pt-3 text-end">
                 <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
                   <i class="bi bi-pencil"></i> Edit
                 </button>
@@ -55,17 +57,21 @@ async function loadPrizes() {
       if (oldContainer) {
         oldContainer.innerHTML = prizes.map(prize => `
           <div class="card mb-3">
-            <div class="card-body">
-              <h6 class="card-title">${prize.name}</h6>
-              <p class="card-text">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0">${prize.name}</h6>
                 <span class="badge bg-primary">${prize.quantity}</span>
-                ${prize.description ? `<br><small class="text-muted">${prize.description}</small>` : ''}
+              </div>
+            </div>
+            <div class="card-body d-flex flex-column">
+              <p class="card-text text-muted small">
+                ${prize.description || 'No description'}
               </p>
-              <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-primary" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
+              <div class="mt-auto pt-3 text-end">
+                <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prize.prizeId}" onclick="Prizes.editPrizeModal('${prize.prizeId}')">
                   <i class="bi bi-pencil"></i> Edit
                 </button>
-                <button class="btn btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
+                <button class="btn btn-sm btn-outline-danger" data-prize-id="${prize.prizeId}" onclick="Prizes.deletePrizeConfirm('${prize.prizeId}')">
                   <i class="bi bi-trash"></i> Delete
                 </button>
               </div>
