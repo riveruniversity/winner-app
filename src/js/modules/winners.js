@@ -12,10 +12,13 @@ import { loadHistory } from '../app.js'; // Import loadHistory from app.js
 
 // Global state variables (will be managed by app.js eventually)
 let lastAction = null; // This will eventually be managed by app.js
+let currentFilteredWinners = []; // Store the currently filtered winners
+let allWinners = []; // Store all winners for comparison
 
 async function loadWinners() {
   try {
     const winners = await Database.getFromStore('winners');
+    allWinners = winners; // Store all winners
     const lists = await Database.getFromStore('lists');
     const tbody = document.getElementById('winnersTableBody');
 
@@ -49,6 +52,9 @@ async function loadWinners() {
       
       return prizeMatch && listMatch && selectionMatch && dateMatch;
     });
+
+    // Store the filtered winners globally
+    currentFilteredWinners = filteredWinners;
 
     updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection, filterDateInput);
 
@@ -225,24 +231,37 @@ async function getAllWinners() {
 }
 
 async function clearAllWinners() {
+  // Use the currently filtered winners
+  const winnersToDelete = currentFilteredWinners || [];
+  
+  if (winnersToDelete.length === 0) {
+    UI.showToast('No winners to delete in the current view', 'warning');
+    return;
+  }
+  
+  const isFiltered = winnersToDelete.length < allWinners.length;
+  const title = isFiltered ? 'Clear Filtered Winners' : 'Clear All Winners';
+  const message = isFiltered 
+    ? `Are you sure you want to delete the ${winnersToDelete.length} filtered winner records currently displayed? This action cannot be undone.`
+    : `Are you sure you want to delete ALL ${winnersToDelete.length} winner records? This action cannot be undone.`;
+  
   UI.showConfirmationModal(
-    'Clear All Winners',
-    'Are you sure you want to delete ALL winner records? This action cannot be undone and will remove all winners from the database.',
+    title,
+    message,
     async () => {
       try {
-        UI.showProgress('Clearing Winners', 'Removing all winner records...');
+        UI.showProgress('Clearing Winners', `Removing ${winnersToDelete.length} winner records...`);
         
-        const winners = await getAllWinners();
         let deletedCount = 0;
 
-        for (const winner of winners) {
+        for (const winner of winnersToDelete) {
           Database.deleteFromStore('winners', winner.winnerId); // Fire and forget
           deletedCount++;
-          UI.updateProgress((deletedCount / winners.length) * 100, `Deleted ${deletedCount} of ${winners.length} winners...`);
+          UI.updateProgress((deletedCount / winnersToDelete.length) * 100, `Deleted ${deletedCount} of ${winnersToDelete.length} winners...`);
         }
 
         UI.hideProgress();
-        UI.showToast(`Successfully cleared ${deletedCount} winner records`, 'success');
+        UI.showToast(`Successfully deleted ${deletedCount} winner records`, 'success');
         
         await loadWinners();
         loadHistory();

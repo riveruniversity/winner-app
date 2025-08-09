@@ -620,14 +620,16 @@ function createWinnerCard(winner, index) {
   const info2 = getWinnerInfo2(winner);
   const info3 = getWinnerInfo3(winner);
   
-  console.log('Creating winner card:', {
-    winner,
-    info1,
-    info2,
-    info3,
-    displayName: winner.displayName,
-    data: winner.data
-  });
+  if (settings.enableDebugLogs) {
+    console.log('Creating winner card:', {
+      winner,
+      info1,
+      info2,
+      info3,
+      displayName: winner.displayName,
+      data: winner.data
+    });
+  }
   
   let cardHTML = `<div class="winner-number">${winner.position}</div>`;
   
