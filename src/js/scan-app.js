@@ -137,15 +137,5 @@ async function searchByTicketCode() {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initializeScanApp);
 
-// Service Worker Registration (same as main app)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/worker.js')
-      .then((registration) => {
-        console.log('SW registered for scanner: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
+// No service worker registration for scan page
+// The scanner page doesn't need offline functionality
