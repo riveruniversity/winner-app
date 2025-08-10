@@ -384,19 +384,15 @@
                 </h5>
               </div>
               <div class="card-body">
-                <div class="row">
-                  <div class="col-lg-8">
-                    <div class="mb-3">
-                      <label class="form-label fw-semibold" for="smsTemplate">
-                        SMS Template
-                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Template for SMS messages sent to winners. Use placeholders: {name}, {prize}, {ticketCode}"></i>
-                      </label>
-                      <textarea class="form-control" id="smsTemplate" rows="3" placeholder="Congratulations {name}! You won {prize}. Your ticket: {ticketCode}">Congratulations {name}! You won {prize}. Your ticket: {ticketCode}</textarea>
-                      <div class="form-text">
-                        Available placeholders: <code>{name}</code>, <code>{prize}</code>, <code>{ticketCode}</code>
-                        <br><span id="smsCharCount">0 characters, 1 SMS</span>
-                      </div>
-                    </div>
+                <div class="mb-3">
+                  <label class="form-label fw-semibold" for="smsTemplate">
+                    SMS Template
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Template for SMS messages sent to winners. Use placeholders: {name}, {prize}, {ticketCode}"></i>
+                  </label>
+                  <textarea class="form-control" id="smsTemplate" rows="7" placeholder="Congratulations {name}! You won {prize}. Your ticket: {ticketCode}">Congratulations {name}! You won {prize}. Your ticket: {ticketCode}</textarea>
+                  <div class="form-text">
+                    Available placeholders: <code>{name}</code>, <code>{prize}</code>, <code>{ticketCode}</code>
+                    <br><span id="smsCharCount">0 characters, 1 SMS</span>
                   </div>
                 </div>
               </div>

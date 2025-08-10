@@ -291,6 +291,61 @@ function loadSettingsToForm() {
   }
 }
 
+// Update available SMS placeholders based on selected list
+export function updateSMSPlaceholders() {
+  const placeholdersContainer = document.querySelector('#smsTemplate')?.parentElement?.querySelector('.form-text');
+  if (!placeholdersContainer) {
+    console.log('SMS placeholders container not found');
+    return;
+  }
+  
+  // Default placeholders always available
+  let placeholders = ['name', 'prize', 'ticketCode'];
+  
+  // Try to get the selected list's fields
+  const quickListSelect = document.getElementById('quickListSelect');
+  if (quickListSelect && quickListSelect.value) {
+    console.log('Loading list for placeholders:', quickListSelect.value);
+    // Get the selected list from the database
+    Database.getFromStore('lists', quickListSelect.value).then(list => {
+      console.log('List loaded:', list);
+      if (list && list.entries && list.entries.length > 0) {
+        // Get all unique field names from the first entry
+        const sampleEntry = list.entries[0];
+        // Get keys from the entry's data object (data contains the CSV row)
+        const csvFields = Object.keys(sampleEntry.data || {});
+        console.log('CSV fields found:', csvFields);
+        
+        // Combine default placeholders with CSV fields
+        const allPlaceholders = [...new Set([...placeholders, ...csvFields])];
+        
+        // Update the display
+        const placeholderHTML = allPlaceholders.map(p => `<code>{${p}}</code>`).join(', ');
+        placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
+        updateSMSCharCount(); // Update character count after changing HTML
+      } else {
+        console.log('List has no entries or entries is not an array');
+        // Show default placeholders
+        const placeholderHTML = placeholders.map(p => `<code>{${p}}</code>`).join(', ');
+        placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
+        updateSMSCharCount();
+      }
+    }).catch(err => {
+      console.error('Error loading list for placeholders:', err);
+      // Show default placeholders on error
+      const placeholderHTML = placeholders.map(p => `<code>{${p}}</code>`).join(', ');
+      placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
+      updateSMSCharCount();
+    });
+  } else {
+    console.log('No list selected');
+    // No list selected, show default placeholders
+    const placeholderHTML = placeholders.map(p => `<code>{${p}}</code>`).join(', ');
+    placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
+    updateSMSCharCount(); // Update character count after changing HTML
+  }
+}
+
 // Update SMS character count and SMS count display
 function updateSMSCharCount() {
   const smsTemplate = document.getElementById('smsTemplate');
@@ -977,6 +1032,13 @@ function setupQuickSetupAutoSave() {
       } else {
         field.addEventListener('change', fieldSpecificImmediateSave);
         newListeners.push({ event: 'change', handler: fieldSpecificImmediateSave });
+        
+        // Update SMS placeholders when list changes
+        if (fieldId === 'quickListSelect') {
+          const updatePlaceholdersHandler = () => updateSMSPlaceholders();
+          field.addEventListener('change', updatePlaceholdersHandler);
+          newListeners.push({ event: 'change', handler: updatePlaceholdersHandler });
+        }
       }
       
       // Store the listeners for this field
@@ -1125,6 +1187,7 @@ export const Settings = {
   setupQuickSetupAutoSave,
   setupAllSettingsAutoSave,
   setupSMSTemplateCounter,
+  updateSMSPlaceholders,
   updateSettings: function(newSettings) { Object.assign(settings, newSettings); }, // Added for external updates
   debugLog // Export debug logging function
 };

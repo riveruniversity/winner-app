@@ -138,12 +138,32 @@ class TextingService {
         continue;
       }
 
-      // Personalize message
+      // Personalize message with all available placeholders
       let personalizedMessage = messageTemplate;
-      personalizedMessage = personalizedMessage.replace('{name}', recipient.displayName || recipient.name || 'Winner');
-      personalizedMessage = personalizedMessage.replace('{firstName}', recipient.firstName || recipient.displayName || recipient.name || 'Winner');
-      personalizedMessage = personalizedMessage.replace('{prize}', recipient.prize || 'your prize');
-      personalizedMessage = personalizedMessage.replace('{ticketCode}', recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
+      
+      // Replace standard placeholders
+      personalizedMessage = personalizedMessage.replace(/{name}/g, recipient.displayName || recipient.name || 'Winner');
+      personalizedMessage = personalizedMessage.replace(/{firstName}/g, recipient.firstName || recipient.displayName || recipient.name || 'Winner');
+      personalizedMessage = personalizedMessage.replace(/{prize}/g, recipient.prize || 'your prize');
+      personalizedMessage = personalizedMessage.replace(/{ticketCode}/g, recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
+      
+      // Replace all CSV column placeholders from recipient.data
+      if (recipient.data) {
+        // Use regex to find all placeholders in the message
+        const placeholderRegex = /{([^}]+)}/g;
+        personalizedMessage = personalizedMessage.replace(placeholderRegex, (match, key) => {
+          // Try to find the value in recipient.data
+          if (recipient.data[key]) {
+            return recipient.data[key];
+          }
+          // If not found, check if it's one of the standard placeholders we already handled
+          if (key === 'name' || key === 'firstName' || key === 'prize' || key === 'ticketCode') {
+            return match; // Already handled above
+          }
+          // Return the placeholder unchanged if no value found
+          return match;
+        });
+      }
 
       // Fire request without awaiting (fire-and-forget)
       const body = {
