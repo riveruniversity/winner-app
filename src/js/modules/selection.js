@@ -232,7 +232,6 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
   const historyId = UI.generateId(8);
   const winners = selectedEntries.map((entry, index) => ({
     winnerId: UI.generateId(),
-    uniqueId: UI.generateId(5).toUpperCase(),
     entryId: entry.id, // Store the list entry ID for ticket scanning
     data: entry.data, // Store all original data
     displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
@@ -389,7 +388,6 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     const historyId = UI.generateId(8);
     const winners = selectedEntries.map((entry, index) => ({
       winnerId: UI.generateId(),
-      uniqueId: UI.generateId(5).toUpperCase(),
       entryId: entry.id, // Store the list entry ID for ticket scanning
       data: entry.data, // Store all original data
       displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),

@@ -42,23 +42,11 @@ async function handleExportWinners() {
       return;
     }
 
-    // Generate unique 5-character IDs for winners that don't have them
-    const winnersWithIds = filteredWinners.map(winner => ({
-      ...winner,
-      uniqueId: winner.uniqueId || UI.generateId(5).toUpperCase()
-    }));
-
-    // Update winners with unique IDs if they didn't have them
-    for (const winner of winnersWithIds) {
-      if (!winner.uniqueId || winner.winnerId === winner.uniqueId) {
-        winner.uniqueId = UI.generateId(5).toUpperCase();
-        await Database.saveToStore('winners', winner);
-        // No Firebase sync here, as this is a local update for export purposes
-      }
-    }
+    // Use winnerId for export (show first 5 characters)
+    const winnersWithIds = filteredWinners;
 
     // Create CSV content
-    const headers = ['UniqueID', 'Name', 'Prize', 'Timestamp', 'ListName'];
+    const headers = ['TicketID', 'Name', 'Prize', 'Timestamp', 'ListName'];
     
     // Add all original record fields as headers
     const allFields = new Set();
@@ -75,7 +63,7 @@ async function handleExportWinners() {
       allHeaders.join(','),
       ...winnersWithIds.map(winner => {
         const baseData = [
-          winner.uniqueId || winner.winnerId,
+          (winner.winnerId || 'N/A').toString().slice(0, 5).toUpperCase(),
           `"${winner.displayName || 'Unknown'}"`,
           `"${winner.prize || 'Unknown'}"`,
           new Date(winner.timestamp).toISOString(),

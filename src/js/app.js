@@ -308,6 +308,7 @@ function setupManagementListeners() {
   // Export/Import
   const exportWinnersBtn = document.getElementById('exportWinnersBtn');
   const clearWinnersBtn = document.getElementById('clearWinnersBtn');
+  const checkSMSStatusBtn = document.getElementById('checkSMSStatusBtn');
   const backupData = document.getElementById('backupData');
   const restoreData = document.getElementById('restoreData');
   const backupOnline = document.getElementById('backupOnline');
@@ -316,6 +317,27 @@ function setupManagementListeners() {
 
   if (exportWinnersBtn) exportWinnersBtn.addEventListener('click', Export.handleExportWinners);
   if (clearWinnersBtn) clearWinnersBtn.addEventListener('click', Winners.clearAllWinners);
+  if (checkSMSStatusBtn) {
+    checkSMSStatusBtn.addEventListener('click', async () => {
+      const { Texting } = await import('./modules/texting.js');
+      checkSMSStatusBtn.disabled = true;
+      checkSMSStatusBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm me-2"></i>Checking...';
+      
+      try {
+        const count = await Texting.checkAllPendingStatuses();
+        if (count > 0) {
+          UI.showToast(`Checked status for ${count} pending message${count > 1 ? 's' : ''}`, 'success');
+        } else {
+          UI.showToast('No pending SMS messages to check', 'info');
+        }
+      } catch (error) {
+        UI.showToast('Error checking SMS statuses', 'error');
+      } finally {
+        checkSMSStatusBtn.disabled = false;
+        checkSMSStatusBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Check SMS Status';
+      }
+    });
+  }
   if (backupData) backupData.addEventListener('click', Export.handleBackupData);
   if (restoreData) restoreData.addEventListener('click', Export.handleRestoreData);
   if (backupOnline) backupOnline.addEventListener('click', Export.handleBackupOnline);

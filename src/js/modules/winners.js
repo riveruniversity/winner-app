@@ -59,7 +59,7 @@ async function loadWinners(winnersData = null, listsData = null) {
     updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection, filterDateInput);
 
     if (filteredWinners.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No winners match the current filters.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No winners match the current filters.</td></tr>';
       return;
     }
 
@@ -69,16 +69,45 @@ async function loadWinners(winnersData = null, listsData = null) {
         `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
         `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
       
-      // Generate SMS status badge
-      let smsStatus = '';
-      if (winner.smsStatus) {
-        if (winner.smsStatus.success === true) {
-          smsStatus = '<span class="badge bg-success ms-1" title="SMS Sent"><i class="bi bi-envelope-check-fill"></i></span>';
-        } else if (winner.smsStatus.success === false) {
-          smsStatus = `<span class="badge bg-danger ms-1" title="SMS Failed: ${winner.smsStatus.error || 'Unknown error'}"><i class="bi bi-envelope-x-fill"></i></span>`;
-        } else if (winner.smsStatus.sent === true) {
-          smsStatus = '<span class="badge bg-info ms-1" title="SMS Sending..."><i class="bi bi-envelope-arrow-up-fill"></i></span>';
+      // Generate SMS status badge based on new structure
+      let smsStatusBadge = '';
+      if (winner.sms && winner.sms.status) {
+        const status = winner.sms.status.toLowerCase();
+        switch(status) {
+          case 'delivered':
+            smsStatusBadge = '<span class="badge bg-success" title="SMS Delivered"><i class="bi bi-check-circle-fill"></i> Delivered</span>';
+            break;
+          case 'bounced':
+            smsStatusBadge = `<span class="badge bg-danger" title="SMS Bounced: ${winner.sms.error || 'Unknown'}"><i class="bi bi-x-circle-fill"></i> Bounced</span>`;
+            break;
+          case 'failed':
+            smsStatusBadge = `<span class="badge bg-danger" title="SMS Failed: ${winner.sms.error || 'Unknown'}"><i class="bi bi-x-circle-fill"></i> Failed</span>`;
+            break;
+          case 'queued':
+            smsStatusBadge = '<span class="badge bg-info" title="SMS Queued"><i class="bi bi-clock-fill"></i> Queued</span>';
+            break;
+          case 'sending':
+            smsStatusBadge = '<span class="badge bg-warning" title="SMS Sending"><i class="bi bi-arrow-up-circle-fill"></i> Sending</span>';
+            break;
+          case 'sent':
+            smsStatusBadge = '<span class="badge bg-primary" title="SMS Sent"><i class="bi bi-send-fill"></i> Sent</span>';
+            break;
+          default:
+            smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
         }
+      } else if (winner.smsStatus) {
+        // Backward compatibility with old structure
+        if (winner.smsStatus.success === true) {
+          smsStatusBadge = '<span class="badge bg-success" title="SMS Sent"><i class="bi bi-check-circle-fill"></i> Sent</span>';
+        } else if (winner.smsStatus.success === false) {
+          smsStatusBadge = `<span class="badge bg-danger" title="SMS Failed: ${winner.smsStatus.error || 'Unknown'}"><i class="bi bi-x-circle-fill"></i> Failed</span>`;
+        } else if (winner.smsStatus.sent === true) {
+          smsStatusBadge = '<span class="badge bg-info" title="SMS Sending"><i class="bi bi-clock-fill"></i> Sending</span>';
+        } else {
+          smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
+        }
+      } else {
+        smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
       }
       
       return `
@@ -88,13 +117,13 @@ async function loadWinners(winnersData = null, listsData = null) {
             <button class="btn btn-sm btn-outline-secondary ms-1" onclick="Winners.showQRCode('${winner.winnerId}')" title="Show QR Code">
               <i class="bi bi-qr-code"></i>
             </button>
-            ${smsStatus}
           </td>
           <td>${winner.displayName}</td>
           <td>${winner.prize}</td>
           <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
           <td>${listNameMap[winner.listId] || 'Unknown'}</td>
           <td>${pickupStatus}</td>
+          <td>${smsStatusBadge}</td>
           <td>
             <div class="btn-group btn-group-sm" role="group">
               <button class="btn btn-outline-info" data-winner-id="${winner.winnerId}" onclick="Winners.returnToList('${winner.winnerId}')" title="Return to List">
@@ -324,6 +353,12 @@ async function undoLastSelection() {
 
   if (!currentLastAction || currentLastAction.type !== 'selectWinners') {
     UI.showToast('No recent selection to undo', 'warning');
+    return;
+  }
+
+  // Check if SMS has been sent to these winners
+  if (currentLastAction.smsSent) {
+    UI.showToast(`Cannot undo selection: SMS messages have been sent to ${currentLastAction.smsSentCount} winner(s)`, 'error');
     return;
   }
 

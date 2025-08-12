@@ -42,13 +42,28 @@ class TextingService {
       }
       
       if (winnerId) {
-        // Update winner record with SMS status
-        await this.updateWinnerSMSStatus(winnerId, {
-          sent: true,
-          success: response.ok,
-          timestamp: Date.now(),
-          error: response.ok ? null : (result?.error || `HTTP ${response.status}`)
-        });
+        // Extract messageId from the response
+        const messageId = result?.data?.id || null;
+        
+        // Update winner record with SMS status including messageId
+        const smsUpdateData = {
+          status: 'queued',
+          messageId: messageId,
+          sentAt: Date.now()
+        };
+        
+        // Only add error if response is not ok
+        if (!response.ok) {
+          smsUpdateData.error = result?.error || `HTTP ${response.status}`;
+        }
+        
+        await this.updateWinnerSMSStatus(winnerId, smsUpdateData);
+        
+        // If we have a messageId, schedule status check
+        if (messageId) {
+          // Check status after 30 seconds
+          setTimeout(() => this.checkMessageStatus(winnerId, messageId), 30000);
+        }
       }
       return result;
     })
@@ -56,9 +71,8 @@ class TextingService {
       console.error('SMS send error:', error);
       if (winnerId) {
         await this.updateWinnerSMSStatus(winnerId, {
-          sent: true,
-          success: false,
-          timestamp: Date.now(),
+          status: 'failed',
+          sentAt: Date.now(),
           error: error.message
         });
       }
@@ -111,9 +125,8 @@ class TextingService {
         if (recipient.winnerId) {
           // Fire and forget - don't await
           this.updateWinnerSMSStatus(recipient.winnerId, {
-            sent: false,
-            success: false,
-            timestamp: Date.now(),
+            status: 'cancelled',
+            sentAt: Date.now(),
             error: 'Cancelled'
           });
         }
@@ -129,9 +142,8 @@ class TextingService {
         if (recipient.winnerId) {
           // Fire and forget - don't await
           this.updateWinnerSMSStatus(recipient.winnerId, {
-            sent: false,
-            success: false,
-            timestamp: Date.now(),
+            status: 'failed',
+            sentAt: Date.now(),
             error: 'No phone number'
           });
         }
@@ -179,10 +191,10 @@ class TextingService {
       if (recipient.winnerId) {
         // Fire and forget - don't await
         this.updateWinnerSMSStatus(recipient.winnerId, {
-          sent: true,
-          success: null, // Pending
-          timestamp: Date.now(),
-          error: null
+          status: 'sending',
+          sentAt: Date.now(),
+          message: personalizedMessage,
+          phoneNumber: recipient.phone
         });
       }
 
@@ -215,13 +227,40 @@ class TextingService {
   /**
    * Updates winner record with SMS status
    */
-  async updateWinnerSMSStatus(winnerId, smsStatus) {
+  async updateWinnerSMSStatus(winnerId, smsData) {
     try {
       // Get the specific winner record directly
       const winner = await Database.getFromStore('winners', winnerId);
       
       if (winner) {
-        // Update SMS status on the winner object
+        // Initialize sms object if it doesn't exist
+        if (!winner.sms) {
+          winner.sms = {};
+        }
+        
+        // Clean SMS data - remove undefined values
+        const cleanedSmsData = {};
+        for (const [key, value] of Object.entries(smsData)) {
+          if (value !== undefined) {
+            cleanedSmsData[key] = value;
+          }
+        }
+        
+        // Update SMS data under the sms property
+        Object.assign(winner.sms, cleanedSmsData);
+        
+        // Keep backward compatibility for now - also clean this
+        const smsStatus = {
+          sent: smsData.status !== 'failed',
+          success: smsData.status === 'delivered',
+          timestamp: smsData.sentAt || Date.now()
+        };
+        
+        // Only add error if it exists
+        if (smsData.error !== undefined && smsData.error !== null) {
+          smsStatus.error = smsData.error;
+        }
+        
         winner.smsStatus = smsStatus;
         
         // Save the updated winner back to database
@@ -306,6 +345,18 @@ class TextingService {
         }),
         message
       );
+      
+      // If at least one SMS was sent successfully, mark the lastAction as having SMS sent
+      if (results && results.sent > 0) {
+        const { getLastAction, setLastAction } = await import('../app.js');
+        const lastAction = getLastAction();
+        if (lastAction) {
+          lastAction.smsSent = true;
+          lastAction.smsSentCount = results.sent;
+          lastAction.smsSentAt = Date.now();
+          setLastAction(lastAction);
+        }
+      }
 
     } catch (error) {
       UI.showToast('Error sending messages: ' + error.message, 'error');
@@ -513,6 +564,124 @@ class TextingService {
     }
     
     return cleaned;
+  }
+
+  /**
+   * Check message status using EZ Texting API
+   */
+  async checkMessageStatus(winnerId, messageId) {
+    try {
+      const response = await fetch('/.netlify/functions/ez-texting', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'getMessageReport',
+          data: {
+            messageId: messageId
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get message status: HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Extract status from the response
+      let status = 'unknown';
+      let deliveryInfo = {};
+      
+      if (result?.data?.delivery) {
+        // The API returns message report data with delivery stats
+        const delivery = result.data.delivery;
+        
+        // Determine status based on delivery data
+        if (delivery.total_delivered?.data > 0) {
+          status = 'delivered';
+          deliveryInfo.deliveredAt = Date.now();
+        } else if (delivery.bounced?.data > 0) {
+          status = 'bounced';
+          deliveryInfo.bouncedAt = Date.now();
+          deliveryInfo.error = 'Message bounced';
+        } else if (delivery.total_not_sent?.data > 0) {
+          status = 'failed';
+          deliveryInfo.failedAt = Date.now();
+          deliveryInfo.error = 'Message not sent';
+        } else if (delivery.queued?.data > 0) {
+          status = 'queued';
+        } else {
+          status = 'sent';
+        }
+        
+        // Store complete delivery report
+        deliveryInfo.deliveryReport = {
+          delivery: result.data.delivery,
+          engagement: result.data.engagement
+        };
+        
+        // Check for engagement actions
+        if (result.data.engagement) {
+          if (result.data.engagement.opted_out?.data > 0) {
+            deliveryInfo.optedOut = true;
+            deliveryInfo.optedOutAt = Date.now();
+          }
+          if (result.data.engagement.replied?.data > 0) {
+            deliveryInfo.replied = true;
+            deliveryInfo.repliedAt = Date.now();
+          }
+        }
+      }
+      
+      // Update winner record with delivery status
+      await this.updateWinnerSMSStatus(winnerId, {
+        status: status,
+        ...deliveryInfo,
+        lastChecked: Date.now()
+      });
+      
+      // If still queued or unknown, check again later
+      if (status === 'queued' || status === 'unknown') {
+        // Check again in 10 seconds for queued, 30 seconds for unknown
+        const delay = status === 'queued' ? 10000 : 30000;
+        setTimeout(() => this.checkMessageStatus(winnerId, messageId), delay);
+      }
+      
+    } catch (error) {
+      console.error('Error checking message status:', error);
+      // Try again in 30 seconds if there was an error
+      setTimeout(() => this.checkMessageStatus(winnerId, messageId), 30000);
+    }
+  }
+
+  /**
+   * Batch check message statuses for multiple winners
+   */
+  async checkAllPendingStatuses() {
+    try {
+      // Get all winners
+      const winners = await Database.getAllFromStore('winners');
+      
+      // Filter winners with pending SMS
+      const pendingWinners = winners.filter(w => 
+        w.sms?.messageId && 
+        (!w.sms.status || w.sms.status === 'queued' || w.sms.status === 'pending' || w.sms.status === 'sending')
+      );
+      
+      // Check status for each pending winner
+      for (const winner of pendingWinners) {
+        await this.checkMessageStatus(winner.id, winner.sms.messageId);
+        // Small delay between checks
+        await this.delay(100);
+      }
+      
+      return pendingWinners.length;
+    } catch (error) {
+      console.error('Error checking pending statuses:', error);
+      return 0;
+    }
   }
 
   /**
