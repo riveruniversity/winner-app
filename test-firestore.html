@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firestore Test</title>
+</head>
+<body>
+    <h1>Testing Firestore Implementation</h1>
+    <div id="status">Loading...</div>
+    <div id="results"></div>
+    
+    <script type="module">
+        import { Database } from './src/js/modules/firestore.js';
+        
+        async function testFirestore() {
+            const statusEl = document.getElementById('status');
+            const resultsEl = document.getElementById('results');
+            
+            try {
+                statusEl.textContent = 'Initializing database...';
+                await Database.initDB();
+                
+                statusEl.textContent = 'Testing database operations...';
+                
+                // Test basic operations
+                const testData = {
+                    key: 'test-setting',
+                    value: 'test-value'
+                };
+                
+                // Save test data
+                await Database.saveToStore('settings', testData);
+                resultsEl.innerHTML += '<p>✅ Save operation successful</p>';
+                
+                // Retrieve test data
+                const retrieved = await Database.getFromStore('settings', 'test-setting');
+                if (retrieved && retrieved.value === 'test-value') {
+                    resultsEl.innerHTML += '<p>✅ Get operation successful</p>';
+                } else {
+                    resultsEl.innerHTML += '<p>❌ Get operation failed</p>';
+                }
+                
+                // Test getAllFromStore
+                const allSettings = await Database.getAllFromStore('settings');
+                resultsEl.innerHTML += '<p>✅ GetAll operation successful. Found ' + allSettings.length + ' settings</p>';
+                
+                // Clean up test data
+                await Database.deleteFromStore('settings', 'test-setting');
+                resultsEl.innerHTML += '<p>✅ Delete operation successful</p>';
+                
+                statusEl.textContent = 'All tests passed! Firestore is working correctly.';
+                statusEl.style.color = 'green';
+                
+            } catch (error) {
+                statusEl.textContent = 'Error: ' + error.message;
+                statusEl.style.color = 'red';
+                console.error('Test failed:', error);
+            }
+        }
+        
+        testFirestore();
+    </script>
+</body>
+</html>

@@ -1,0 +1,772 @@
+/**
+ * SMS Texting Module for Winner Notifications
+ * Integrates with EZ Texting API via Netlify Functions
+ */
+
+import { Database } from './firestore.js';
+import { UI } from './ui.js';
+import { getCurrentWinners } from '../app.js';
+import { settings } from './settings.js';
+
+
+class TextingService {
+  constructor() {
+    this.sendingInProgress = false;
+    this.abortController = null;
+  }
+
+  /**
+   * Makes a POST request to the EZ Texting Netlify function (fire-and-forget)
+   * Returns immediately after sending, doesn't wait for response
+   */
+  makeRequestFireAndForget(body, winnerId = null) {
+    // Detect if we're running under a subpath
+    const pathname = window.location.pathname;
+    const apiBase = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+    
+    // Fire the request without awaiting
+    fetch(`${apiBase}/ez-texting`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      signal: this.abortController?.signal
+    })
+    .then(async response => {
+      let result = null;
+      try {
+        // Try to parse JSON response
+        const text = await response.text();
+        if (text) {
+          result = JSON.parse(text);
+        }
+      } catch (e) {
+        console.warn('Could not parse SMS response:', e);
+      }
+      
+      if (winnerId) {
+        // Extract messageId from the response
+        const messageId = result?.data?.id || null;
+        
+        // Update winner record with SMS status including messageId
+        const smsUpdateData = {
+          status: 'queued',
+          messageId: messageId,
+          sentAt: Date.now()
+        };
+        
+        // Only add error if response is not ok
+        if (!response.ok) {
+          smsUpdateData.error = result?.error || `HTTP ${response.status}`;
+        }
+        
+        await this.updateWinnerSMSStatus(winnerId, smsUpdateData);
+        
+        // If we have a messageId, schedule status check
+        if (messageId) {
+          // Check status after 30 seconds
+          setTimeout(() => this.checkMessageStatus(winnerId, messageId), 30000);
+        }
+      }
+      return result;
+    })
+    .catch(async error => {
+      console.error('SMS send error:', error);
+      if (winnerId) {
+        await this.updateWinnerSMSStatus(winnerId, {
+          status: 'failed',
+          sentAt: Date.now(),
+          error: error.message
+        });
+      }
+    });
+  }
+
+  /**
+   * Makes a POST request to the EZ Texting Netlify function (awaitable)
+   */
+  async makeRequest(body) {
+    // Detect if we're running under a subpath
+    const pathname = window.location.pathname;
+    const apiBase = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+    
+    const response = await fetch(`${apiBase}/ez-texting`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      signal: this.abortController?.signal
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+
+  /**
+   * Sends SMS to multiple recipients with fire-and-forget pattern
+   */
+  async sendBatchTexts(recipients, messageTemplate, options = {}) {
+    const results = {
+      successful: [],
+      failed: [],
+      total: recipients.length,
+      sent: 0,
+      pending: recipients.length
+    };
+
+    // Track SMS status immediately
+    let sent = 0;
+    
+    // Process recipients
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      
+      // Check if cancelled
+      if (this.abortController?.signal.aborted) {
+        if (recipient.winnerId) {
+          // Fire and forget - don't await
+          this.updateWinnerSMSStatus(recipient.winnerId, {
+            status: 'cancelled',
+            sentAt: Date.now(),
+            error: 'Cancelled'
+          });
+        }
+        continue;
+      }
+
+      // Check if recipient has a phone number
+      if (!recipient.phone) {
+        results.failed.push({
+          recipient,
+          error: 'No phone number'
+        });
+        if (recipient.winnerId) {
+          // Fire and forget - don't await
+          this.updateWinnerSMSStatus(recipient.winnerId, {
+            status: 'failed',
+            sentAt: Date.now(),
+            error: 'No phone number'
+          });
+        }
+        continue;
+      }
+
+      // Personalize message with all available placeholders
+      let personalizedMessage = messageTemplate;
+      
+      // Replace standard placeholders
+      personalizedMessage = personalizedMessage.replace(/{name}/g, recipient.displayName || recipient.name || 'Winner');
+      personalizedMessage = personalizedMessage.replace(/{firstName}/g, recipient.firstName || recipient.displayName || recipient.name || 'Winner');
+      personalizedMessage = personalizedMessage.replace(/{prize}/g, recipient.prize || 'your prize');
+      personalizedMessage = personalizedMessage.replace(/{ticketCode}/g, recipient.ticketCode || recipient.data?.ticketCode || recipient.winnerId || '');
+      
+      // Replace all CSV column placeholders from recipient.data
+      if (recipient.data) {
+        // Use regex to find all placeholders in the message
+        const placeholderRegex = /{([^}]+)}/g;
+        personalizedMessage = personalizedMessage.replace(placeholderRegex, (match, key) => {
+          // Try to find the value in recipient.data
+          if (recipient.data[key]) {
+            return recipient.data[key];
+          }
+          // If not found, check if it's one of the standard placeholders we already handled
+          if (key === 'name' || key === 'firstName' || key === 'prize' || key === 'ticketCode') {
+            return match; // Already handled above
+          }
+          // Return the placeholder unchanged if no value found
+          return match;
+        });
+      }
+
+      // Fire request without awaiting (fire-and-forget)
+      const body = {
+        action: 'sendMessage',
+        data: {
+          message: personalizedMessage,
+          phoneNumbers: [recipient.phone],
+          options: options
+        }
+      };
+
+      // Mark as sending
+      if (recipient.winnerId) {
+        // Fire and forget - don't await
+        this.updateWinnerSMSStatus(recipient.winnerId, {
+          status: 'sending',
+          sentAt: Date.now(),
+          message: personalizedMessage,
+          phoneNumber: recipient.phone
+        });
+      }
+
+      // Fire and forget - don't await
+      this.makeRequestFireAndForget(body, recipient.winnerId);
+      
+      sent++;
+      results.sent = sent;
+      results.pending = recipients.length - sent;
+      
+      // Update progress
+      const progress = Math.round((sent / recipients.length) * 100);
+      
+      UI.updateProgress(
+        progress,
+        `Sent ${sent}/${recipients.length}`
+      );
+
+      // Small delay between requests to avoid overwhelming (10 requests per second max)
+      await this.delay(20);
+    }
+
+    // Update final stats
+    results.sent = sent;
+    UI.showToast(`SMS messages sent: ${sent} messages dispatched`, 'success');
+    
+    return results;
+  }
+
+  /**
+   * Updates winner record with SMS status
+   */
+  async updateWinnerSMSStatus(winnerId, smsData) {
+    try {
+      // Get the specific winner record directly
+      const winner = await Database.getFromStore('winners', winnerId);
+      
+      if (winner) {
+        // Initialize sms object if it doesn't exist
+        if (!winner.sms) {
+          winner.sms = {};
+        }
+        
+        // Clean SMS data - remove undefined values
+        const cleanedSmsData = {};
+        for (const [key, value] of Object.entries(smsData)) {
+          if (value !== undefined) {
+            cleanedSmsData[key] = value;
+          }
+        }
+        
+        // Update SMS data under the sms property
+        Object.assign(winner.sms, cleanedSmsData);
+        
+        // Keep backward compatibility for now - also clean this
+        const smsStatus = {
+          sent: smsData.status !== 'failed',
+          success: smsData.status === 'delivered',
+          timestamp: smsData.sentAt || Date.now()
+        };
+        
+        // Only add error if it exists
+        if (smsData.error !== undefined && smsData.error !== null) {
+          smsStatus.error = smsData.error;
+        }
+        
+        winner.smsStatus = smsStatus;
+        
+        // Save the updated winner back to database
+        await Database.saveToStore('winners', winner);
+        
+        // Trigger UI update if on winners tab
+        const activeTab = document.querySelector('.nav-link.active');
+        if (activeTab && activeTab.textContent.includes('Winners')) {
+          // Dynamically import Winners to avoid circular dependency
+          const { Winners } = await import('./winners.js');
+          await Winners.loadWinners();
+        }
+      } else {
+        console.warn(`Winner ${winnerId} not found in database`);
+      }
+    } catch (error) {
+      console.error('Error updating winner SMS status:', error);
+    }
+  }
+
+  /**
+   * Sends SMS to current winners (the ones just selected)
+   */
+  async sendToCurrentWinners() {
+    if (this.sendingInProgress) {
+      UI.showToast('Already sending messages. Please wait...', 'warning');
+      return;
+    }
+
+    const currentWinners = getCurrentWinners();
+    
+    if (!currentWinners || currentWinners.length === 0) {
+      UI.showToast('No current winners to send messages to. Please select winners first.', 'warning');
+      return;
+    }
+
+    // Show confirmation modal with template preview
+    // const confirmed = await this.showSMSConfirmationModal(currentWinners.length);
+    // if (!confirmed) return;
+
+    // Use SMS template from settings
+    const message = settings.smsTemplate;
+    if (!message.trim()) {
+      UI.showToast('SMS template is empty. Please set a template in Settings.', 'warning');
+      return;
+    }
+
+    this.sendingInProgress = true;
+    UI.showProgress('Sending messages...');
+
+    try {
+      // Find winners with phone numbers
+      const winnersWithPhone = currentWinners.filter(winner => {
+        // Check direct properties
+        if (winner.phone || winner.Phone || winner.mobile || winner.phoneNumber) {
+          return true;
+        }
+        // Check data object (camelized CSV fields)
+        if (winner.data) {
+          return winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
+                 winner.data.cellPhone || winner.data.cell || winner.data.telephone;
+        }
+        return false;
+      });
+
+      if (winnersWithPhone.length === 0) {
+        UI.showToast('No winners with phone numbers found', 'warning');
+        return;
+      }
+
+      // Send messages asynchronously with proper rate limiting
+      const results = await this.sendBatchTexts(
+        winnersWithPhone.map(winner => {
+          // Get phone number from direct properties or camelized data object
+          const phone = winner.phone || winner.Phone || winner.mobile || winner.phoneNumber ||
+                       (winner.data && (winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
+                                       winner.data.cellPhone || winner.data.cell || winner.data.telephone));
+          return {
+            ...winner,
+            phone: this.cleanPhoneNumber(phone)
+          };
+        }),
+        message
+      );
+      
+      // If at least one SMS was sent successfully, mark the lastAction as having SMS sent
+      if (results && results.sent > 0) {
+        const { getLastAction, setLastAction } = await import('../app.js');
+        const lastAction = getLastAction();
+        if (lastAction) {
+          lastAction.smsSent = true;
+          lastAction.smsSentCount = results.sent;
+          lastAction.smsSentAt = Date.now();
+          setLastAction(lastAction);
+        }
+      }
+
+    } catch (error) {
+      UI.showToast('Error sending messages: ' + error.message, 'error');
+    } finally {
+      this.sendingInProgress = false;
+      UI.hideProgress();
+    }
+  }
+
+  /**
+   * Shows SMS confirmation modal with template preview
+   */
+  async showSMSConfirmationModal(winnerCount) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('appModal');
+      const modalTitle = document.getElementById('appModalLabel');
+      const modalBody = document.getElementById('appModalBody');
+      const confirmBtn = document.getElementById('appModalConfirmBtn');
+      
+      modalTitle.textContent = 'Send SMS Messages';
+      
+      const currentWinners = getCurrentWinners();
+      const sampleWinner = currentWinners[0] || { displayName: 'John Doe', prize: 'Sample Prize', winnerId: 'ABC123' };
+      const template = settings.smsTemplate || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
+      
+      // Create preview message
+      let previewMessage = template
+        .replace('{name}', sampleWinner.displayName || 'John Doe')
+        .replace('{prize}', sampleWinner.prize || 'Sample Prize')
+        .replace('{ticketCode}', sampleWinner.ticketCode || sampleWinner.data?.ticketCode || sampleWinner.winnerId || 'ABC123');
+      
+      modalBody.innerHTML = `
+        <div class="mb-3">
+          <p>Send SMS messages to <strong>${winnerCount} current winner${winnerCount > 1 ? 's' : ''}</strong> with phone numbers?</p>
+        </div>
+        <div class="mb-3">
+          <a href="#" class="text-decoration-none" onclick="event.preventDefault(); const preview = document.getElementById('smsPreviewContent'); const icon = this.querySelector('i'); preview.classList.toggle('d-none'); icon.classList.toggle('bi-chevron-down'); icon.classList.toggle('bi-chevron-right');">
+            <i class="bi bi-chevron-right"></i> <span class="fw-bold">Show Message Preview</span>
+          </a>
+          <div id="smsPreviewContent" class="d-none mt-2">
+            <div class="alert alert-info">
+              <div class="mb-2">${previewMessage}</div>
+              <small class="text-muted">
+                ${this.calculateSMSInfo(previewMessage)}
+              </small>
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            You can edit the SMS template in Settings if needed.
+          </small>
+        </div>
+      `;
+
+      // Ensure confirm button is visible and properly configured
+      confirmBtn.style.display = '';
+      confirmBtn.textContent = 'Send Messages';
+      confirmBtn.className = 'btn btn-success';
+      confirmBtn.onclick = () => {
+        window.appModal.hide();
+        resolve(true);
+      };
+
+      // Add cancel functionality
+      const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+      if (cancelBtn) {
+        cancelBtn.style.display = '';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = () => {
+          window.appModal.hide();
+          resolve(false);
+        };
+      }
+
+      window.appModal.show();
+    });
+  }
+
+  /**
+   * Calculate SMS info (character count and message count)
+   */
+  calculateSMSInfo(message) {
+    const charCount = message.length;
+    let smsCount;
+    if (charCount === 0) {
+      smsCount = 1;
+    } else if (charCount <= 160) {
+      smsCount = 1;
+    } else {
+      smsCount = Math.ceil(charCount / 153);
+    }
+    return `${charCount} characters, ${smsCount} SMS${smsCount > 1 ? ' messages' : ''}`;
+  }
+
+  /**
+   * Create cancel button if it doesn't exist
+   */
+  createCancelButton() {
+    const modalFooter = document.querySelector('#appModal .modal-footer');
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'appModalCancelBtn';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.display = 'none';
+    modalFooter.insertBefore(cancelBtn, modalFooter.firstChild);
+    return cancelBtn;
+  }
+
+
+  /**
+   * Shows results of bulk send operation
+   */
+  showSendResults(results) {
+    const modal = document.getElementById('appModal');
+    const modalTitle = document.getElementById('appModalLabel');
+    const modalBody = document.getElementById('appModalBody');
+    const confirmBtn = document.getElementById('appModalConfirmBtn');
+
+    modalTitle.textContent = 'SMS Send Results';
+    
+    const successRate = Math.round((results.successful.length / results.total) * 100);
+    
+    modalBody.innerHTML = `
+      <div class="alert alert-${successRate === 100 ? 'success' : successRate > 50 ? 'warning' : 'danger'}">
+        <h5>Send Complete</h5>
+        <p>Success rate: ${successRate}%</p>
+      </div>
+      <div class="row">
+        <div class="col-6">
+          <div class="card">
+            <div class="card-body text-center">
+              <h3 class="text-success">${results.successful.length}</h3>
+              <p class="text-muted">Successful</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="card">
+            <div class="card-body text-center">
+              <h3 class="text-danger">${results.failed.length}</h3>
+              <p class="text-muted">Failed</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${results.failed.length > 0 ? `
+        <div class="mt-3">
+          <h6>Failed Recipients:</h6>
+          <div class="small" style="max-height: 200px; overflow-y: auto;">
+            ${results.failed.map(f => `
+              <div class="text-danger">
+                ${f.recipient.displayName || 'Unknown'}: ${f.error}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    `;
+
+    confirmBtn.textContent = 'Close';
+    confirmBtn.onclick = () => {
+      window.appModal.hide();
+    };
+
+    window.appModal.show();
+  }
+
+  /**
+   * Logs SMS send event to database
+   */
+  async logSendEvent(results, messageTemplate) {
+    try {
+      const logEntry = {
+        timestamp: Date.now(),
+        type: 'sms_bulk_send',
+        message: messageTemplate,
+        results: {
+          total: results.total,
+          successful: results.successful.length,
+          failed: results.failed.length
+        },
+        date: new Date().toISOString()
+      };
+
+      await Database.saveToStore('sms_logs', logEntry);
+    } catch (error) {
+      console.error('Error logging SMS event:', error);
+    }
+  }
+
+  /**
+   * Cleans and validates phone number
+   */
+  cleanPhoneNumber(phone) {
+    if (!phone) return null;
+    
+    // Remove all non-digit characters
+    const cleaned = String(phone).replace(/\D/g, '');
+    
+    // Add country code if missing (assuming US)
+    if (cleaned.length === 10) {
+      return '1' + cleaned;
+    }
+    
+    return cleaned;
+  }
+
+  /**
+   * Check message status using EZ Texting API
+   */
+  async checkMessageStatus(winnerId, messageId) {
+    try {
+      // Detect if we're running under a subpath
+      const pathname = window.location.pathname;
+      const apiBase = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+      
+      const response = await fetch(`${apiBase}/ez-texting`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'getMessageReport',
+          data: {
+            messageId: messageId
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get message status: HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Extract status from the response
+      let status = 'unknown';
+      let deliveryInfo = {};
+      
+      if (result?.data?.delivery) {
+        // The API returns message report data with delivery stats
+        const delivery = result.data.delivery;
+        
+        // Determine status based on delivery data
+        if (delivery.total_delivered?.data > 0) {
+          status = 'delivered';
+          deliveryInfo.deliveredAt = Date.now();
+        } else if (delivery.bounced?.data > 0) {
+          status = 'bounced';
+          deliveryInfo.bouncedAt = Date.now();
+          deliveryInfo.error = 'Message bounced';
+        } else if (delivery.total_not_sent?.data > 0) {
+          status = 'failed';
+          deliveryInfo.failedAt = Date.now();
+          deliveryInfo.error = 'Message not sent';
+        } else if (delivery.queued?.data > 0) {
+          status = 'queued';
+        } else {
+          status = 'sent';
+        }
+        
+        // Store complete delivery report
+        deliveryInfo.deliveryReport = {
+          delivery: result.data.delivery,
+          engagement: result.data.engagement
+        };
+        
+        // Check for engagement actions
+        if (result.data.engagement) {
+          if (result.data.engagement.opted_out?.data > 0) {
+            deliveryInfo.optedOut = true;
+            deliveryInfo.optedOutAt = Date.now();
+          }
+          if (result.data.engagement.replied?.data > 0) {
+            deliveryInfo.replied = true;
+            deliveryInfo.repliedAt = Date.now();
+          }
+        }
+      }
+      
+      // Update winner record with delivery status
+      await this.updateWinnerSMSStatus(winnerId, {
+        status: status,
+        ...deliveryInfo,
+        lastChecked: Date.now()
+      });
+      
+      // If still queued or unknown, check again later
+      if (status === 'queued' || status === 'unknown') {
+        // Check again in 10 seconds for queued, 30 seconds for unknown
+        const delay = status === 'queued' ? 10000 : 30000;
+        setTimeout(() => this.checkMessageStatus(winnerId, messageId), delay);
+      }
+      
+    } catch (error) {
+      console.error('Error checking message status:', error);
+      // Try again in 30 seconds if there was an error
+      setTimeout(() => this.checkMessageStatus(winnerId, messageId), 30000);
+    }
+  }
+
+  /**
+   * Batch check message statuses for multiple winners
+   */
+  async checkAllPendingStatuses() {
+    try {
+      // Get all winners
+      const winners = await Database.getAllFromStore('winners');
+      
+      // Filter winners with pending SMS
+      const pendingWinners = winners.filter(w => 
+        w.sms?.messageId && 
+        (!w.sms.status || w.sms.status === 'queued' || w.sms.status === 'pending' || w.sms.status === 'sending')
+      );
+      
+      // Check status for each pending winner
+      for (const winner of pendingWinners) {
+        await this.checkMessageStatus(winner.id, winner.sms.messageId);
+        // Small delay between checks
+        await this.delay(100);
+      }
+      
+      return pendingWinners.length;
+    } catch (error) {
+      console.error('Error checking pending statuses:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Utility delay function
+   */
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Cancels ongoing send operation
+   */
+  cancelSending() {
+    if (this.abortController) {
+      this.abortController.abort();
+      UI.showToast('Sending cancelled', 'info');
+    }
+  }
+
+
+  /**
+   * Gets SMS sending statistics
+   */
+  async getStats() {
+    try {
+      const logs = await Database.getAllFromStore('sms_logs');
+      
+      const stats = {
+        totalSent: 0,
+        totalFailed: 0,
+        lastSent: null
+      };
+
+      logs.forEach(log => {
+        if (log.type === 'sms_bulk_send') {
+          stats.totalSent += log.results.successful;
+          stats.totalFailed += log.results.failed;
+          if (!stats.lastSent || log.timestamp > stats.lastSent) {
+            stats.lastSent = log.timestamp;
+          }
+        }
+      });
+
+      return stats;
+    } catch (error) {
+      console.error('Error getting SMS stats:', error);
+      return null;
+    }
+  }
+}
+
+// Create and export singleton instance
+export const Texting = new TextingService();
+
+// Make available globally for debugging
+window.Texting = Texting;
+
+// Simple test function
+window.testSMS = () => {
+  // Set mock current winners
+  window.setCurrentWinners([{
+    name: 'Test Winner',
+    displayName: 'Test Winner',
+    phone: '5551234567',
+    prize: 'Test Prize',
+    ticketCode: 'TEST123'
+  }]);
+  
+  // Show SMS button
+  const btn = document.getElementById('sendSMSBtn');
+  if (btn) {
+    btn.classList.remove('d-none');
+    console.log('SMS button should now be visible. Click it to test.');
+  }
+};
+

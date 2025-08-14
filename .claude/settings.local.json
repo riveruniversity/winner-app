@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "mcp__ide__executeCode",
+      "Bash(python:*)",
+      "Bash(powershell:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(diff:*)",
+      "Bash(rmdir:*)",
+      "Bash(rm:*)",
+      "Bash(for file in *.js)",
+      "Bash(do mv \"$file\" modules/)",
+      "Bash(done)",
+      "Bash(pnpm dev:*)",
+      "Bash(node_modules\\.bin\\vite:*)",
+      "Bash(npx vite:*)",
+      "Bash(rg:*)",
+      "Bash(pnpm run:*)",
+      "Bash(taskkill:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": []
+  }
+}

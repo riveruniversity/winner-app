@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>River Winner - Prize Pickup Scanner</title>
+  <!-- Meta Tags -->
+  <meta name="theme-color" content="#6366f1">
+  <meta name="description" content="Scan winner QR codes to track prize pickups">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Toastify -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/src/css/styles.css">
+  <style>
+    /* Scanner Header Override */
+    .scanner-header {
+      background: linear-gradient(135deg, #0A4f7B 0%, #5FA1F7 100%) !important;
+      border-bottom: none;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      position: relative;
+      z-index: 1000;
+      padding: 0.5rem 1rem !important;
+      min-height: 50px !important;
+      height: 50px !important;
+    }
+
+    /* Custom header buttons */
+    .header-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      line-height: 1;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .header-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.5);
+      color: white;
+      text-decoration: none;
+    }
+
+    .header-btn i {
+      font-size: 1rem;
+    }
+
+    /* Scanner-specific styles */
+    .scanner-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .qr-video-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 1;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      background: #000;
+    }
+
+    #qr-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .scanner-controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .winner-info-card {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .winner-detail-item {
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+
+    .prize-item {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .prize-item.picked-up {
+      opacity: 0.7;
+      background: #e8f5e9;
+    }
+
+    .prize-info {
+      flex: 1;
+    }
+
+    .prize-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #333;
+    }
+
+    .prize-date,
+    .pickup-date {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .scan-status {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 1.1rem;
+      color: #666;
+    }
+
+    /* QR Scanner specific styles */
+    .qr-video-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* Dark mode support */
+    [data-theme="dark"] .winner-info-card {
+      background: #2d2d2d;
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-item {
+      background: #3d3d3d;
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-item.picked-up {
+      background: #2e4a2e;
+    }
+
+    [data-theme="dark"] .prize-name {
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-date,
+    [data-theme="dark"] .pickup-date {
+      color: #ccc;
+    }
+
+    [data-theme="dark"] .card {
+      background: #2d2d2d;
+      color: #fff;
+    }
+
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0, 0, 0, .1);
+      border-radius: 50%;
+      border-top-color: #6366f1;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    /* Alert Modal Styles */
+    .alert-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .alert-modal {
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+    }
+    
+    .alert-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s infinite;
+    }
+    
+    .alert-icon i {
+      font-size: 2.5rem;
+      color: white;
+    }
+    
+    .alert-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 0.75rem;
+    }
+    
+    .alert-message {
+      font-size: 1rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    
+    .alert-code {
+      font-size: 0.9rem;
+      color: #999;
+      font-family: monospace;
+      background: #f8f9fa;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+    }
+    
+    .alert-modal .btn {
+      min-width: 140px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #0A4f7B, #5FA1F7);
+      border: none;
+      transition: all 0.3s ease;
+    }
+    
+    .alert-modal .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(10, 79, 123, 0.4);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    /* Dark mode alert styles */
+    [data-theme="dark"] .alert-modal {
+      background: #2d2d2d;
+      color: white;
+    }
+    
+    [data-theme="dark"] .alert-title {
+      color: white;
+    }
+    
+    [data-theme="dark"] .alert-message {
+      color: #ccc;
+    }
+    
+    [data-theme="dark"] .alert-code {
+      background: #1a1a1a;
+      color: #aaa;
+    }
+
+    /* Unified Winner Card Styles */
+    .winner-card-unified {
+      max-width: 700px;
+      margin: 1rem auto;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      animation: fadeInUp 0.3s ease-out;
+    }
+
+    .winner-card-unified .card-body {
+      padding: 1.5rem;
+    }
+
+    .winner-header-section {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    .winner-name-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #0A4f7B;
+      margin-bottom: 1rem;
+    }
+
+    .winner-meta-info {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      font-size: 0.95rem;
+      color: #666;
+      flex-wrap: wrap;
+    }
+
+    .winner-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .winner-meta-item i {
+      font-size: 0.9rem;
+      color: #0A4f7B;
+    }
+
+    .prizes-section {
+      margin-top: 1rem;
+    }
+
+    .prizes-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 1rem;
+    }
+
+    .prizes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .prize-item-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 1rem;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .prize-item-card:hover {
+      background: #f0f0f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .prize-item-card.picked-up {
+      background: #e8f5e9;
+      border-color: #4caf50;
+    }
+
+    .prize-item-card.picked-up::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #4caf50;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .prize-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .prize-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0;
+      flex: 1;
+    }
+
+    .prize-status-badge {
+      margin-left: 1rem;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      font-weight: 500;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 12px;
+    }
+
+    .badge.bg-warning {
+      background-color: #fff3cd !important;
+      color: #856404 !important;
+      border: 1px solid #ffeaa7;
+    }
+
+    .badge.bg-success {
+      background-color: #d4edda !important;
+      color: #155724 !important;
+      border: 1px solid #c3e6cb;
+    }
+
+    .prize-meta {
+      color: #666;
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .prize-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .prize-meta-item i {
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    .prize-actions {
+      margin-top: 0.75rem;
+    }
+
+    .pickup-btn {
+      background: #007bff;
+      border: none;
+      color: white;
+      font-weight: 500;
+      font-size: 0.9rem;
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    .pickup-btn:hover {
+      background: #0056b3;
+      transform: translateY(-1px);
+      color: white;
+    }
+
+    .pickup-btn:active {
+      transform: translateY(0);
+    }
+
+
+    /* Animation keyframe */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Dark mode adjustments */
+    [data-theme="dark"] .scanner-header {
+      background: linear-gradient(135deg, #1a1e21 0%, #2c3136 100%) !important;
+    }
+
+    [data-theme="dark"] .winner-card-unified {
+      background: #2d2d2d;
+      color: #fff;
+    }
+
+    [data-theme="dark"] .winner-card-unified .card-body {
+      background: #2d2d2d;
+      color: #fff;
+    }
+
+    [data-theme="dark"] .winner-name-title {
+      color: #5FA1F7;
+    }
+
+    [data-theme="dark"] .winner-meta-info {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    [data-theme="dark"] .winner-meta-item i {
+      color: #5FA1F7;
+    }
+
+    [data-theme="dark"] .prizes-title {
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-item-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .prize-item-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .prize-item-card.picked-up {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    [data-theme="dark"] .prize-name {
+      color: #fff;
+    }
+
+    [data-theme="dark"] .prize-meta {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="dark"] hr {
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .badge.bg-warning {
+      background-color: #664d03 !important;
+      color: #ffda6a;
+      border-color: #997404;
+    }
+
+    [data-theme="dark"] .badge.bg-success {
+      background-color: #051b11 !important;
+      color: #75b798;
+      border-color: #0f5132;
+    }
+
+    /* Mobile Optimized Design */
+    @media (max-width: 768px) {
+      .scanner-header {
+        padding: 0.4rem 0.75rem !important;
+        min-height: 48px !important;
+        height: 48px !important;
+      }
+
+      .scanner-header img {
+        width: 28px;
+      }
+
+      .header-btn {
+        padding: 0.5em 0.75rem;
+        font-size: 0.8rem;
+      }
+
+      .header-btn i {
+        font-size: 0.9rem;
+      }
+
+      .scanner-container {
+        padding: 0.75rem;
+      }
+
+      .qr-video-container {
+        max-width: min(350px, calc(100vw - 1.5rem));
+      }
+
+      .card {
+        border-radius: 12px;
+      }
+
+      .card-body {
+        padding: 1rem;
+      }
+
+      .card-title {
+        font-size: 1.1rem;
+        margin-bottom: 1rem !important;
+      }
+
+      .scanner-controls button {
+        font-size: 0.95rem;
+        padding: 0.6rem 1.2rem;
+      }
+
+      .scan-status {
+        font-size: 0.95rem;
+        margin: 1rem 0;
+      }
+
+      .input-group {
+        font-size: 0.95rem;
+      }
+
+      .form-control {
+        font-size: 0.95rem;
+        padding: 0.5rem;
+      }
+
+      .btn-outline-secondary {
+        font-size: 0.95rem;
+        padding: 0.5rem 1rem;
+      }
+    }
+
+    /* Mobile Portrait Friendly Design */
+    @media (max-width: 768px) {
+      .winner-card-unified {
+        margin: 0.5rem;
+        border-radius: 12px;
+      }
+
+      .winner-card-unified .card-body {
+        padding: 1rem;
+      }
+
+      .winner-name-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .winner-meta-info {
+        flex-direction: column;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+      }
+
+      .prizes-title {
+        font-size: 1.1rem;
+      }
+
+      .prize-item-card {
+        padding: 0.75rem;
+      }
+
+      .prize-name {
+        font-size: 1rem;
+      }
+
+      .prize-meta {
+        font-size: 0.8rem;
+      }
+
+      .pickup-btn {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <!-- Header -->
+  <div class="selection-header scanner-header">
+    <div class="d-flex align-items-center">
+      <img src="/favicon.png" width="32" class="me-2">
+    </div>
+    <div class="d-flex gap-2">
+      <button class="header-btn" id="themeToggle" title="Toggle theme">
+        <i class="bi bi-moon-fill"></i>
+      </button>
+    </div>
+  </div>
+  <!-- Main Content -->
+  <div class="container scanner-container">
+    <!-- Scanner Section -->
+    <div id="scannerSection">
+      <div class="card">
+        <div class="card-body text-center">
+          <h5 class="card-title mb-3">Scan QR Code</h5>
+          <!-- Video element for camera -->
+          <div class="qr-video-container mb-3">
+            <video id="qr-video"></video>
+          </div>
+          <!-- Scanner Status -->
+          <div class="scan-status" id="scanStatus">
+            Camera not started
+          </div>
+          <!-- Scanner Controls -->
+          <div class="scanner-controls">
+            <button class="btn btn-primary btn-lg" id="startScanBtn">
+              <i class="bi bi-camera"></i> Start Scanner
+            </button>
+            <button class="btn btn-danger btn-lg d-none" id="stopScanBtn">
+              <i class="bi bi-stop-circle"></i> Stop Scanner
+            </button>
+          </div>
+          <!-- Manual Entry Option -->
+          <div class="mt-4">
+            <p class="text-muted">Or enter ticket code manually:</p>
+            <div class="input-group">
+              <input type="text" class="form-control" id="manualTicketCode" placeholder="Enter ticket code">
+              <button class="btn btn-outline-secondary" type="button" id="manualSearchBtn">
+                <i class="bi bi-search"></i> Search
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Winner Information Section (Hidden initially) -->
+    <div id="winnerInfo" class="d-none">
+      <div class="card winner-card-unified">
+        <div class="card-body">
+          <!-- Back Button -->
+          <button class="btn btn-sm btn-outline-secondary mb-3" id="scanAnotherBtn">
+            <i class="bi bi-arrow-left"></i> Back to Scanner
+          </button>
+          
+          <!-- Winner Header Section -->
+          <div class="winner-header-section">
+            <h2 id="winnerName" class="winner-name-title"></h2>
+            <div id="winnerDetails" class="winner-meta-info"></div>
+          </div>
+          
+          <hr class="my-4">
+          
+          <!-- Prizes Section -->
+          <div class="prizes-section">
+            <h4 class="prizes-title mb-3">
+              <i class="bi bi-gift-fill me-2"></i>Prizes Won
+            </h4>
+            <div id="prizeList" class="prizes-list">
+              <!-- Prizes will be dynamically inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- No Winner Alert Modal -->
+  <div id="noWinnerAlert" class="alert-overlay d-none">
+    <div class="alert-modal">
+      <div class="alert-icon">
+        <i class="bi bi-exclamation-circle"></i>
+      </div>
+      <h4 class="alert-title">No Winner Found</h4>
+      <p class="alert-message">This QR code doesn't match any winner in our records.</p>
+      <p class="alert-code" id="alertTicketCode"></p>
+      <button class="btn btn-primary" id="dismissAlertBtn"><i class="bi bi-qr-code-scan"></i>
+                <span class="ms-2">Scan Another</span></button>
+    </div>
+  </div>
+  
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Toastify JS -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <!-- Firebase SDKs removed - using local JSON storage -->
+  <!-- QR Scanner Library -->
+  <script type="module" src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js"></script>
+  <!-- Scanner App Entry Point -->
+  <script type="module" src="./src/js/scan-app.js"></script>
+</body>
+</html>

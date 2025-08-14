@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firestore Persistent Test</title>
+</head>
+<body>
+    <h1>Testing Firestore with Persistent Data</h1>
+    <div id="status">Loading...</div>
+    <div id="results"></div>
+    <button id="addTestData">Add Test Data (will appear in Firebase console)</button>
+    <button id="loadData">Load All Data</button>
+    <button id="clearTestData">Clear Test Data</button>
+    
+    <script type="module">
+        import { Database } from './src/js/modules/firestore.js';
+        
+        const statusEl = document.getElementById('status');
+        const resultsEl = document.getElementById('results');
+        
+        document.getElementById('addTestData').onclick = async () => {
+            try {
+                const testList = {
+                    listId: 'test-list-' + Date.now(),
+                    metadata: {
+                        name: 'Test List from Firestore',
+                        timestamp: Date.now(),
+                        listId: 'test-list-' + Date.now()
+                    },
+                    entries: [
+                        { data: { name: 'John Doe', email: 'john@test.com' } },
+                        { data: { name: 'Jane Smith', email: 'jane@test.com' } }
+                    ]
+                };
+                
+                await Database.saveToStore('lists', testList);
+                resultsEl.innerHTML += '<p>✅ Test list saved with ID: ' + testList.listId + '</p>';
+                resultsEl.innerHTML += '<p>🔄 Data should appear in Firebase console within 30 seconds</p>';
+                
+                statusEl.textContent = 'Test data added - check Firebase console!';
+                statusEl.style.color = 'green';
+            } catch (error) {
+                resultsEl.innerHTML += '<p>❌ Error: ' + error.message + '</p>';
+            }
+        };
+        
+        document.getElementById('loadData').onclick = async () => {
+            try {
+                const lists = await Database.getAllFromStore('lists');
+                resultsEl.innerHTML += '<h3>Current Lists (' + lists.length + '):</h3>';
+                lists.forEach(list => {
+                    resultsEl.innerHTML += '<p>📋 ' + list.metadata.name + ' (ID: ' + list.listId + ')</p>';
+                });
+            } catch (error) {
+                resultsEl.innerHTML += '<p>❌ Error loading data: ' + error.message + '</p>';
+            }
+        };
+        
+        document.getElementById('clearTestData').onclick = async () => {
+            try {
+                const lists = await Database.getAllFromStore('lists');
+                const testLists = lists.filter(list => list.metadata.name.includes('Test List'));
+                
+                for (const list of testLists) {
+                    await Database.deleteFromStore('lists', list.listId);
+                    resultsEl.innerHTML += '<p>🗑️ Deleted test list: ' + list.listId + '</p>';
+                }
+                
+                resultsEl.innerHTML += '<p>✅ All test data cleared</p>';
+            } catch (error) {
+                resultsEl.innerHTML += '<p>❌ Error: ' + error.message + '</p>';
+            }
+        };
+        
+        // Initialize
+        try {
+            await Database.initDB();
+            statusEl.textContent = 'Ready! Click buttons to test Firestore sync.';
+            statusEl.style.color = 'blue';
+        } catch (error) {
+            statusEl.textContent = 'Error: ' + error.message;
+            statusEl.style.color = 'red';
+        }
+    </script>
+</body>
+</html>

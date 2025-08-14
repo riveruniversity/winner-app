@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Performance Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test-section { border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .progress { height: 20px; background: #f0f0f0; border-radius: 4px; margin: 10px 0; }
+        .progress-bar { height: 100%; background: #4CAF50; border-radius: 4px; transition: width 0.3s; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .results { margin-top: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Upload Performance Test</h1>
+    
+    <div class="test-section">
+        <h3>Generate Test Data</h3>
+        <label>Number of records: <input type="number" id="recordCount" value="500" min="100" max="1000"></label>
+        <small>Note: Limited to 1000 records to stay under Firestore's 1MB document limit for fair comparison</small>
+        <button onclick="generateTestData()">Generate Test CSV Data</button>
+        <div id="dataStatus"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Local-First Upload Test</h3>
+        <button onclick="testLocalFirstUpload()" id="testLocalBtn">Test Local-First Upload</button>
+        <div class="progress">
+            <div class="progress-bar" id="localProgress" style="width: 0%"></div>
+        </div>
+        <div id="localResults" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Traditional Upload Test</h3>
+        <button onclick="testTraditionalUpload()" id="testTraditionalBtn">Test Traditional Upload</button>
+        <div class="progress">
+            <div class="progress-bar" id="traditionalProgress" style="width: 0%"></div>
+        </div>
+        <div id="traditionalResults" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Performance Comparison</h3>
+        <div id="comparison" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Cleanup</h3>
+        <button onclick="clearListsCollection()" id="clearBtn" style="background: #dc3545; color: white;">Clear All Test Lists</button>
+        <div id="clearResults" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>User Experience Test</h3>
+        <p>This simulates the real CSV upload flow with data processing:</p>
+        <button onclick="testRealWorldUpload()" id="testRealBtn">Test Real-World Upload Experience</button>
+        <div class="progress">
+            <div class="progress-bar" id="realProgress" style="width: 0%"></div>
+        </div>
+        <div id="realResults" class="results"></div>
+    </div>
+    
+    <script type="module">
+        import { Database } from './src/js/modules/firestore.js';
+        import { db } from './src/js/modules/firebase.js';
+        import { doc, setDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        
+        let testData = null;
+        let performanceResults = {};
+        
+        window.generateTestData = function() {
+            const count = parseInt(document.getElementById('recordCount').value);
+            const statusEl = document.getElementById('dataStatus');
+            
+            statusEl.textContent = `Generating ${count} test records...`;
+            
+            testData = [];
+            for (let i = 0; i < count; i++) {
+                testData.push({
+                    id: `test-${i}`,
+                    name: `Test User ${i}`,
+                    email: `user${i}@test.com`,
+                    department: ['Engineering', 'Sales', 'Marketing', 'HR'][i % 4],
+                    location: ['New York', 'London', 'Tokyo', 'Sydney'][i % 4],
+                    score: Math.floor(Math.random() * 100)
+                });
+            }
+            
+            statusEl.innerHTML = `✅ Generated ${count} test records (${(JSON.stringify(testData).length / 1024 / 1024).toFixed(2)} MB)`;
+        };
+        
+        window.testLocalFirstUpload = async function() {
+            if (!testData) {
+                alert('Please generate test data first');
+                return;
+            }
+            
+            const resultsEl = document.getElementById('localResults');
+            const progressEl = document.getElementById('localProgress');
+            
+            resultsEl.innerHTML = '<div class="log">Starting TRUE local-first test...</div>';
+            
+            try {
+                // Generate fresh data for fair comparison
+                const freshData = testData.map((item, index) => ({
+                    ...item,
+                    id: `local-fresh-${Date.now()}-${index}`,
+                    timestamp: Date.now() + index
+                }));
+                
+                const listData = {
+                    listId: 'test-local-' + Date.now() + '-' + Math.random(),
+                    metadata: {
+                        listId: 'test-local-' + Date.now() + '-' + Math.random(),
+                        name: 'Local-First Test List (Fresh Data)',
+                        timestamp: Date.now(),
+                        entryCount: freshData.length
+                    },
+                    entries: freshData
+                };
+                
+                // Set up listener BEFORE initiating save to catch the sync event
+                resultsEl.innerHTML += `<div class="log">🔄 Setting up real-time listener BEFORE save...</div>`;
+                const docRef = doc(db, 'lists', listData.listId);
+                let listenerTriggered = false;
+                let userCompletionTime = 0;
+                
+                const unsubscribe = onSnapshot(docRef, (docSnapshot) => {
+                    const fromCache = docSnapshot.metadata.fromCache;
+                    const exists = docSnapshot.exists();
+                    
+                    resultsEl.innerHTML += `<div class="log">📊 Listener update: exists=${exists}, fromCache=${fromCache}</div>`;
+                    
+                    if (exists && !fromCache && !listenerTriggered) {
+                        listenerTriggered = true;
+                        // Document exists and is from server (not cache)
+                        const actualSyncTime = Date.now() - startTime;
+                        const backgroundSyncTime = actualSyncTime - userCompletionTime;
+                        
+                        resultsEl.innerHTML += `<div class="log">📡 REAL server sync completed in ${actualSyncTime}ms total</div>`;
+                        resultsEl.innerHTML += `<div class="log">🔄 Background sync took ${backgroundSyncTime}ms after user completion</div>`;
+                        resultsEl.innerHTML += `<div class="log">⚡ User experience: ${userCompletionTime}ms (${((actualSyncTime - userCompletionTime) / actualSyncTime * 100).toFixed(1)}% faster perceived performance)</div>`;
+                        
+                        // Clean up listener
+                        unsubscribe();
+                    } else if (exists && fromCache) {
+                        resultsEl.innerHTML += `<div class="log">📦 Document found in cache, waiting for server confirmation...</div>`;
+                    }
+                }, (error) => {
+                    resultsEl.innerHTML += `<div class="log">❌ Listener error: ${error.message}</div>`;
+                    unsubscribe();
+                });
+                
+                // Now initiate the save and measure user-perceived completion time
+                const startTime = Date.now();
+                resultsEl.innerHTML += '<div class="log">💾 Saving to local cache...</div>';
+                
+                await Database.saveToStore('lists', listData, {
+                    onProgress: (progress, message) => {
+                        console.log(`Progress: ${progress}% - ${message}`);
+                    }
+                });
+                
+                userCompletionTime = Date.now() - startTime;
+                
+                resultsEl.innerHTML += `<div class="log">🎉 USER SEES COMPLETION in ${userCompletionTime}ms</div>`;
+                resultsEl.innerHTML += `<div class="log">📦 Data available immediately for app use</div>`;
+                
+                // Fallback timeout in case listener doesn't trigger
+                setTimeout(() => {
+                    if (!listenerTriggered) {
+                        resultsEl.innerHTML += `<div class="log">⚠️ Listener timeout after 30s - background sync may still be in progress</div>`;
+                        resultsEl.innerHTML += `<div class="log">💡 This could indicate slow network or the fire-and-forget is working as intended</div>`;
+                        unsubscribe();
+                    }
+                }, 30000);
+                
+                progressEl.style.width = '100%';
+                performanceResults.localFirst = userCompletionTime;
+                
+                updateComparison();
+                
+            } catch (error) {
+                resultsEl.innerHTML += `<div class="log">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testTraditionalUpload = async function() {
+            if (!testData) {
+                alert('Please generate test data first');
+                return;
+            }
+            
+            const resultsEl = document.getElementById('traditionalResults');
+            const progressEl = document.getElementById('traditionalProgress');
+            
+            resultsEl.innerHTML = '<div class="log">Starting traditional upload test...</div>';
+            
+            try {
+                // Generate completely fresh data to avoid cache hits
+                const freshData = testData.map((item, index) => ({
+                    ...item,
+                    id: `traditional-fresh-${Date.now()}-${index}`,
+                    timestamp: Date.now() + index // Make each record unique
+                }));
+                
+                const listData = {
+                    listId: 'test-traditional-' + Date.now() + '-' + Math.random(),
+                    metadata: {
+                        listId: 'test-traditional-' + Date.now() + '-' + Math.random(),
+                        name: 'Traditional Test List (Fresh Data)',
+                        timestamp: Date.now(),
+                        entryCount: freshData.length
+                    },
+                    entries: freshData
+                };
+                
+                resultsEl.innerHTML += '<div class="log">📡 Using fresh data - will require full server round-trip</div>';
+                
+                const startTime = Date.now();
+                
+                // Test traditional approach: Use Database.saveToStore but await the full operation
+                // We need to create a version that waits for server response instead of fire-and-forget
+                
+                // For large lists, we need to handle sharding
+                if (listData.entries && listData.entries.length > 1000) {
+                    resultsEl.innerHTML += `<div class="log">📦 Large dataset detected - using sharding for traditional test too</div>`;
+                    
+                    // Manually implement sharding with server waits for fair comparison
+                    const entries = listData.entries;
+                    const maxEntriesPerShard = 1000;
+                    const totalShards = Math.ceil(entries.length / maxEntriesPerShard);
+                    const shardIds = [];
+                    
+                    // Create ALL shard documents (starting with shard-0)
+                    for (let shardIndex = 0; shardIndex < totalShards; shardIndex++) {
+                        const startIndex = shardIndex * maxEntriesPerShard;
+                        const endIndex = Math.min(startIndex + maxEntriesPerShard, entries.length);
+                        const shardEntries = entries.slice(startIndex, endIndex);
+                        
+                        const shardId = `${listData.listId}-shard-${shardIndex}`;
+                        const shardData = {
+                            listId: shardId,
+                            parentListId: listData.listId,
+                            shardIndex: shardIndex,
+                            metadata: {
+                                ...listData.metadata,
+                                listId: shardId,
+                                parentListId: listData.listId,
+                                isListShard: true,
+                                shardIndex: shardIndex,
+                                entriesInShard: shardEntries.length
+                            },
+                            entries: shardEntries
+                        };
+                        
+                        // Traditional approach: WAIT for each shard to complete
+                        const shardDocRef = doc(db, 'lists', shardId);
+                        await setDoc(shardDocRef, shardData, { merge: false });
+                        shardIds.push(shardId);
+                    }
+                    
+                    // Create main document with shard references - also wait
+                    const mainListData = {
+                        ...listData,
+                        entries: [], // ALWAYS empty for sharded lists
+                        isSharded: true,
+                        totalShards: totalShards,
+                        totalEntries: entries.length,
+                        shardIds: shardIds // References to shard-0, shard-1, etc.
+                    };
+                    
+                    const mainDocRef = doc(db, 'lists', listData.listId);
+                    await setDoc(mainDocRef, mainListData, { merge: false });
+                    
+                } else {
+                    // Small list - direct save
+                    const docRef = doc(db, 'lists', listData.listId);
+                    await setDoc(docRef, listData, { merge: false }); // This waits for server response
+                }
+                
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                progressEl.style.width = '100%';
+                performanceResults.traditional = duration;
+                
+                resultsEl.innerHTML += `<div class="log">✅ Traditional upload completed in ${duration}ms</div>`;
+                resultsEl.innerHTML += `<div class="log">📡 Full server round-trip completed</div>`;
+                resultsEl.innerHTML += `<div class="log">⏳ User had to wait for network response</div>`;
+                
+                // Verify the document is actually on server with listener
+                resultsEl.innerHTML += `<div class="log">🔍 Verifying data is on server...</div>`;
+                const verifyDocRef = doc(db, 'lists', listData.listId);
+                const verifyUnsubscribe = onSnapshot(verifyDocRef, (docSnapshot) => {
+                    if (docSnapshot.exists()) {
+                        const fromCache = docSnapshot.metadata.fromCache;
+                        resultsEl.innerHTML += `<div class="log">✅ Verified: Document exists on server (fromCache: ${fromCache})</div>`;
+                        verifyUnsubscribe();
+                    }
+                }, (error) => {
+                    resultsEl.innerHTML += `<div class="log">❌ Verification error: ${error.message}</div>`;
+                    verifyUnsubscribe();
+                });
+                
+                updateComparison();
+                
+            } catch (error) {
+                resultsEl.innerHTML += `<div class="log">❌ Error: ${error.message}</div>`;
+            }
+        };
+        
+        window.testRealWorldUpload = async function() {
+            if (!testData) {
+                alert('Please generate test data first');
+                return;
+            }
+            
+            const resultsEl = document.getElementById('realResults');
+            const progressEl = document.getElementById('realProgress');
+            
+            resultsEl.innerHTML = '<div class="log">🧪 Testing real-world CSV upload experience...</div>';
+            
+            // Simulate CSV parsing overhead
+            const parseStart = Date.now();
+            resultsEl.innerHTML += '<div class="log">📄 Parsing CSV data...</div>';
+            
+            // Simulate some processing time for CSV parsing
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Simulate data validation and transformation
+            resultsEl.innerHTML += '<div class="log">✅ Validating and transforming data...</div>';
+            progressEl.style.width = '25%';
+            
+            const processedData = testData.map((row, index) => ({
+                id: `processed-${index}`,
+                index: index,
+                data: row,
+                processed: true,
+                timestamp: Date.now()
+            }));
+            
+            await new Promise(resolve => setTimeout(resolve, 50));
+            progressEl.style.width = '50%';
+            
+            // Test the local-first approach (this is where user sees completion)
+            const uploadStart = Date.now();
+            resultsEl.innerHTML += '<div class="log">💾 Saving locally (user sees completion here)...</div>';
+            
+            const listData = {
+                listId: 'real-world-test-' + Date.now(),
+                metadata: {
+                    listId: 'real-world-test-' + Date.now(),
+                    name: 'Real World Test List',
+                    timestamp: Date.now(),
+                    entryCount: processedData.length,
+                    processed: true
+                },
+                entries: processedData
+            };
+            
+            await Database.saveToStore('lists', listData, {
+                onProgress: (progress, message) => {
+                    resultsEl.innerHTML += `<div class="log">📊 ${message}</div>`;
+                }
+            });
+            const userExperienceTime = Date.now() - parseStart;
+            
+            progressEl.style.width = '100%';
+            resultsEl.innerHTML += '<div class="log">🎉 UPLOAD COMPLETE - User can continue working!</div>';
+            resultsEl.innerHTML += '<div class="log">📦 Background sync to cloud continues...</div>';
+            
+            resultsEl.innerHTML += `<div class="log">⏱️ Total user-perceived time: ${userExperienceTime}ms</div>`;
+            resultsEl.innerHTML += '<div class="log">🔄 Cloud sync happens invisibly in background</div>';
+            
+            // Show the key insight
+            resultsEl.innerHTML += `
+                <div class="log" style="background: #e8f5e8; color: #2d5a2d; font-weight: bold;">
+                🚀 KEY INSIGHT: User experience is about perceived performance, not raw speed!
+                <br>- User sees instant completion and can continue working
+                <br>- No UI blocking during network operations  
+                <br>- Resilient to network issues
+                <br>- Works offline
+                </div>
+            `;
+        };
+        
+        function updateComparison() {
+            const comparisonEl = document.getElementById('comparison');
+            
+            if (performanceResults.localFirst && performanceResults.traditional) {
+                const improvement = performanceResults.localFirst < performanceResults.traditional ? 
+                    ((performanceResults.traditional - performanceResults.localFirst) / performanceResults.traditional * 100).toFixed(1) :
+                    -((performanceResults.localFirst - performanceResults.traditional) / performanceResults.traditional * 100).toFixed(1);
+                
+                const speedup = performanceResults.localFirst < performanceResults.traditional ?
+                    (performanceResults.traditional / performanceResults.localFirst).toFixed(1) :
+                    (performanceResults.localFirst / performanceResults.traditional).toFixed(1);
+                
+                const isFaster = performanceResults.localFirst < performanceResults.traditional;
+                
+                comparisonEl.innerHTML = `
+                    <div class="log">📊 Raw Performance Comparison:</div>
+                    <div class="log">Local-First: ${performanceResults.localFirst}ms</div>
+                    <div class="log">Traditional: ${performanceResults.traditional}ms</div>
+                    <div class="log">${isFaster ? '🚀' : '⚠️'} ${isFaster ? 'Local-first' : 'Traditional'} is ${speedup}x faster (${Math.abs(improvement)}% ${improvement > 0 ? 'improvement' : 'slower'})</div>
+                    <div class="log" style="background: #fff3cd; color: #856404;">
+                    💡 Note: Local-first benefits are about UX (responsiveness, offline support, resilience) not just raw speed
+                    </div>
+                `;
+            } else if (performanceResults.localFirst) {
+                comparisonEl.innerHTML = `<div class="log">Local-first: ${performanceResults.localFirst}ms (run traditional test to compare)</div>`;
+            } else if (performanceResults.traditional) {
+                comparisonEl.innerHTML = `<div class="log">Traditional: ${performanceResults.traditional}ms (run local-first test to compare)</div>`;
+            }
+        }
+        
+        // Clear all test lists from Firestore
+        window.clearListsCollection = async function() {
+            const clearResultsEl = document.getElementById('clearResults');
+            const clearBtn = document.getElementById('clearBtn');
+            
+            if (!confirm('Are you sure? This will delete ALL documents in the lists collection!')) {
+                return;
+            }
+            
+            try {
+                clearBtn.disabled = true;
+                clearBtn.textContent = 'Clearing...';
+                clearResultsEl.innerHTML = '<div class="log">🗑️ Starting to clear lists collection...</div>';
+                
+                // Get all documents in the lists collection
+                const listsRef = collection(db, 'lists');
+                const snapshot = await getDocs(listsRef);
+                
+                clearResultsEl.innerHTML += `<div class="log">📊 Found ${snapshot.size} documents to delete</div>`;
+                
+                let deletedCount = 0;
+                const deletePromises = [];
+                
+                // Delete all documents
+                snapshot.forEach((docSnapshot) => {
+                    const deletePromise = deleteDoc(doc(db, 'lists', docSnapshot.id)).then(() => {
+                        deletedCount++;
+                        clearResultsEl.innerHTML += `<div class="log">✅ Deleted ${docSnapshot.id} (${deletedCount}/${snapshot.size})</div>`;
+                    }).catch(error => {
+                        clearResultsEl.innerHTML += `<div class="log">❌ Failed to delete ${docSnapshot.id}: ${error.message}</div>`;
+                    });
+                    deletePromises.push(deletePromise);
+                });
+                
+                // Wait for all deletions to complete
+                await Promise.all(deletePromises);
+                
+                clearResultsEl.innerHTML += `<div class="log">🎉 Successfully deleted ${deletedCount} documents from lists collection</div>`;
+                clearResultsEl.innerHTML += `<div class="log">💡 You can now run clean performance tests</div>`;
+                
+            } catch (error) {
+                clearResultsEl.innerHTML += `<div class="log">❌ Error clearing collection: ${error.message}</div>`;
+            } finally {
+                clearBtn.disabled = false;
+                clearBtn.textContent = 'Clear All Test Lists';
+            }
+        };
+        
+        // Initialize database
+        await Database.initDB();
+        
+        // Generate some default test data
+        generateTestData();
+    </script>
+</body>
+</html>
