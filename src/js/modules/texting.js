@@ -3,12 +3,13 @@
  * Integrates with EZ Texting API via Netlify Functions
  */
 
-import { Database } from './firestore.js';
+import { Database } from './database.js';
 import { UI } from './ui.js';
 import { getCurrentWinners } from '../app.js';
 import { settings } from './settings.js';
 
 
+// Internal class (not exported)
 class TextingService {
   constructor() {
     this.sendingInProgress = false;
@@ -20,9 +21,8 @@ class TextingService {
    * Returns immediately after sending, doesn't wait for response
    */
   makeRequestFireAndForget(body, winnerId = null) {
-    // Detect if we're running under a subpath
-    const pathname = window.location.pathname;
-    const apiBase = pathname.startsWith('/win') ? '/win/api' : '/api';
+    // API base path - use relative path to work from any base URL
+    const apiBase = './api';
     
     // Fire the request without awaiting
     fetch(`${apiBase}/ez-texting`, {
@@ -87,9 +87,8 @@ class TextingService {
    * Makes a POST request to the EZ Texting Netlify function (awaitable)
    */
   async makeRequest(body) {
-    // Detect if we're running under a subpath
-    const pathname = window.location.pathname;
-    const apiBase = pathname.startsWith('/win') ? '/win/api' : '/api';
+    // API base path - use relative path to work from any base URL
+    const apiBase = './api';
     
     const response = await fetch(`${apiBase}/ez-texting`, {
       method: 'POST',
@@ -631,9 +630,8 @@ class TextingService {
    */
   async checkMessageStatus(winnerId, messageId) {
     try {
-      // Detect if we're running under a subpath
-      const pathname = window.location.pathname;
-      const apiBase = pathname.startsWith('/win') ? '/win/api' : '/api';
+      // API base path - use relative path to work from any base URL
+      const apiBase = './api';
       
       const response = await fetch(`${apiBase}/ez-texting`, {
         method: 'POST',
@@ -806,8 +804,21 @@ class TextingService {
   }
 }
 
-// Create and export singleton instance
-export const Texting = new TextingService();
+// Create singleton instance
+const textingInstance = new TextingService();
+
+// Export as object with methods (standard pattern)
+export const Texting = {
+  sendWinnerSMS: (winner) => textingInstance.sendWinnerSMS(winner),
+  sendBulkWinnerSMS: (winners) => textingInstance.sendBulkWinnerSMS(winners),
+  sendCurrentWinnersSMS: () => textingInstance.sendCurrentWinnersSMS(),
+  sendToCurrentWinners: () => textingInstance.sendToCurrentWinners(),  // Add the correct method
+  abortSending: () => textingInstance.abortSending(),
+  getSMSStats: (messageId) => textingInstance.getSMSStats(messageId),
+  showSMSDialog: () => textingInstance.showSMSDialog(),
+  // Expose state getters if needed
+  get sendingInProgress() { return textingInstance.sendingInProgress; }
+};
 
 // Make available globally for debugging
 window.Texting = Texting;

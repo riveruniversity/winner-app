@@ -2,7 +2,7 @@
 // SOUND FILE MANAGEMENT
 // ================================
 
-import { Database } from './firestore.js';
+import { Database } from './database.js';
 import { UI } from './ui.js';
 import { Settings } from './settings.js';
 
@@ -282,10 +282,8 @@ function testSound(soundId) {
     
     if (sound.type === 'default' || sound.type === 'uploaded') {
       // Default and uploaded sounds from public/sounds folder
-      // Path detection for /win subdirectory
-      const pathname = window.location.pathname;
-      const basePath = pathname.startsWith('/win') ? '/win' : '';
-      audioUrl = `${basePath}/sounds/${sound.filename}`;
+      // Use relative path to work from any base URL
+      audioUrl = `./sounds/${sound.filename}`;
     } else {
       // Custom sounds from base64 data
       const blob = base64ToBlob(sound.data);
@@ -405,10 +403,8 @@ function getSoundUrl(soundId) {
   if (!sound) return null;
   
   if (sound.type === 'default' || sound.type === 'uploaded') {
-    // Path detection for /win subdirectory
-    const pathname = window.location.pathname;
-    const basePath = pathname.startsWith('/win') ? '/win' : '';
-    return `${basePath}/sounds/${sound.filename}`;
+    // Use relative path to work from any base URL
+    return `./sounds/${sound.filename}`;
   } else {
     const blob = base64ToBlob(sound.data);
     return URL.createObjectURL(blob);

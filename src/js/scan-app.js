@@ -1,5 +1,5 @@
 // Scan App - Entry point for the QR scanner page
-import { Database } from './modules/firestore.js';
+import { Database } from './modules/database.js';
 import { Settings } from './modules/settings.js';
 import { UI } from './modules/ui.js';
 import { QRScanner } from './modules/qr-scanner.js';

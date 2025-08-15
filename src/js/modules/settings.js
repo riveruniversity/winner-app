@@ -2,11 +2,11 @@
 // SETTINGS & THEMES
 // ================================
 
-import { Database } from './firestore.js';
+import { Database } from './database.js';
 import { UI } from './ui.js';
 
-// Application settings with defaults
-export let settings = {
+// Application settings with defaults (internal - access via Settings.data)
+let settings = {
   preventDuplicates: false,
   hideEntryCounts: false,
   enableDebugLogs: false,
@@ -295,7 +295,7 @@ function loadSettingsToForm() {
 }
 
 // Update available SMS placeholders based on selected list
-export function updateSMSPlaceholders() {
+function updateSMSPlaceholders() {
   const placeholdersContainer = document.querySelector('#smsTemplate')?.parentElement?.querySelector('.form-text');
   if (!placeholdersContainer) {
     console.log('SMS placeholders container not found');
@@ -1143,7 +1143,13 @@ function debugLog(message, ...args) {
   }
 }
 
+// Single export with both data and methods
 export const Settings = {
+  // Settings data object - access via Settings.data
+  get data() { return settings; },
+  set data(newSettings) { Object.assign(settings, newSettings); },
+  
+  // All methods
   saveSettings,
   saveSingleSetting,
   saveMultipleSettings,
@@ -1169,8 +1175,16 @@ export const Settings = {
   setupAllSettingsAutoSave,
   setupSMSTemplateCounter,
   updateSMSPlaceholders,
-  updateSettings: function(newSettings) { Object.assign(settings, newSettings); }, // Added for external updates
-  debugLog // Export debug logging function
+  updateSettings: function(newSettings) { Object.assign(settings, newSettings); },
+  debugLog,
+  
+  // Direct access to specific settings (for backward compatibility)
+  get(key) { return settings[key]; },
+  set(key, value) { settings[key] = value; }
 };
+
+// Backward compatibility export - will be removed in future
+// Export getter that returns the internal settings object
+export { settings };
 
 window.Settings = Settings;

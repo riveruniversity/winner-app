@@ -24,13 +24,20 @@ echo -e "${YELLOW}Step 2: Stopping existing container (if any)...${NC}"
 docker stop winner-app 2>/dev/null
 docker rm winner-app 2>/dev/null
 
+# Create data directory if it doesn't exist
+if [ ! -d "./data" ]; then
+    echo -e "${YELLOW}Creating data directory...${NC}"
+    mkdir -p ./data
+    chmod 755 ./data
+fi
+
 # Run the container
 echo -e "${YELLOW}Step 3: Starting new container...${NC}"
 docker run -d \
     --name winner-app \
     --restart unless-stopped \
     -p 3001:3001 \
-    -v winner-data:/app/data \
+    -v "$(pwd)/data:/app/data" \
     winner-app:latest
 
 if [ $? -eq 0 ]; then

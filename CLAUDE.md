@@ -1,7 +1,7 @@
 # 🎉 River Winner App - Comprehensive Project Summary
 
 ## 📋 Project Overview
-**River Winner App** is a professional Progressive Web Application (PWA) for random winner selection at events, presentations, and contests. Built with a local-first architecture using Firebase Firestore for cloud sync, it provides an engaging, visually appealing platform for managing participant lists, selecting winners, and tracking prizes.
+**River Winner App** is a professional Progressive Web Application (PWA) for random winner selection at events, presentations, and contests. Originally built with Firebase, it has been refactored to use a local Node.js/Express backend with JSON file storage. The app is containerized with Docker and deployed at tickets.revival.com/win.
 
 ## 🏗️ Architecture & Technology Stack
 
@@ -11,11 +11,12 @@
 - **Vanilla JavaScript modules** (ES6+) for application logic
 - **Service Worker** for offline functionality and PWA features
 
-### Database & Storage
-- **Firebase Firestore** with offline persistence for cloud sync
-- **IndexedDB** for local-first data storage
-- **Local Storage** for settings and preferences
-- **Fire-and-forget architecture** for optimal performance
+### Backend & Storage
+- **Node.js/Express** backend server
+- **JSON file storage** in /app/data directory
+- **Batch API operations** for efficient data sync
+- **Docker containerization** with multi-stage builds
+- **Nginx reverse proxy** at /win path
 
 ### Key Technologies
 - **QR Code Scanner** for prize pickup tracking
@@ -219,11 +220,8 @@ npm run preview    # Preview production build
 
 ### Core Modules
 
-#### **firebase.js** - Firebase Configuration
-Initializes Firebase services and database connection. Configures the Firebase app with environment variables, initializes Firestore, and enables offline persistence for local-first functionality.
-
-#### **firestore.js** - Database Management
-Core database service providing comprehensive local-first data management. Handles document storage, retrieval, and deletion with automatic sharding for large lists, cache-first loading with background sync, and fire-and-forget operations.
+#### **firestore.js** - Database Management  
+Core database service that replaced Firebase with a local Express backend. Provides REST API calls to the server for data operations, batch operations for efficiency, and automatic path detection for /win subdirectory deployment.
 
 #### **ui.js** - User Interface Utilities
 Essential UI helper functions including toast notifications, progress indicators, confirmation modals, and form population. Manages quick selection dropdowns and maintains UI synchronization.
@@ -302,9 +300,38 @@ The original algorithm had several problems:
 - ✅ No clustering or pattern biases
 - ✅ Cryptographically secure randomness when available
 
+#### **texting.js** - SMS Integration
+Handles SMS messaging through EZ Texting API. Sends winner notifications, tracks delivery status, and provides batch SMS operations for multiple winners.
+
+#### **reports.js** - Giveaway Reports Integration
+Integrates with the Giveaway Reports API to import attendee lists directly. Fetches CSV data from reports, parses and imports as lists, and allows field configuration through CSV dialog.
+
+## 🚀 Recent Updates (August 2025)
+
+### Infrastructure Changes
+- **Removed Firebase dependency** - Migrated from Firebase to local Express backend
+- **Docker containerization** - Multi-stage Docker build for production deployment
+- **Route migration** - Changed all routes from `/testwin` to `/win`
+- **Nginx configuration** - Updated reverse proxy settings for new routing
+
+### Performance Optimizations
+- **Batch operations** - Reduced database queries by batching operations
+- **Settings optimization** - Fixed issue where selecting lists/prizes triggered 20+ settings saves
+- **Single setting updates** - Changed from `saveSettings()` to `saveSingleSetting()` for efficiency
+
+### Feature Additions
+- **Giveaway Reports integration** - Added "Add from Report" button to import attendee lists
+- **CSV field configuration** - Report imports now use CSV configuration dialog
+- **Order ID display** - Winners table now shows Order ID instead of internal winner ID
+
+### Bug Fixes
+- **Undo functionality** - Fixed race condition where prize selection was cleared after undo
+- **SMS status tracking** - Corrected field names for proper status checking
+- **Prize quantity restoration** - Ensured quantities are properly restored during undo
+
 ## 📝 Summary
-The River Winner App is a comprehensive, production-ready PWA that combines modern web technologies with thoughtful UX design to create an engaging winner selection platform. Its local-first architecture ensures lightning-fast performance, while Firebase integration provides reliable cloud sync. The modular codebase, extensive feature set, and professional UI make it suitable for a wide range of professional environments and use cases.
+The River Winner App has evolved from a Firebase-based PWA to a containerized, self-hosted solution with local data storage. The refactoring removed external dependencies while maintaining all features and improving performance through batch operations and optimized state management. The app is now deployed at tickets.revival.com/win with full Docker containerization and nginx reverse proxy configuration.
 
 ---
-*Generated on: November 7, 2025*
-*Last Updated: December 2024 - Improved randomization algorithm and confetti animation fixes*
+*Generated on: November 7, 2024*
+*Last Updated: August 14, 2025 - Major refactoring to remove Firebase, Docker containerization, and route migration*

@@ -2,7 +2,7 @@
 // MAIN APPLICATION LOGIC
 // ================================
 
-import { Database } from './modules/firestore.js';
+import { Database } from './modules/database.js';
 import { Settings, settings } from './modules/settings.js';
 import { UI } from './modules/ui.js';
 import { Lists } from './modules/lists.js';

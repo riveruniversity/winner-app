@@ -98,16 +98,16 @@ function getKeyField(collection) {
   return keyFields[collection] || 'id';
 }
 
-// Health check endpoints (must be before generic routes)
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-});
-app.get('/testwin/api/health', (req, res) => {
+// Create API router for all API endpoints
+const apiRouter = express.Router();
+
+// Health check endpoint
+apiRouter.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 // Batch endpoint for fetching multiple collections at once
-app.post(['/api/batch', '/win/api/batch'], async (req, res) => {
+apiRouter.post('/batch', async (req, res) => {
   try {
     const { requests } = req.body;
     if (!Array.isArray(requests)) {
@@ -143,7 +143,7 @@ app.post(['/api/batch', '/win/api/batch'], async (req, res) => {
 });
 
 // Batch save endpoint for saving multiple documents at once (atomic)
-app.post(['/api/batch-save', '/win/api/batch-save'], async (req, res) => {
+apiRouter.post('/batch-save', async (req, res) => {
   try {
     const { operations } = req.body;
     if (!Array.isArray(operations)) {
@@ -209,8 +209,8 @@ app.post(['/api/batch-save', '/win/api/batch-save'], async (req, res) => {
   }
 });
 
-// Support both /api and /win/api paths
-app.get(['/api/:collection', '/win/api/:collection'], async (req, res) => {
+// Collection routes
+apiRouter.get('/:collection', async (req, res) => {
   try {
     const { collection } = req.params;
     const data = await readCollection(collection);
@@ -256,7 +256,7 @@ app.get(['/api/:collection', '/win/api/:collection'], async (req, res) => {
   }
 });
 
-app.get(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) => {
+apiRouter.get('/:collection/:id', async (req, res) => {
   try {
     const { collection, id } = req.params;
     const data = await readCollection(collection);
@@ -302,7 +302,7 @@ app.get(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) =
 });
 
 // EZ Texting API endpoint - MUST come before generic collection routes
-app.post(['/api/ez-texting', '/win/api/ez-texting'], async (req, res) => {
+apiRouter.post('/ez-texting', async (req, res) => {
   // Log only in development mode
   if (process.env.NODE_ENV !== 'production') {
     console.log('EZ Texting endpoint called:', req.body.action);
@@ -433,7 +433,7 @@ app.post(['/api/ez-texting', '/win/api/ez-texting'], async (req, res) => {
   }
 });
 
-app.post(['/api/:collection', '/win/api/:collection'], async (req, res) => {
+apiRouter.post('/:collection', async (req, res) => {
   try {
     const { collection } = req.params;
     const newItem = req.body;
@@ -527,7 +527,7 @@ app.post(['/api/:collection', '/win/api/:collection'], async (req, res) => {
   }
 });
 
-app.put(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) => {
+apiRouter.put('/:collection/:id', async (req, res) => {
   try {
     const { collection, id } = req.params;
     const updateData = req.body;
@@ -550,7 +550,7 @@ app.put(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) =
   }
 });
 
-app.delete(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) => {
+apiRouter.delete('/:collection/:id', async (req, res) => {
   try {
     const { collection, id } = req.params;
     const keyField = getKeyField(collection);
@@ -584,260 +584,18 @@ app.delete(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res
   }
 });
 
-// Testwin API routes (duplicate of main API routes)
-app.get('/win/api/:collection', async (req, res) => {
-  try {
-    const { collection } = req.params;
-    const data = await readCollection(collection);
-    
-    if (collection === 'lists') {
-      const reconstructed = [];
-      const processedIds = new Set();
-      
-      for (const item of data) {
-        if (processedIds.has(item.listId) || item.metadata?.isListShard) {
-          continue;
-        }
-        
-        if (item.isSharded) {
-          const allEntries = [];
-          for (const shardId of item.shardIds || []) {
-            const shard = data.find(d => d.listId === shardId);
-            if (shard && shard.entries) {
-              allEntries.push(...shard.entries);
-            }
-          }
-          reconstructed.push({
-            ...item,
-            entries: allEntries,
-            metadata: {
-              ...item.metadata,
-              reconstructed: true
-            }
-          });
-        } else {
-          reconstructed.push(item);
-        }
-        processedIds.add(item.listId);
-      }
-      
-      res.json(reconstructed);
-    } else {
-      res.json(data);
-    }
-  } catch (error) {
-    console.error('Error in GET /testwin/:collection:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/win/api/:collection/:id', async (req, res) => {
-  try {
-    const { collection, id } = req.params;
-    const data = await readCollection(collection);
-    const keyField = getKeyField(collection);
-    
-    if (collection === 'lists') {
-      const item = data.find(d => d[keyField] === id);
-      
-      if (!item) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      
-      if (item.isSharded) {
-        const allEntries = [];
-        for (const shardId of item.shardIds || []) {
-          const shard = data.find(d => d.listId === shardId);
-          if (shard && shard.entries) {
-            allEntries.push(...shard.entries);
-          }
-        }
-        res.json({
-          ...item,
-          entries: allEntries,
-          metadata: {
-            ...item.metadata,
-            reconstructed: true
-          }
-        });
-      } else {
-        res.json(item);
-      }
-    } else {
-      const item = data.find(d => d[keyField] === id);
-      if (!item) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      res.json(item);
-    }
-  } catch (error) {
-    console.error('Error in GET /testwin/:collection/:id:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/win/api/:collection', async (req, res) => {
-  try {
-    const { collection } = req.params;
-    const newItem = req.body;
-    const keyField = getKeyField(collection);
-    
-    if (!newItem[keyField]) {
-      newItem[keyField] = uuidv4();
-    }
-    
-    const data = await readCollection(collection);
-    
-    if (collection === 'lists' && newItem.entries && newItem.entries.length > 1000) {
-      const entries = newItem.entries;
-      const maxEntriesPerShard = 1000;
-      const baseListId = newItem.listId;
-      const totalShards = Math.ceil(entries.length / maxEntriesPerShard);
-      const shardIds = [];
-      
-      for (let shardIndex = 0; shardIndex < totalShards; shardIndex++) {
-        const startIndex = shardIndex * maxEntriesPerShard;
-        const endIndex = Math.min(startIndex + maxEntriesPerShard, entries.length);
-        const shardEntries = entries.slice(startIndex, endIndex);
-        
-        const shardId = `${baseListId}-shard-${shardIndex}`;
-        const shardData = {
-          listId: shardId,
-          parentListId: baseListId,
-          shardIndex: shardIndex,
-          metadata: {
-            ...newItem.metadata,
-            listId: shardId,
-            parentListId: baseListId,
-            isListShard: true,
-            shardIndex: shardIndex,
-            entriesInShard: shardEntries.length
-          },
-          entries: shardEntries
-        };
-        
-        data.push(shardData);
-        shardIds.push(shardId);
-      }
-      
-      const mainListData = {
-        ...newItem,
-        entries: [],
-        isSharded: true,
-        totalShards: totalShards,
-        totalEntries: entries.length,
-        shardIds: shardIds
-      };
-      
-      const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
-      if (existingIndex >= 0) {
-        const oldItem = data[existingIndex];
-        if (oldItem.isSharded && oldItem.shardIds) {
-          for (const oldShardId of oldItem.shardIds) {
-            const shardIndex = data.findIndex(d => d.listId === oldShardId);
-            if (shardIndex >= 0) {
-              data.splice(shardIndex, 1);
-            }
-          }
-        }
-        data[existingIndex] = mainListData;
-      } else {
-        data.push(mainListData);
-      }
-    } else {
-      if (collection === 'settings') {
-        const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
-        if (existingIndex >= 0) {
-          data[existingIndex] = { ...data[existingIndex], ...newItem };
-        } else {
-          data.push(newItem);
-        }
-      } else {
-        const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
-        if (existingIndex >= 0) {
-          data[existingIndex] = newItem;
-        } else {
-          data.push(newItem);
-        }
-      }
-    }
-    
-    await writeCollection(collection, data);
-    res.json({ success: true, id: newItem[keyField] });
-  } catch (error) {
-    console.error('Error in POST /testwin/:collection:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put('/win/api/:collection/:id', async (req, res) => {
-  try {
-    const { collection, id } = req.params;
-    const updateData = req.body;
-    const keyField = getKeyField(collection);
-    
-    const data = await readCollection(collection);
-    const index = data.findIndex(d => d[keyField] === id);
-    
-    if (index === -1) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    
-    data[index] = { ...data[index], ...updateData };
-    await writeCollection(collection, data);
-    
-    res.json({ success: true, data: data[index] });
-  } catch (error) {
-    console.error('Error in PUT /testwin/:collection/:id:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete('/win/api/:collection/:id', async (req, res) => {
-  try {
-    const { collection, id } = req.params;
-    const keyField = getKeyField(collection);
-    
-    const data = await readCollection(collection);
-    
-    if (collection === 'lists') {
-      const item = data.find(d => d[keyField] === id);
-      if (item && item.isSharded && item.shardIds) {
-        for (const shardId of item.shardIds) {
-          const shardIndex = data.findIndex(d => d.listId === shardId);
-          if (shardIndex >= 0) {
-            data.splice(shardIndex, 1);
-          }
-        }
-      }
-    }
-    
-    const index = data.findIndex(d => d[keyField] === id);
-    if (index === -1) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    
-    data.splice(index, 1);
-    await writeCollection(collection, data);
-    
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error in DELETE /testwin/:collection/:id:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/testwin/api/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-});
+// Mount the API router at both /api and /win/api for flexibility
+// This allows the app to work from any base path
+app.use('/api', apiRouter);
+app.use('/win/api', apiRouter);
 
 // Route for scanner page
 app.get('/scan', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'scan.html'));
 });
 
-// Route for /testwin/scan
-app.get('/testwin/scan', (req, res) => {
+// Route for /win/scan
+app.get('/win/scan', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'scan.html'));
 });
 
@@ -846,19 +604,19 @@ app.get('/conditions', (req, res) => {
   res.sendFile(path.join(__dirname, 'conditions.html'));
 });
 
-// Route for /testwin/conditions
-app.get('/testwin/conditions', (req, res) => {
+// Route for /win/conditions
+app.get('/win/conditions', (req, res) => {
   res.sendFile(path.join(__dirname, 'conditions.html'));
 });
 
-// Handle testwin routes
-app.get('/testwin/*', (req, res) => {
+// Handle win routes
+app.get('/win/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-// Catch-all route for SPA - handle both root and /testwin paths
+// Catch-all route for SPA - handle both root and /win paths
 app.get('*', (req, res) => {
-  // For /testwin paths, still serve the same index.html
+  // For /win paths, still serve the same index.html
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 

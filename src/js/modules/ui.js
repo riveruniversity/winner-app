@@ -6,7 +6,7 @@
 // UI UTILITIES & MODALS
 // ================================
 
-import { Database } from './firestore.js';
+import { Database } from './database.js';
 import { settings } from './settings.js'; // Import settings directly
 
 function generateId(length = 10) {

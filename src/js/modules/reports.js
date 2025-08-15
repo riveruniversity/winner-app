@@ -2,7 +2,7 @@
 // GIVEAWAY REPORTS IMPORT MODULE
 // ================================
 
-import { Database } from './firestore.js';
+import { Database } from './database.js';
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 
