@@ -9,8 +9,6 @@ services:
     ports:
       - "3001:3001"  # Map container port to host port
     volumes:
-      # Persist data directory
-      - winner-data:/app/data
       # Optional: Mount local data direcuse tory for easy backup
       - ./data:/app/data
     env_file:
@@ -24,7 +22,3 @@ services:
       timeout: 3s
       retries: 3
       start_period: 40s
-
-volumes:
-  winner-data:
-    driver: local
