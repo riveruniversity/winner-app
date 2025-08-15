@@ -172,10 +172,21 @@
                 <!-- Main Selection Controls in a Row -->
                 <div class="row g-3">
                   <div class="col-md-5">
-                    <label class="form-label fw-semibold">Select List</label>
-                    <select class="form-select form-select-lg" id="quickListSelect">
-                      <option value="">Select List...</option>
-                    </select>
+                    <label class="form-label fw-semibold">Select Lists</label>
+                    <div class="list-selection-container">
+                      <div class="list-selection-controls mb-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllLists">Select All</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAllLists">Clear All</button>
+                        <span class="ms-2 text-muted" id="selectedListsCount">0 lists selected</span>
+                      </div>
+                      <div class="list-checkboxes border rounded p-2" id="quickListSelect" style="max-height: 200px; overflow-y: auto;">
+                        <!-- Checkboxes will be added here dynamically -->
+                      </div>
+                      <div class="mt-2">
+                        <small class="text-muted">Total entries: <span id="totalSelectedEntries">0</span></small>
+                        <small class="text-muted ms-2" id="duplicatesRemoved"></small>
+                      </div>
+                    </div>
                   </div>
                   <div class="col-md-5">
                     <label class="form-label fw-semibold">Select Prize</label>
@@ -415,6 +426,31 @@
                 </button>
               </div>
             </div>
+            
+            <!-- Multi-select controls -->
+            <div class="alert alert-info mb-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <i class="bi bi-info-circle me-2"></i>
+                  <span id="selectedListsInfo">Select multiple lists to use for giveaways</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <button type="button" class="btn btn-outline-primary" id="selectAllListsTab">
+                    <i class="bi bi-check-square me-1"></i>Select All
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" id="clearAllListsTab">
+                    <i class="bi bi-square me-1"></i>Clear All
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2">
+                <small class="text-muted">
+                  <span id="selectedListsCountTab">0 lists selected</span> | 
+                  <span id="totalEntriesCountTab">0 total entries</span>
+                </small>
+              </div>
+            </div>
+            
             <!-- Lists Grid -->
             <div class="row g-4" id="listsGrid">
               <!-- List cards will be displayed here in grid format -->

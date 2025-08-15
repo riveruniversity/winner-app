@@ -47,34 +47,41 @@ async function loadLists(listsData = null) {
 
     const listCards = lists.map(list => {
       const listId = list.listId || list.metadata.listId;
-      const isSelected = settings.selectedListId === listId;
+      // Check if this list is in the selectedListIds array
+      const isSelected = settings.selectedListIds && settings.selectedListIds.includes(listId);
+      const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
       
       return `
       <div class="col-md-6 col-lg-4">
-        <div class="card h-100 ${isSelected ? 'border-success border-2' : ''}">
+        <div class="card h-100 list-card-selectable ${isSelected ? 'border-success border-2' : ''}" 
+             data-list-id="${listId}"
+             data-entry-count="${entryCount}"
+             style="cursor: pointer;">
           <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
             <div class="d-flex justify-content-between align-items-center">
-              <h5 class="card-title mb-0">${list.metadata.name}</h5>
+              <h6 class="card-title mb-0">${list.metadata.name}</h6>
               <div>
-                ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i> Selected</span>' : ''}
-                <span class="badge bg-primary">${list.entries.length}</span>
+                ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i></span>' : ''}
+                <span class="badge ${isSelected ? 'bg-primary' : 'bg-secondary'}">${entryCount}</span>
               </div>
             </div>
           </div>
           <div class="card-body d-flex flex-column">
-            <p class="card-text text-muted small">Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}</p>
+            <p class="card-text text-muted small">
+              Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
+            </p>
             <div class="mt-auto pt-3">
               <div class="d-flex justify-content-between">
-                <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
-                        onclick="Lists.selectList('${listId}')" 
-                        ${isSelected ? 'disabled' : ''}>
+                <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'} select-btn" 
+                        data-list-id="${listId}"
+                        onclick="event.stopPropagation(); Lists.toggleListSelection('${listId}')">
                   <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
                 </button>
                 <div>
-                  <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${listId}')">
+                  <button class="btn btn-sm btn-outline-primary me-2" onclick="event.stopPropagation(); Lists.viewList('${listId}')">
                     <i class="bi bi-eye"></i> View
                   </button>
-                  <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${listId}')">
+                  <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); Lists.deleteListConfirm('${listId}')">
                     <i class="bi bi-trash"></i> Delete
                   </button>
                 </div>
@@ -88,6 +95,9 @@ async function loadLists(listsData = null) {
 
     if (gridContainer) {
       gridContainer.innerHTML = listCards;
+      // Add event listeners after rendering
+      setupListCardClickListeners();
+      updateListTabSelectionInfo();
     } else if (oldContainer) {
       // Fallback for old container
       oldContainer.innerHTML = lists.map(list => {
@@ -434,6 +444,132 @@ async function selectList(listId) {
   }
 }
 
+// Toggle list selection from button
+async function toggleListSelection(listId) {
+  const currentSelectedIds = settings.selectedListIds || [];
+  const isSelected = currentSelectedIds.includes(listId);
+  
+  if (isSelected) {
+    // Deselect - remove from array
+    const index = currentSelectedIds.indexOf(listId);
+    if (index > -1) {
+      currentSelectedIds.splice(index, 1);
+    }
+  } else {
+    // Select - add to array
+    currentSelectedIds.push(listId);
+  }
+  
+  // Save updated selection
+  settings.selectedListIds = currentSelectedIds;
+  await saveSelectedLists();
+  
+  // Reload the lists to update UI
+  await loadLists();
+  await UI.populateQuickSelects();
+}
+
+// Setup listeners for the Lists tab
+function setupListCardClickListeners() {
+  // Add click and hover handlers for cards
+  const cards = document.querySelectorAll('.list-card-selectable');
+  cards.forEach(card => {
+    // Click handler for the whole card
+    card.addEventListener('click', async (e) => {
+      // Don't toggle if clicking on buttons
+      if (e.target.closest('.btn')) return;
+      
+      const listId = card.dataset.listId;
+      await toggleListSelection(listId);
+    });
+    
+    // Hover effects
+    card.addEventListener('mouseenter', () => {
+      if (!card.classList.contains('border-success')) {
+        card.style.transform = 'scale(1.02)';
+        card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+      }
+    });
+    
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'scale(1)';
+      card.style.boxShadow = '';
+    });
+  });
+  
+  // Setup Select All/Clear All buttons
+  const selectAllBtn = document.getElementById('selectAllListsTab');
+  const clearAllBtn = document.getElementById('clearAllListsTab');
+  
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', async () => {
+      const allListIds = [];
+      document.querySelectorAll('.list-card-selectable').forEach(card => {
+        allListIds.push(card.dataset.listId);
+      });
+      
+      settings.selectedListIds = allListIds;
+      await saveSelectedLists();
+      await loadLists();
+      await UI.populateQuickSelects();
+    });
+  }
+  
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', async () => {
+      settings.selectedListIds = [];
+      await saveSelectedLists();
+      await loadLists();
+      await UI.populateQuickSelects();
+    });
+  }
+}
+
+// Alias for backward compatibility
+const setupListCheckboxListeners = setupListCardClickListeners;
+
+// Update selection info in Lists tab
+function updateListTabSelectionInfo() {
+  const selectedIds = settings.selectedListIds || [];
+  const totalCards = document.querySelectorAll('.list-card-selectable');
+  
+  let totalEntries = 0;
+  selectedIds.forEach(listId => {
+    const card = document.querySelector(`.list-card-selectable[data-list-id="${listId}"]`);
+    if (card) {
+      totalEntries += parseInt(card.dataset.entryCount || 0);
+    }
+  });
+  
+  // Update displays
+  const countElement = document.getElementById('selectedListsCountTab');
+  const entriesElement = document.getElementById('totalEntriesCountTab');
+  
+  if (countElement) {
+    countElement.textContent = `${selectedIds.length} of ${totalCards.length} lists selected`;
+  }
+  
+  if (entriesElement) {
+    entriesElement.textContent = `${totalEntries.toLocaleString()} total entries`;
+  }
+}
+
+// Save selected lists to settings
+async function saveSelectedLists() {
+  const selectedIds = settings.selectedListIds || [];
+  
+  // Update settings
+  settings.selectedListIds = selectedIds;
+  
+  // Save to database
+  if (Settings && Settings.saveSingleSetting) {
+    await Settings.saveSingleSetting('selectedListIds', selectedIds);
+  }
+  
+  // Also update the quick select checkboxes to stay in sync
+  await UI.populateQuickSelects();
+}
+
 // 3. Export the functions you want to be public
 export const Lists = {
   loadLists,
@@ -442,7 +578,11 @@ export const Lists = {
   deleteListConfirm,
   deleteListEntry,
   formatDisplayName,
-  selectList
+  selectList,
+  toggleListSelection,
+  setupListCardClickListeners,
+  setupListCheckboxListeners,  // Alias for backward compatibility
+  updateListTabSelectionInfo
 };
 
 // 4. Assign to window for legacy inline `onclick` handlers to work during transition

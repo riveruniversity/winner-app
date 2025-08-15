@@ -16,7 +16,8 @@ let settings = {
   secondaryColor: '#8b5cf6',
   backgroundType: 'gradient',
   customBackgroundImage: null,
-  selectedListId: '',
+  selectedListId: '', // Legacy single selection
+  selectedListIds: [], // New multiple selection
   selectedPrizeId: '',
   winnersCount: 1,
   enableWebhook: false,
@@ -52,10 +53,10 @@ async function saveSingleSetting(key, value) {
     const settingToSave = { key, value };
     await Database.saveToStore('settings', settingToSave);
     
-    debugLog(`Single setting saved: ${key} = ${value}`);
+    debugLog(`Single setting saved: ${key} = ${JSON.stringify(value)}`);
   } catch (error) {
     console.error(`Error saving single setting ${key}:`, error);
-    throw error;
+    // Don't throw error for settings save - just log it
   }
 }
 
@@ -111,7 +112,8 @@ async function handleSaveSettings() {
     };
 
     const selectionState = {
-      selectedListId: document.getElementById('quickListSelect')?.value || settings.selectedListId,
+      // Get selected list IDs from checkboxes
+      selectedListIds: Array.from(document.querySelectorAll('#quickListSelect .list-checkbox:checked')).map(cb => cb.value) || settings.selectedListIds,
       selectedPrizeId: document.getElementById('quickPrizeSelect')?.value || settings.selectedPrizeId,
       winnersCount: parseInt(document.getElementById('quickWinnersCount')?.value) || settings.winnersCount,
       selectionMode: document.getElementById('selectionMode')?.value || settings.selectionMode,
@@ -219,13 +221,9 @@ function loadSettingsToForm() {
     }
   }
 
-  const quickListSelect = document.getElementById('quickListSelect');
+  // Note: quickListSelect is now handled in UI.populateQuickSelects for checkboxes
   const quickPrizeSelect = document.getElementById('quickPrizeSelect');
   const quickWinnersCount = document.getElementById('quickWinnersCount');
-
-  if (quickListSelect && settings.selectedListId) {
-    quickListSelect.value = settings.selectedListId;
-  }
   if (quickPrizeSelect && settings.selectedPrizeId) {
     quickPrizeSelect.value = settings.selectedPrizeId;
   }
@@ -307,10 +305,12 @@ function updateSMSPlaceholders() {
   
   // Try to get the selected list's fields
   const quickListSelect = document.getElementById('quickListSelect');
-  if (quickListSelect && quickListSelect.value) {
-    console.log('Loading list for placeholders:', quickListSelect.value);
+  // Get the first selected checkbox since we're now using checkboxes
+  const firstSelectedCheckbox = quickListSelect?.querySelector('.list-checkbox:checked');
+  if (firstSelectedCheckbox && firstSelectedCheckbox.value) {
+    console.log('Loading list for placeholders:', firstSelectedCheckbox.value);
     // Get the selected list from the database
-    Database.getFromStore('lists', quickListSelect.value).then(list => {
+    Database.getFromStore('lists', firstSelectedCheckbox.value).then(list => {
       console.log('List loaded:', list);
       if (list && list.entries && list.entries.length > 0) {
         // Get all unique field names from the first entry
@@ -1022,6 +1022,19 @@ function setupQuickSetupAutoSave() {
         }
       }
       
+      // Update UI when winner count or prize changes
+      if (fieldId === 'quickWinnersCount' || fieldId === 'quickPrizeSelect') {
+        const updateUIHandler = () => {
+          if (UI && UI.updateSelectionInfo) {
+            UI.updateSelectionInfo();
+          }
+        };
+        field.addEventListener('input', updateUIHandler);
+        field.addEventListener('change', updateUIHandler);
+        newListeners.push({ event: 'input', handler: updateUIHandler });
+        newListeners.push({ event: 'change', handler: updateUIHandler });
+      }
+      
       // Store the listeners for this field
       quickSetupListeners.set(fieldId, newListeners);
       
@@ -1081,47 +1094,19 @@ function debounce(func, wait) {
 
 // Update UI displays when quick selection fields change
 function updateQuickSelectionUI() {
-  const quickListSelect = document.getElementById('quickListSelect');
-  const quickPrizeSelect = document.getElementById('quickPrizeSelect');
-  const quickWinnersCount = document.getElementById('quickWinnersCount');
-
-  if (!quickListSelect || !quickPrizeSelect || !quickWinnersCount) return;
-
-  const listOption = quickListSelect.options[quickListSelect.selectedIndex];
-  const prizeOption = quickPrizeSelect.options[quickPrizeSelect.selectedIndex];
-
-  const listText = listOption ? listOption.textContent.split(' (')[0] : 'Not Selected';
-  const prizeText = prizeOption ? prizeOption.textContent.split(' (')[0] : 'Not Selected';
-
-  // Update display elements
-  const currentListDisplay = document.getElementById('currentListDisplay');
-  const currentPrizeDisplay = document.getElementById('currentPrizeDisplay');
-  const winnersCountDisplay = document.getElementById('winnersCountDisplay');
-  
-  if (currentListDisplay) currentListDisplay.textContent = listText;
-  if (currentPrizeDisplay) currentPrizeDisplay.textContent = prizeText;
-  if (winnersCountDisplay) winnersCountDisplay.textContent = quickWinnersCount.value;
-
-  // Update total entries when list changes
-  if (quickListSelect.value) {
-    updateTotalEntriesFromSettings();
-  } else {
-    const totalEntriesDisplay = document.getElementById('totalEntriesDisplay');
-    if (totalEntriesDisplay) totalEntriesDisplay.textContent = '0';
-  }
-
-  // Enable play button only if list and prize are selected
-  const bigPlayButton = document.getElementById('bigPlayButton');
-  if (bigPlayButton) {
-    bigPlayButton.disabled = !quickListSelect.value || !quickPrizeSelect.value;
+  // This function is now handled by UI.updateSelectionInfo()
+  // since we switched to checkboxes for list selection
+  if (UI && UI.updateSelectionInfo) {
+    UI.updateSelectionInfo();
   }
 }
 
 // Update total entries helper function
 async function updateTotalEntriesFromSettings() {
   try {
-    const quickListSelect = document.getElementById('quickListSelect');
-    const listId = quickListSelect?.value;
+    // Get the first selected checkbox (for SMS placeholders we use the first list)
+    const firstSelectedCheckbox = document.querySelector('#quickListSelect .list-checkbox:checked');
+    const listId = firstSelectedCheckbox?.value;
     if (listId) {
       const list = await Database.getFromStore('lists', listId);
       if (list) {

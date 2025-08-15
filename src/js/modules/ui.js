@@ -119,31 +119,52 @@ async function populateQuickSelects(lists = null, prizes = null) {
     let settingsChanged = false;
 
     if (quickListSelect) {
-      quickListSelect.innerHTML = '<option value="">Select List...</option>';
+      quickListSelect.innerHTML = '';
       // Sort lists by timestamp (most recent first)
       const sortedLists = [...listsData].sort((a, b) => {
         const dateA = a.metadata?.timestamp || 0;
         const dateB = b.metadata?.timestamp || 0;
         return dateB - dateA;
       });
-      sortedLists.forEach(list => {
-        const listId = list.listId || list.metadata.listId;
-        const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
-        const option = document.createElement('option');
-        option.value = listId;
-        option.textContent = `${list.metadata.name} (${entryCount})`;
-        quickListSelect.appendChild(option);
-      });
       
-      if (settings.selectedListId) {
-        const listOption = quickListSelect.querySelector(`option[value="${settings.selectedListId}"]`);
-        if (listOption) {
-          quickListSelect.value = settings.selectedListId;
-          console.log('Restored list selection:', settings.selectedListId);
-        } else {
-          console.log('Saved list selection not found, clearing setting:', settings.selectedListId);
-          settings.selectedListId = '';
+      if (sortedLists.length === 0) {
+        quickListSelect.innerHTML = '<div class="text-muted p-2">No lists available</div>';
+      } else {
+        sortedLists.forEach(list => {
+          const listId = list.listId || list.metadata.listId;
+          const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
+          
+          const checkboxDiv = document.createElement('div');
+          checkboxDiv.className = 'form-check';
+          checkboxDiv.innerHTML = `
+            <input class="form-check-input list-checkbox" type="checkbox" value="${listId}" id="list-${listId}" data-entry-count="${entryCount}">
+            <label class="form-check-label" for="list-${listId}">
+              ${list.metadata.name} <span class="text-muted">(${entryCount})</span>
+            </label>
+          `;
+          quickListSelect.appendChild(checkboxDiv);
+        });
+      }
+      
+      // Restore selected lists from settings (now supports multiple)
+      if (settings.selectedListIds && Array.isArray(settings.selectedListIds)) {
+        settings.selectedListIds.forEach(listId => {
+          const checkbox = quickListSelect.querySelector(`input[value="${listId}"]`);
+          if (checkbox) {
+            checkbox.checked = true;
+          }
+        });
+        updateListSelectionCount();
+        updateSelectionInfo(); // Update display after restoring selections
+      } else if (settings.selectedListId) {
+        // Backward compatibility - convert single selection to array
+        const checkbox = quickListSelect.querySelector(`input[value="${settings.selectedListId}"]`);
+        if (checkbox) {
+          checkbox.checked = true;
+          settings.selectedListIds = [settings.selectedListId];
           settingsChanged = true;
+          updateListSelectionCount();
+          updateSelectionInfo(); // Update display after restoring selections
         }
       } else {
         console.log('No saved list selection to restore');
@@ -226,48 +247,46 @@ function updateSelectionInfo() {
 
   if (!quickListSelect || !quickPrizeSelect || !quickWinnersCount) return;
 
-  const listOption = quickListSelect.options[quickListSelect.selectedIndex];
+  // Get selected lists from checkboxes
+  const selectedCheckboxes = quickListSelect.querySelectorAll('.list-checkbox:checked');
+  const selectedListNames = [];
+  let totalEntryCount = 0;
+  
+  selectedCheckboxes.forEach(checkbox => {
+    const label = quickListSelect.querySelector(`label[for="${checkbox.id}"]`);
+    if (label) {
+      const listName = label.textContent.split(' (')[0].trim();
+      selectedListNames.push(listName);
+      totalEntryCount += parseInt(checkbox.dataset.entryCount || 0);
+    }
+  });
+  
+  // Update list display
+  const listText = selectedListNames.length > 0 
+    ? (selectedListNames.length === 1 ? selectedListNames[0] : `${selectedListNames.length} Lists Selected`)
+    : 'Not Selected';
+  
   const prizeOption = quickPrizeSelect.options[quickPrizeSelect.selectedIndex];
-
-  const listText = listOption ? listOption.textContent.split(' (')[0] : 'Not Selected';
   const prizeText = prizeOption ? prizeOption.textContent.split(' (')[0] : 'Not Selected';
 
   document.getElementById('currentListDisplay').textContent = listText;
   document.getElementById('currentPrizeDisplay').textContent = prizeText;
   document.getElementById('winnersCountDisplay').textContent = quickWinnersCount.value;
 
-  // Note: Quick selection fields are now handled by unified Settings.setupQuickSetupAutoSave() system
-  // This function is kept for legacy compatibility but the auto-save is handled elsewhere
+  // Update total entries display
+  document.getElementById('totalEntriesDisplay').textContent = totalEntryCount.toLocaleString();
 
-  // Update total entries when list changes
-  if (quickListSelect.value) {
-    updateTotalEntries();
-  } else {
-    document.getElementById('totalEntriesDisplay').textContent = '0';
-  }
-
-  // Enable play button only if list and prize are selected
+  // Enable play button only if at least one list and a prize are selected
   const bigPlayButton = document.getElementById('bigPlayButton');
   if (bigPlayButton) {
-    bigPlayButton.disabled = !quickListSelect.value || !quickPrizeSelect.value;
+    bigPlayButton.disabled = selectedCheckboxes.length === 0 || !quickPrizeSelect.value;
   }
 }
 
 async function updateTotalEntries() {
-  try {
-    const quickListSelect = document.getElementById('quickListSelect');
-    const listId = quickListSelect.value;
-    if (listId) {
-      const list = await Database.getFromStore('lists', listId);
-      if (list) {
-        document.getElementById('totalEntriesDisplay').textContent = list.entries.length;
-        // Update currentList for later use
-        // This will be handled by app.js or a central state management
-      }
-    }
-  } catch (error) {
-    console.error('Error updating total entries:', error);
-  }
+  // This function is now handled by updateSelectionInfo() for multiple lists
+  // Keeping it for backward compatibility but just call updateSelectionInfo
+  updateSelectionInfo();
 }
 
 // Promise-based confirmation modal
@@ -313,6 +332,44 @@ function enhancedShowConfirmationModal(title, message, onConfirm) {
   return showConfirmationModal(title, message, onConfirm);
 }
 
+// Update the count and total entries for selected lists
+function updateListSelectionCount() {
+  const checkboxes = document.querySelectorAll('#quickListSelect .list-checkbox:checked');
+  const selectedCount = checkboxes.length;
+  const totalLists = document.querySelectorAll('#quickListSelect .list-checkbox').length;
+  
+  // Update count display
+  const countElement = document.getElementById('selectedListsCount');
+  if (countElement) {
+    countElement.textContent = `${selectedCount} of ${totalLists} lists selected`;
+  }
+  
+  // Calculate total entries and detect duplicates
+  let totalEntries = 0;
+  const allEntryIds = new Set();
+  const duplicateIds = new Set();
+  
+  checkboxes.forEach(checkbox => {
+    const entryCount = parseInt(checkbox.dataset.entryCount || 0);
+    totalEntries += entryCount;
+  });
+  
+  // Update total entries display
+  const totalElement = document.getElementById('totalSelectedEntries');
+  if (totalElement) {
+    totalElement.textContent = totalEntries.toLocaleString();
+  }
+  
+  // Note: Actual duplicate detection will happen when lists are loaded
+  // This is just for UI display
+  const duplicatesElement = document.getElementById('duplicatesRemoved');
+  if (duplicatesElement && duplicateIds.size > 0) {
+    duplicatesElement.textContent = `(${duplicateIds.size} duplicates will be removed)`;
+  } else if (duplicatesElement) {
+    duplicatesElement.textContent = '';
+  }
+}
+
 export const UI = {
   generateId,
   showToast,
@@ -325,7 +382,8 @@ export const UI = {
   applyVisibilitySettings,
   syncUI,
   updateSelectionInfo,
-  updateTotalEntries
+  updateTotalEntries,
+  updateListSelectionCount
 };
 
 window.UI = UI;

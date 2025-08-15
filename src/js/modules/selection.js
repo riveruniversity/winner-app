@@ -75,14 +75,16 @@ function createRandomWorker() {
 
 async function handleBigPlayClick() {
   try {
-    const listId = document.getElementById('quickListSelect').value;
+    // Get selected list IDs (now multiple)
+    const selectedCheckboxes = document.querySelectorAll('#quickListSelect .list-checkbox:checked');
+    const listIds = Array.from(selectedCheckboxes).map(cb => cb.value);
     const prizeId = document.getElementById('quickPrizeSelect').value;
     const winnersCount = parseInt(document.getElementById('quickWinnersCount').value);
     const selectionMode = document.getElementById('selectionMode').value;
     const delayVisualType = document.getElementById('delayVisualType').value;
 
-    if (!listId || !prizeId) {
-      UI.showToast('Please select both a list and a prize', 'warning');
+    if (listIds.length === 0 || !prizeId) {
+      UI.showToast('Please select at least one list and a prize', 'warning');
       return;
     }
 
@@ -91,19 +93,94 @@ async function handleBigPlayClick() {
       return;
     }
 
-    // Batch fetch the selected list and prizes
-    const batchResults = await Database.batchFetch([
-      { collection: 'lists', id: listId },
-      { collection: 'prizes' }
-    ]);
+    // Batch fetch all selected lists and prizes
+    const fetchRequests = listIds.map(id => ({ collection: 'lists', id }));
+    fetchRequests.push({ collection: 'prizes' });
+    const batchResults = await Database.batchFetch(fetchRequests);
     
-    const list = batchResults[`lists:${listId}`];
+    // Fetch previous winners if skipExistingWinners is enabled
+    let previousWinnerIds = new Set();
+    let winnersExcluded = 0;
+    
+    if (settings.skipExistingWinners) {
+      const winners = await Database.getFromStore('winners');
+      if (winners && Array.isArray(winners)) {
+        winners.forEach(winner => {
+          // Add various ID formats to catch all previous winners
+          if (winner.entryId) previousWinnerIds.add(winner.entryId);
+          if (winner.originalEntry?.id) previousWinnerIds.add(winner.originalEntry.id);
+          if (winner.data?.['Ticket Code']) previousWinnerIds.add(winner.data['Ticket Code']);
+          if (winner.data?.ticketCode) previousWinnerIds.add(winner.data.ticketCode);
+        });
+      }
+    }
+    
+    // Combine entries from all selected lists
+    const allEntries = [];
+    const entryIdSet = new Set(); // For duplicate detection
+    let duplicatesRemoved = 0;
+    
+    for (const listId of listIds) {
+      const list = batchResults[`lists:${listId}`];
+      if (!list) {
+        console.warn(`List ${listId} not found`);
+        continue;
+      }
+      
+      // Add entries from this list, checking for duplicates by ID
+      if (list.entries && Array.isArray(list.entries)) {
+        for (const entry of list.entries) {
+          const entryId = entry.id || entry.data?.['Ticket Code'] || entry.data?.ticketCode;
+          
+          // Check for duplicates across lists
+          if (entryId && entryIdSet.has(entryId)) {
+            duplicatesRemoved++;
+            continue; // Skip duplicate
+          }
+          
+          // Check if this person already won (if skipExistingWinners is enabled)
+          if (settings.skipExistingWinners && entryId && previousWinnerIds.has(entryId)) {
+            winnersExcluded++;
+            continue; // Skip previous winner
+          }
+          
+          if (entryId) {
+            entryIdSet.add(entryId);
+          }
+          // Store source list ID with each entry for removal later
+          entry.sourceListId = listId;
+          allEntries.push(entry);
+        }
+      }
+    }
+    
     const prizes = batchResults.prizes || [];
     const selectedPrize = prizes.find(p => p.prizeId === prizeId);
 
-    if (!list || !selectedPrize) {
-      UI.showToast('Selected list or prize not found', 'error');
+    if (!selectedPrize) {
+      UI.showToast('Selected prize not found', 'error');
       return;
+    }
+    
+    if (allEntries.length === 0) {
+      UI.showToast('No entries found in selected lists', 'error');
+      return;
+    }
+    
+    // Log summary for debugging (no toast shown to avoid clutter)
+    if (settings.enableDebugLogs) {
+      const messages = [];
+      if (listIds.length > 1) {
+        messages.push(`Combined ${listIds.length} lists`);
+      }
+      messages.push(`${allEntries.length} eligible entries`);
+      if (duplicatesRemoved > 0) {
+        messages.push(`${duplicatesRemoved} duplicates removed`);
+      }
+      if (winnersExcluded > 0) {
+        messages.push(`${winnersExcluded} previous winners excluded`);
+      }
+      console.log('Selection summary:', messages.join(' • '));
     }
 
     if (selectedPrize.quantity < winnersCount) {
@@ -111,13 +188,29 @@ async function handleBigPlayClick() {
       return;
     }
 
-    if (list.entries.length < winnersCount) {
-      UI.showToast(`Not enough entries in list. Only ${list.entries.length} available.`, 'warning');
+    if (allEntries.length < winnersCount) {
+      UI.showToast(`Not enough entries in combined lists. Only ${allEntries.length} available.`, 'warning');
       return;
     }
 
+    // Create a combined list object for processing
+    // Use the first list's configuration for display purposes
+    const firstList = batchResults[`lists:${listIds[0]}`];
+    const combinedList = {
+      entries: allEntries,
+      metadata: {
+        name: listIds.length > 1 ? `Combined Lists (${listIds.length})` : (firstList?.metadata?.name || 'Unknown'),
+        entryCount: allEntries.length,
+        isCombined: listIds.length > 1,
+        sourceListIds: listIds,
+        // Inherit display configuration from the first list
+        nameConfig: firstList?.metadata?.nameConfig,
+        infoConfig: firstList?.metadata?.infoConfig
+      }
+    };
+
     // Set current list for global access
-    setCurrentList(list);
+    setCurrentList(combinedList);
 
     Settings.debugLog('Big play clicked, selection mode:', selectionMode, 'delay visual:', delayVisualType);
     
@@ -295,17 +388,53 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
     { collection: 'history', data: historyEntry }
   ];
 
-  // Remove winners from list if setting is enabled
+  // Remove winners from source lists if setting is enabled
   if (settings.preventDuplicates) {
-    const updatedList = getCurrentList();
-    updatedList.entries = updatedList.entries.filter(entry =>
-      !selectedEntries.some(selected => selected.id === entry.id)
-    );
-    if (!updatedList.listId && updatedList.metadata && updatedList.metadata.listId) {
-      updatedList.listId = updatedList.metadata.listId;
+    const currentList = getCurrentList();
+    
+    // If it's a combined list, update each source list separately
+    if (currentList.metadata?.isCombined && currentList.metadata?.sourceListIds) {
+      // Group selected entries by their source list
+      const entriesByList = {};
+      selectedEntries.forEach(entry => {
+        if (entry.sourceListId) {
+          if (!entriesByList[entry.sourceListId]) {
+            entriesByList[entry.sourceListId] = [];
+          }
+          entriesByList[entry.sourceListId].push(entry.id);
+        }
+      });
+      
+      // Update each source list
+      for (const listId of currentList.metadata.sourceListIds) {
+        const sourceList = await Database.getFromStore('lists', listId);
+        if (sourceList && entriesByList[listId]) {
+          // Remove the winners from this list
+          sourceList.entries = sourceList.entries.filter(entry =>
+            !entriesByList[listId].includes(entry.id)
+          );
+          sourceList.metadata.entryCount = sourceList.entries.length;
+          operations.push({ collection: 'lists', data: sourceList });
+        }
+      }
+      
+      // Update the combined list in memory
+      currentList.entries = currentList.entries.filter(entry =>
+        !selectedEntries.some(selected => selected.id === entry.id)
+      );
+      setCurrentList(currentList);
+    } else {
+      // Single list - original logic
+      const updatedList = getCurrentList();
+      updatedList.entries = updatedList.entries.filter(entry =>
+        !selectedEntries.some(selected => selected.id === entry.id)
+      );
+      if (!updatedList.listId && updatedList.metadata && updatedList.metadata.listId) {
+        updatedList.listId = updatedList.metadata.listId;
+      }
+      setCurrentList(updatedList);
+      operations.push({ collection: 'lists', data: updatedList });
     }
-    setCurrentList(updatedList);
-    operations.push({ collection: 'lists', data: updatedList });
   }
   
   // Batch save all data in a single request
@@ -313,6 +442,17 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
 
   UI.updateProgress(100, 'Winners selected!');
   UI.hideProgress();
+  
+  // Update the UI to reflect the new entry counts after removing winners
+  if (settings.preventDuplicates) {
+    // Reload the lists to get updated counts from database
+    const lists = await Database.getFromStore('lists');
+    // Refresh the quick selects with updated data
+    await UI.populateQuickSelects(lists);
+    // Update the display counts
+    UI.updateSelectionInfo();
+    UI.updateListSelectionCount();
+  }
   
   Settings.debugLog('Background winner selection completed');
   return winners;
@@ -450,20 +590,67 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
       historyId: historyEntry.historyId
     });
 
-    // Remove winners from list if setting is enabled
+    // Remove winners from source lists if setting is enabled
     if (settings.preventDuplicates) {
-      const updatedList = getCurrentList();
-      updatedList.entries = updatedList.entries.filter(entry =>
-        !selectedEntries.some(selected => selected.id === entry.id)
-      );
-      if (!updatedList.listId && updatedList.metadata && updatedList.metadata.listId) {
-        updatedList.listId = updatedList.metadata.listId;
+      const currentList = getCurrentList();
+      
+      // If it's a combined list, update each source list separately
+      if (currentList.metadata?.isCombined && currentList.metadata?.sourceListIds) {
+        // Group selected entries by their source list
+        const entriesByList = {};
+        selectedEntries.forEach(entry => {
+          if (entry.sourceListId) {
+            if (!entriesByList[entry.sourceListId]) {
+              entriesByList[entry.sourceListId] = [];
+            }
+            entriesByList[entry.sourceListId].push(entry.id);
+          }
+        });
+        
+        // Update each source list
+        for (const listId of currentList.metadata.sourceListIds) {
+          const sourceList = await Database.getFromStore('lists', listId);
+          if (sourceList && entriesByList[listId]) {
+            // Remove the winners from this list
+            sourceList.entries = sourceList.entries.filter(entry =>
+              !entriesByList[listId].includes(entry.id)
+            );
+            sourceList.metadata.entryCount = sourceList.entries.length;
+            await Database.saveToStore('lists', sourceList);
+          }
+        }
+        
+        // Update the combined list in memory
+        currentList.entries = currentList.entries.filter(entry =>
+          !selectedEntries.some(selected => selected.id === entry.id)
+        );
+        setCurrentList(currentList);
+      } else {
+        // Single list - original logic
+        const updatedList = getCurrentList();
+        updatedList.entries = updatedList.entries.filter(entry =>
+          !selectedEntries.some(selected => selected.id === entry.id)
+        );
+        if (!updatedList.listId && updatedList.metadata && updatedList.metadata.listId) {
+          updatedList.listId = updatedList.metadata.listId;
+        }
+        setCurrentList(updatedList);
+        await Database.saveToStore('lists', updatedList);
       }
-      setCurrentList(updatedList);
-      await Database.saveToStore('lists', updatedList);
     }
 
     UI.updateProgress(100, 'Winners selected!');
+    
+    // Update the UI to reflect the new entry counts after removing winners
+    if (settings.preventDuplicates) {
+      // Reload the lists to get updated counts from database
+      const lists = await Database.getFromStore('lists');
+      // Refresh the quick selects with updated data
+      await UI.populateQuickSelects(lists);
+      // Update the display counts
+      UI.updateSelectionInfo();
+      UI.updateListSelectionCount();
+    }
 
     setTimeout(async () => {
       UI.hideProgress();

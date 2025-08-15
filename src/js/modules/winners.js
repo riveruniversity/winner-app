@@ -418,18 +418,54 @@ async function performUndoBackgroundSync(lastAction) {
       });
     }
 
-    // Restore entries to list if they were removed
+    // Restore entries to list(s) if they were removed
     const currentList = getCurrentList();
-    const updatedList = currentList; // Keep reference to updated list
     if (settings.preventDuplicates && currentList && lastAction.removedEntries) {
-      currentList.entries.push(...lastAction.removedEntries);
-      if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
-        currentList.listId = currentList.metadata.listId;
+      // Check if this was a combined list selection
+      if (currentList.metadata?.isCombined && currentList.metadata?.sourceListIds) {
+        // For combined lists, we need to restore entries to their original lists
+        // Group removed entries by their original list ID
+        const entriesByList = {};
+        lastAction.removedEntries.forEach(entry => {
+          const listId = entry.sourceListId || entry.listId || entry.metadata?.listId;
+          if (listId) {
+            if (!entriesByList[listId]) {
+              entriesByList[listId] = [];
+            }
+            entriesByList[listId].push(entry);
+          }
+        });
+        
+        // Restore entries to each original list
+        for (const listId of currentList.metadata.sourceListIds) {
+          const list = await Database.getFromStore('lists', listId);
+          if (list && entriesByList[listId]) {
+            // Clean up entries before restoring - remove the sourceListId we added
+            const cleanedEntries = entriesByList[listId].map(entry => {
+              // Create a copy without sourceListId
+              const { sourceListId, ...cleanEntry } = entry;
+              return cleanEntry;
+            });
+            list.entries.push(...cleanedEntries);
+            list.metadata.entryCount = list.entries.length; // Update count
+            operations.push({ 
+              collection: 'lists', 
+              data: list 
+            });
+          }
+        }
+      } else {
+        // Single list - restore normally
+        currentList.entries.push(...lastAction.removedEntries);
+        currentList.metadata.entryCount = currentList.entries.length; // Update count
+        if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
+          currentList.listId = currentList.metadata.listId;
+        }
+        operations.push({ 
+          collection: 'lists', 
+          data: currentList 
+        });
       }
-      operations.push({ 
-        collection: 'lists', 
-        data: currentList 
-      });
     }
 
     // Execute all operations in a single batch

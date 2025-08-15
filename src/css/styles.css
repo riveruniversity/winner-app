@@ -1590,3 +1590,47 @@ body {
   color: var(--primary-color) !important;
   opacity: 0.8;
 }
+
+/* List Card Selection Styles */
+.list-card-selectable {
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.list-card-selectable::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent, rgba(40, 167, 69, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.list-card-selectable:hover::before {
+  opacity: 1;
+}
+
+.list-card-selectable.selected {
+  animation: selectPulse 0.4s ease;
+}
+
+@keyframes selectPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1.02); }
+}
+
+/* Dark mode list card selection */
+[data-theme="dark"] .list-card-selectable[style*="background"] {
+  background: linear-gradient(135deg, #1a5a2e 0%, #0f3d1f 100%) !important;
+}
+
+[data-theme="dark"] .list-card-selectable[style*="background"] .card-header {
+  background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+}

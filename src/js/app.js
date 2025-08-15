@@ -235,10 +235,53 @@ function setupQuickSelection() {
   const bigPlayButton = document.getElementById('bigPlayButton');
   const newSelectionBtn = document.getElementById('newSelectionBtn');
   const undoSelectionBtn = document.getElementById('undoSelectionBtn');
+  const selectAllLists = document.getElementById('selectAllLists');
+  const clearAllLists = document.getElementById('clearAllLists');
 
   if (bigPlayButton) bigPlayButton.addEventListener('click', Selection.handleBigPlayClick);
   if (newSelectionBtn) newSelectionBtn.addEventListener('click', Winners.resetToSelectionMode);
   if (undoSelectionBtn) undoSelectionBtn.addEventListener('click', Winners.undoLastSelection);
+  
+  // Add Select All/Clear All functionality
+  if (selectAllLists) {
+    selectAllLists.addEventListener('click', () => {
+      document.querySelectorAll('#quickListSelect .list-checkbox').forEach(cb => {
+        cb.checked = true;
+      });
+      UI.updateListSelectionCount();
+      UI.updateSelectionInfo(); // Update the display info
+      // Save the selection
+      const selectedIds = Array.from(document.querySelectorAll('#quickListSelect .list-checkbox:checked'))
+        .map(cb => cb.value);
+      Settings.saveSingleSetting('selectedListIds', selectedIds);
+    });
+  }
+  
+  if (clearAllLists) {
+    clearAllLists.addEventListener('click', () => {
+      document.querySelectorAll('#quickListSelect .list-checkbox').forEach(cb => {
+        cb.checked = false;
+      });
+      UI.updateListSelectionCount();
+      UI.updateSelectionInfo(); // Update the display info
+      Settings.saveSingleSetting('selectedListIds', []);
+    });
+  }
+  
+  // Add change listener for checkboxes (using event delegation)
+  const quickListSelect = document.getElementById('quickListSelect');
+  if (quickListSelect) {
+    quickListSelect.addEventListener('change', (e) => {
+      if (e.target.classList.contains('list-checkbox')) {
+        UI.updateListSelectionCount();
+        UI.updateSelectionInfo(); // Update the display info
+        // Save the selection
+        const selectedIds = Array.from(document.querySelectorAll('#quickListSelect .list-checkbox:checked'))
+          .map(cb => cb.value);
+        Settings.saveSingleSetting('selectedListIds', selectedIds);
+      }
+    });
+  }
 }
 
 function setupManagementListeners() {
