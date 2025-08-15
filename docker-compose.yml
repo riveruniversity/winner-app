@@ -11,8 +11,8 @@ services:
     volumes:
       # Persist data directory
       - winner-data:/app/data
-      # Optional: Mount local data directory for easy backup
-      # - ./data:/app/data
+      # Optional: Mount local data direcuse tory for easy backup
+      - ./data:/app/data
     env_file:
       - .env
     environment:
