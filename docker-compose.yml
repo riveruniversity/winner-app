@@ -9,7 +9,7 @@ services:
     ports:
       - "3001:3001"  # Map container port to host port
     volumes:
-      # Optional: Mount local data direcuse tory for easy backup
+      # Persist data directory using local folder
       - ./data:/app/data
     env_file:
       - .env
