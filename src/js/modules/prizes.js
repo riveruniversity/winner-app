@@ -329,11 +329,8 @@ async function selectPrize(prizeId) {
       return;
     }
     
-    // Update settings with the selected prize
-    settings.selectedPrizeId = prizeId;
-    
-    // Save settings
-    await Settings.saveSettings();
+    // Save only the selected prize setting
+    await Settings.saveSingleSetting('selectedPrizeId', prizeId);
     
     // Update the quick select dropdown if it exists
     const quickPrizeSelect = document.getElementById('quickPrizeSelect');
@@ -347,7 +344,8 @@ async function selectPrize(prizeId) {
       const currentCount = parseInt(quickWinnersCount.value) || 1;
       if (currentCount > selectedPrize.quantity) {
         quickWinnersCount.value = selectedPrize.quantity;
-        settings.winnersCount = selectedPrize.quantity;
+        // Also save the winners count if it needs to be adjusted
+        await Settings.saveSingleSetting('winnersCount', selectedPrize.quantity);
       }
       quickWinnersCount.max = selectedPrize.quantity;
     }

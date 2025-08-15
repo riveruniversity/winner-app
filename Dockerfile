@@ -43,6 +43,8 @@ RUN npm install --omit=dev && \
 COPY --from=builder /app/dist ./dist
 
 # Copy server file
+# Copy conditions page
+COPY conditions.html ./
 COPY server.js ./
 
 # Copy public assets (if any not in dist)

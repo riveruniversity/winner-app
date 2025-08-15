@@ -282,9 +282,9 @@ function testSound(soundId) {
     
     if (sound.type === 'default' || sound.type === 'uploaded') {
       // Default and uploaded sounds from public/sounds folder
-      // Path detection for /testwin subdirectory
+      // Path detection for /win subdirectory
       const pathname = window.location.pathname;
-      const basePath = pathname.startsWith('/testwin') ? '/testwin' : '';
+      const basePath = pathname.startsWith('/win') ? '/win' : '';
       audioUrl = `${basePath}/sounds/${sound.filename}`;
     } else {
       // Custom sounds from base64 data
@@ -405,9 +405,9 @@ function getSoundUrl(soundId) {
   if (!sound) return null;
   
   if (sound.type === 'default' || sound.type === 'uploaded') {
-    // Path detection for /testwin subdirectory
+    // Path detection for /win subdirectory
     const pathname = window.location.pathname;
-    const basePath = pathname.startsWith('/testwin') ? '/testwin' : '';
+    const basePath = pathname.startsWith('/win') ? '/win' : '';
     return `${basePath}/sounds/${sound.filename}`;
   } else {
     const blob = base64ToBlob(sound.data);

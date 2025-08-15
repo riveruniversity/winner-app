@@ -22,7 +22,7 @@ class TextingService {
   makeRequestFireAndForget(body, winnerId = null) {
     // Detect if we're running under a subpath
     const pathname = window.location.pathname;
-    const apiBase = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+    const apiBase = pathname.startsWith('/win') ? '/win/api' : '/api';
     
     // Fire the request without awaiting
     fetch(`${apiBase}/ez-texting`, {
@@ -89,7 +89,7 @@ class TextingService {
   async makeRequest(body) {
     // Detect if we're running under a subpath
     const pathname = window.location.pathname;
-    const apiBase = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+    const apiBase = pathname.startsWith('/win') ? '/win/api' : '/api';
     
     const response = await fetch(`${apiBase}/ez-texting`, {
       method: 'POST',
@@ -633,7 +633,7 @@ class TextingService {
     try {
       // Detect if we're running under a subpath
       const pathname = window.location.pathname;
-      const apiBase = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+      const apiBase = pathname.startsWith('/win') ? '/win/api' : '/api';
       
       const response = await fetch(`${apiBase}/ez-texting`, {
         method: 'POST',

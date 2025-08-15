@@ -22,7 +22,7 @@ app.use((req, res, next) => {
     res.setHeader(
       'Content-Security-Policy',
       "default-src 'self' https:; " +
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://*.gstatic.com; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://*.gstatic.com https://unpkg.com; " +
       "worker-src 'self' blob:; " +
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
       "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; " +
@@ -38,15 +38,15 @@ app.use((req, res, next) => {
 
 // Serve static files from dist (built app)
 app.use(express.static('dist'));
-app.use('/testwin', express.static('dist'));
+app.use('/win', express.static('dist'));
 
 // Serve static files from public (sounds, images, etc.)
 app.use(express.static('public'));
-app.use('/testwin', express.static('public'));
+app.use('/win', express.static('public'));
 
-// Handle /testwin subdirectory
-app.use('/testwin', express.static('dist'));
-app.use('/testwin', express.static('public'));
+// Handle /win subdirectory
+app.use('/win', express.static('dist'));
+app.use('/win', express.static('public'));
 
 async function ensureDataDir() {
   try {
@@ -107,7 +107,7 @@ app.get('/testwin/api/health', (req, res) => {
 });
 
 // Batch endpoint for fetching multiple collections at once
-app.post(['/api/batch', '/testwin/api/batch'], async (req, res) => {
+app.post(['/api/batch', '/win/api/batch'], async (req, res) => {
   try {
     const { requests } = req.body;
     if (!Array.isArray(requests)) {
@@ -143,7 +143,7 @@ app.post(['/api/batch', '/testwin/api/batch'], async (req, res) => {
 });
 
 // Batch save endpoint for saving multiple documents at once (atomic)
-app.post(['/api/batch-save', '/testwin/api/batch-save'], async (req, res) => {
+app.post(['/api/batch-save', '/win/api/batch-save'], async (req, res) => {
   try {
     const { operations } = req.body;
     if (!Array.isArray(operations)) {
@@ -209,8 +209,8 @@ app.post(['/api/batch-save', '/testwin/api/batch-save'], async (req, res) => {
   }
 });
 
-// Support both /api and /testwin/api paths
-app.get(['/api/:collection', '/testwin/api/:collection'], async (req, res) => {
+// Support both /api and /win/api paths
+app.get(['/api/:collection', '/win/api/:collection'], async (req, res) => {
   try {
     const { collection } = req.params;
     const data = await readCollection(collection);
@@ -256,7 +256,7 @@ app.get(['/api/:collection', '/testwin/api/:collection'], async (req, res) => {
   }
 });
 
-app.get(['/api/:collection/:id', '/testwin/api/:collection/:id'], async (req, res) => {
+app.get(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) => {
   try {
     const { collection, id } = req.params;
     const data = await readCollection(collection);
@@ -302,7 +302,7 @@ app.get(['/api/:collection/:id', '/testwin/api/:collection/:id'], async (req, re
 });
 
 // EZ Texting API endpoint - MUST come before generic collection routes
-app.post(['/api/ez-texting', '/testwin/api/ez-texting'], async (req, res) => {
+app.post(['/api/ez-texting', '/win/api/ez-texting'], async (req, res) => {
   // Log only in development mode
   if (process.env.NODE_ENV !== 'production') {
     console.log('EZ Texting endpoint called:', req.body.action);
@@ -433,7 +433,7 @@ app.post(['/api/ez-texting', '/testwin/api/ez-texting'], async (req, res) => {
   }
 });
 
-app.post(['/api/:collection', '/testwin/api/:collection'], async (req, res) => {
+app.post(['/api/:collection', '/win/api/:collection'], async (req, res) => {
   try {
     const { collection } = req.params;
     const newItem = req.body;
@@ -527,7 +527,7 @@ app.post(['/api/:collection', '/testwin/api/:collection'], async (req, res) => {
   }
 });
 
-app.put(['/api/:collection/:id', '/testwin/api/:collection/:id'], async (req, res) => {
+app.put(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) => {
   try {
     const { collection, id } = req.params;
     const updateData = req.body;
@@ -550,7 +550,7 @@ app.put(['/api/:collection/:id', '/testwin/api/:collection/:id'], async (req, re
   }
 });
 
-app.delete(['/api/:collection/:id', '/testwin/api/:collection/:id'], async (req, res) => {
+app.delete(['/api/:collection/:id', '/win/api/:collection/:id'], async (req, res) => {
   try {
     const { collection, id } = req.params;
     const keyField = getKeyField(collection);
@@ -585,7 +585,7 @@ app.delete(['/api/:collection/:id', '/testwin/api/:collection/:id'], async (req,
 });
 
 // Testwin API routes (duplicate of main API routes)
-app.get('/testwin/api/:collection', async (req, res) => {
+app.get('/win/api/:collection', async (req, res) => {
   try {
     const { collection } = req.params;
     const data = await readCollection(collection);
@@ -631,7 +631,7 @@ app.get('/testwin/api/:collection', async (req, res) => {
   }
 });
 
-app.get('/testwin/api/:collection/:id', async (req, res) => {
+app.get('/win/api/:collection/:id', async (req, res) => {
   try {
     const { collection, id } = req.params;
     const data = await readCollection(collection);
@@ -676,7 +676,7 @@ app.get('/testwin/api/:collection/:id', async (req, res) => {
   }
 });
 
-app.post('/testwin/api/:collection', async (req, res) => {
+app.post('/win/api/:collection', async (req, res) => {
   try {
     const { collection } = req.params;
     const newItem = req.body;
@@ -770,7 +770,7 @@ app.post('/testwin/api/:collection', async (req, res) => {
   }
 });
 
-app.put('/testwin/api/:collection/:id', async (req, res) => {
+app.put('/win/api/:collection/:id', async (req, res) => {
   try {
     const { collection, id } = req.params;
     const updateData = req.body;
@@ -793,7 +793,7 @@ app.put('/testwin/api/:collection/:id', async (req, res) => {
   }
 });
 
-app.delete('/testwin/api/:collection/:id', async (req, res) => {
+app.delete('/win/api/:collection/:id', async (req, res) => {
   try {
     const { collection, id } = req.params;
     const keyField = getKeyField(collection);
@@ -829,6 +829,26 @@ app.delete('/testwin/api/:collection/:id', async (req, res) => {
 
 app.get('/testwin/api/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// Route for scanner page
+app.get('/scan', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'scan.html'));
+});
+
+// Route for /testwin/scan
+app.get('/testwin/scan', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'scan.html'));
+});
+
+// Route for conditions page
+app.get('/conditions', (req, res) => {
+  res.sendFile(path.join(__dirname, 'conditions.html'));
+});
+
+// Route for /testwin/conditions
+app.get('/testwin/conditions', (req, res) => {
+  res.sendFile(path.join(__dirname, 'conditions.html'));
 });
 
 // Handle testwin routes

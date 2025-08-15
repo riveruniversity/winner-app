@@ -4,7 +4,7 @@
 
 // Detect if we're running under a subpath
 const pathname = window.location.pathname;
-const API_BASE = pathname.startsWith('/testwin') ? '/testwin/api' : '/api';
+const API_BASE = pathname.startsWith('/win') ? '/win/api' : '/api';
 
 // Collection names matching current schema
 const COLLECTIONS = {

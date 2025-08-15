@@ -771,36 +771,14 @@ async function autoSaveQuickSetup(triggerElementId = null) {
       'celebrationAutoTrigger': 'celebrationAutoTrigger'
     };
 
-    // If a specific element triggered this, only process that element and related ones
+    // If a specific element triggered this, only process that specific element
     let fieldsToProcess = fieldMappings;
     if (triggerElementId) {
-      // Define field groups to prevent cross-contamination
-      const fieldGroups = {
-        selection: ['quickListSelect', 'quickPrizeSelect', 'quickWinnersCount'],
-        timing: ['selectionMode', 'preSelectionDelay', 'delayVisualType'],
-        display: ['displayEffect', 'displayDuration'],
-        sound: ['soundDuringDelay', 'soundEndOfDelay', 'soundDuringReveal'],
-        celebration: ['celebrationEffect', 'celebrationDuration', 'celebrationAutoTrigger']
-      };
-      
-      // Find which group the trigger element belongs to
-      let targetGroup = null;
-      for (const [groupName, fields] of Object.entries(fieldGroups)) {
-        if (fields.includes(triggerElementId)) {
-          targetGroup = groupName;
-          break;
-        }
-      }
-      
-      // Only process fields in the same group
-      if (targetGroup) {
-        fieldsToProcess = {};
-        fieldGroups[targetGroup].forEach(fieldId => {
-          if (fieldMappings[fieldId]) {
-            fieldsToProcess[fieldId] = fieldMappings[fieldId];
-          }
-        });
-        debugLog(`Processing ${targetGroup} group fields for trigger: ${triggerElementId}`);
+      // Only process the specific field that triggered the save
+      fieldsToProcess = {};
+      if (fieldMappings[triggerElementId]) {
+        fieldsToProcess[triggerElementId] = fieldMappings[triggerElementId];
+        debugLog(`Processing single field for trigger: ${triggerElementId}`);
       }
     }
 

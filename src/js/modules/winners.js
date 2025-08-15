@@ -98,7 +98,12 @@ async function loadWinners(winnersData = null, listsData = null) {
     }
 
     tbody.innerHTML = filteredWinners.map(winner => {
-      const ticketCode = (winner.winnerId || winner.id || 'N/A').toString().slice(0, 5).toUpperCase();
+      // Display Order ID instead of winner ID
+      const orderId = winner.data?.orderId || 
+                      winner.originalEntry?.data?.orderId || 
+                      winner.data?.['Order ID'] ||
+                      winner.originalEntry?.data?.['Order ID'] ||
+                      'N/A';
       const pickupStatus = winner.pickedUp ? 
         `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
         `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
@@ -147,7 +152,7 @@ async function loadWinners(winnersData = null, listsData = null) {
       return `
         <tr>
           <td>
-            <span class="badge bg-primary winner-id-badge">${ticketCode}</span>
+            <span class="badge bg-primary winner-id-badge">${orderId}</span>
             <button class="btn btn-sm btn-outline-secondary ms-1" onclick="Winners.showQRCode('${winner.winnerId}')" title="Show QR Code">
               <i class="bi bi-qr-code"></i>
             </button>

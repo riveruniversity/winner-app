@@ -395,11 +395,8 @@ async function deleteListEntry(listId, entryId) {
 // Function to select a list (like selecting from the setup tab)
 async function selectList(listId) {
   try {
-    // Update settings with the selected list
-    settings.selectedListId = listId;
-    
-    // Save settings
-    await Settings.saveSettings();
+    // Save only the selected list setting
+    await Settings.saveSingleSetting('selectedListId', listId);
     
     // Update the quick select dropdown if it exists
     const quickListSelect = document.getElementById('quickListSelect');
