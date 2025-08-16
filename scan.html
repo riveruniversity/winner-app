@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>River Winner - Prize Pickup Scanner</title>
+  <!-- Force cache refresh -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <!-- Meta Tags -->
   <meta name="theme-color" content="#6366f1">
   <meta name="description" content="Scan winner QR codes to track prize pickups">
@@ -15,8 +19,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Toastify -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="/src/css/styles.css">
+  <!-- Custom CSS with cache busting -->
+  <link rel="stylesheet" href="/src/css/styles.css?v=20250816">
   <style>
     /* Scanner Header Override */
     .scanner-header {
@@ -788,6 +792,6 @@
   <!-- QR Scanner Library -->
   <script type="module" src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js"></script>
   <!-- Scanner App Entry Point -->
-  <script type="module" src="./src/js/scan-app.js"></script>
+  <script type="module" src="./src/js/scan-app.js?v=20250816"></script>
 </body>
 </html>

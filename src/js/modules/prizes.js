@@ -3,6 +3,8 @@
 // ================================
 
 import { Database } from './database.js';
+import { DOMUtils } from './dom-utils.js';
+import eventManager from './event-manager.js';
 import { UI } from './ui.js';
 import { settings, Settings } from './settings.js';
 
@@ -18,58 +20,136 @@ async function loadPrizes(prizesData = null) {
       if (!gridContainer && !oldContainer) return;
 
       if (prizes.length === 0) {
-        if (gridContainer) gridContainer.innerHTML = '';
+        if (gridContainer) gridContainer.textContent = '';
         if (noPrizesMessage) noPrizesMessage.style.display = 'block';
-        if (oldContainer) oldContainer.innerHTML = '<p class="text-muted">No prizes added yet.</p>';
+        if (oldContainer) {
+          oldContainer.textContent = '';
+          const p = document.createElement('p');
+          p.className = 'text-muted';
+          p.textContent = 'No prizes added yet.';
+          oldContainer.appendChild(p);
+        }
         return;
       }
 
       if (noPrizesMessage) noPrizesMessage.style.display = 'none';
 
-      const prizeCards = prizes.map(prize => {
-        const prizeId = prize.prizeId;
-        const isSelected = settings.selectedPrizeId === prizeId;
-        const isAvailable = prize.quantity > 0;
-        
-        return `
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 ${isSelected ? 'border-success border-2' : ''}">
-            <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
-              <div class="d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">${prize.name}</h5>
-                <div>
-                  ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i> Selected</span>' : ''}
-                  <span class="badge ${isAvailable ? 'bg-primary' : 'bg-secondary'}">${prize.quantity}</span>
-                </div>
-              </div>
-            </div>
-            <div class="card-body d-flex flex-column">
-              ${prize.description ? `<p class="card-text text-muted small">${prize.description}</p>` : '<p class="card-text text-muted small">No description</p>'}
-              <div class="mt-auto pt-3">
-                <div class="d-flex justify-content-between">
-                  <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
-                          onclick="Prizes.selectPrize('${prizeId}')" 
-                          ${isSelected || !isAvailable ? 'disabled' : ''}>
-                    <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
-                  </button>
-                  <div>
-                    <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prizeId}" onclick="Prizes.editPrizeModal('${prizeId}')">
-                      <i class="bi bi-pencil"></i> Edit
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" data-prize-id="${prizeId}" onclick="Prizes.deletePrizeConfirm('${prizeId}')">
-                      <i class="bi bi-trash"></i> Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      }).join('');
-
       if (gridContainer) {
-        gridContainer.innerHTML = prizeCards;
+        // Clear existing content
+        gridContainer.textContent = '';
+        
+        // Create prize cards using fragment for performance
+        const fragment = DOMUtils.createFragment(prizes, (prize) => {
+          const prizeId = prize.prizeId;
+          const isSelected = settings.selectedPrizeId === prizeId;
+          const isAvailable = prize.quantity > 0;
+          
+          // Create column container
+          const col = document.createElement('div');
+          col.className = 'col-md-6 col-lg-4';
+          
+          // Create card
+          const card = document.createElement('div');
+          card.className = `card h-100 ${isSelected ? 'border-success border-2' : ''}`;
+          
+          // Create card header
+          const header = document.createElement('div');
+          header.className = `card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}`;
+          
+          const headerContent = document.createElement('div');
+          headerContent.className = 'd-flex justify-content-between align-items-center';
+          
+          const title = document.createElement('h5');
+          title.className = 'card-title mb-0';
+          title.textContent = prize.name;
+          
+          const badges = document.createElement('div');
+          if (isSelected) {
+            const selectedBadge = document.createElement('span');
+            selectedBadge.className = 'badge bg-success me-2';
+            DOMUtils.safeSetHTML(selectedBadge, '<i class="bi bi-check-circle-fill"></i> Selected', true);
+            badges.appendChild(selectedBadge);
+          }
+          
+          const qtyBadge = document.createElement('span');
+          qtyBadge.className = `badge ${isAvailable ? 'bg-primary' : 'bg-secondary'}`;
+          qtyBadge.textContent = String(prize.quantity);
+          badges.appendChild(qtyBadge);
+          
+          headerContent.appendChild(title);
+          headerContent.appendChild(badges);
+          header.appendChild(headerContent);
+          
+          // Create card body
+          const body = document.createElement('div');
+          body.className = 'card-body d-flex flex-column';
+          
+          const desc = document.createElement('p');
+          desc.className = 'card-text text-muted small';
+          desc.textContent = prize.description || 'No description';
+          body.appendChild(desc);
+          
+          // Create buttons container
+          const btnContainer = document.createElement('div');
+          btnContainer.className = 'mt-auto pt-3';
+          
+          const btnRow = document.createElement('div');
+          btnRow.className = 'd-flex justify-content-between';
+          
+          // Select button
+          const selectBtn = document.createElement('button');
+          selectBtn.className = `btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}`;
+          selectBtn.disabled = isSelected || !isAvailable;
+          selectBtn.dataset.prizeId = prizeId;
+          DOMUtils.safeSetHTML(selectBtn, 
+            `<i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}`, 
+            true
+          );
+          
+          // Action buttons container
+          const actionBtns = document.createElement('div');
+          
+          // Edit button
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn btn-sm btn-outline-primary me-2';
+          editBtn.dataset.prizeId = prizeId;
+          DOMUtils.safeSetHTML(editBtn, '<i class="bi bi-pencil"></i> Edit', true);
+          
+          // Delete button  
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn btn-sm btn-outline-danger';
+          deleteBtn.dataset.prizeId = prizeId;
+          DOMUtils.safeSetHTML(deleteBtn, '<i class="bi bi-trash"></i> Delete', true);
+          
+          actionBtns.appendChild(editBtn);
+          actionBtns.appendChild(deleteBtn);
+          
+          btnRow.appendChild(selectBtn);
+          btnRow.appendChild(actionBtns);
+          btnContainer.appendChild(btnRow);
+          body.appendChild(btnContainer);
+          
+          // Assemble card
+          card.appendChild(header);
+          card.appendChild(body);
+          col.appendChild(card);
+          
+          return col;
+        });
+        
+        gridContainer.appendChild(fragment);
+        
+        // Setup event delegation for buttons
+        eventManager.delegate(gridContainer, '[data-prize-id]', 'click', function(e) {
+          const prizeId = this.dataset.prizeId;
+          if (this.classList.contains('btn-outline-success') || this.classList.contains('btn-success')) {
+            Prizes.selectPrize(prizeId);
+          } else if (this.classList.contains('btn-outline-primary')) {
+            Prizes.editPrizeModal(prizeId);
+          } else if (this.classList.contains('btn-outline-danger')) {
+            Prizes.deletePrizeConfirm(prizeId);
+          }
+        });
       }
       
       // Backward compatibility for old container
@@ -178,20 +258,78 @@ async function loadPrizes(prizesData = null) {
     const confirmBtn = document.getElementById('appModalConfirmBtn');
 
     modalTitle.textContent = 'Add New Prize';
-    modalBody.innerHTML = `
-      <div class="mb-3">
-        <label for="modalPrizeName" class="form-label">Prize Name <span class="text-danger">*</span></label>
-        <input type="text" class="form-control" id="modalPrizeName" placeholder="Enter prize name" required>
-      </div>
-      <div class="mb-3">
-        <label for="modalPrizeQuantity" class="form-label">Quantity <span class="text-danger">*</span></label>
-        <input type="number" class="form-control" id="modalPrizeQuantity" value="1" min="1" required>
-      </div>
-      <div class="mb-3">
-        <label for="modalPrizeDescription" class="form-label">Description (Optional)</label>
-        <textarea class="form-control" id="modalPrizeDescription" rows="3" placeholder="Enter prize description"></textarea>
-      </div>
-    `;
+    
+    // Build modal content safely
+    modalBody.textContent = '';
+    
+    // Prize Name field
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'mb-3';
+    
+    const nameLabel = document.createElement('label');
+    nameLabel.htmlFor = 'modalPrizeName';
+    nameLabel.className = 'form-label';
+    nameLabel.textContent = 'Prize Name ';
+    const nameRequired = document.createElement('span');
+    nameRequired.className = 'text-danger';
+    nameRequired.textContent = '*';
+    nameLabel.appendChild(nameRequired);
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'form-control';
+    nameInput.id = 'modalPrizeName';
+    nameInput.placeholder = 'Enter prize name';
+    nameInput.required = true;
+    
+    nameDiv.appendChild(nameLabel);
+    nameDiv.appendChild(nameInput);
+    
+    // Quantity field
+    const qtyDiv = document.createElement('div');
+    qtyDiv.className = 'mb-3';
+    
+    const qtyLabel = document.createElement('label');
+    qtyLabel.htmlFor = 'modalPrizeQuantity';
+    qtyLabel.className = 'form-label';
+    qtyLabel.textContent = 'Quantity ';
+    const qtyRequired = document.createElement('span');
+    qtyRequired.className = 'text-danger';
+    qtyRequired.textContent = '*';
+    qtyLabel.appendChild(qtyRequired);
+    
+    const qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.className = 'form-control';
+    qtyInput.id = 'modalPrizeQuantity';
+    qtyInput.value = '1';
+    qtyInput.min = '1';
+    qtyInput.required = true;
+    
+    qtyDiv.appendChild(qtyLabel);
+    qtyDiv.appendChild(qtyInput);
+    
+    // Description field
+    const descDiv = document.createElement('div');
+    descDiv.className = 'mb-3';
+    
+    const descLabel = document.createElement('label');
+    descLabel.htmlFor = 'modalPrizeDescription';
+    descLabel.className = 'form-label';
+    descLabel.textContent = 'Description (Optional)';
+    
+    const descTextarea = document.createElement('textarea');
+    descTextarea.className = 'form-control';
+    descTextarea.id = 'modalPrizeDescription';
+    descTextarea.rows = 3;
+    descTextarea.placeholder = 'Enter prize description';
+    
+    descDiv.appendChild(descLabel);
+    descDiv.appendChild(descTextarea);
+    
+    modalBody.appendChild(nameDiv);
+    modalBody.appendChild(qtyDiv);
+    modalBody.appendChild(descDiv);
     
     confirmBtn.textContent = 'Add Prize';
     confirmBtn.className = 'btn btn-primary';

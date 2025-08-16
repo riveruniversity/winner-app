@@ -5,6 +5,8 @@
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 import { Database } from './database.js';
+import { DOMUtils } from './dom-utils.js';
+import eventManager from './event-manager.js';
 import { settings, Settings } from './settings.js';
 
 let pendingCSVData = null;

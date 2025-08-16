@@ -15,7 +15,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Set Content Security Policy headers to allow the app to work
+// Set Content Security Policy and cache headers
 app.use((req, res, next) => {
   // Only set CSP for HTML pages, not API calls
   if (!req.path.includes('/api/')) {
@@ -32,6 +32,14 @@ app.use((req, res, next) => {
       "object-src 'none'; " +
       "base-uri 'self';"
     );
+    
+    // Force cache refresh for HTML files to break PWA cache
+    if (req.path.endsWith('.html') || req.path === '/' || req.path === '/win' || req.path === '/win/') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Clear-Site-Data', '"cache", "storage"');
+    }
   }
   next();
 });
@@ -299,6 +307,58 @@ apiRouter.get('/:collection/:id', async (req, res) => {
     console.error('Error in GET /:collection/:id:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Reports API Proxy endpoint - to avoid CORS issues
+apiRouter.get('/reports-proxy/*', async (req, res) => {
+  try {
+    // Extract the path after /reports-proxy/
+    const reportPath = req.params[0];
+    const queryString = req.url.split('?')[1] || '';
+    
+    // Build the target URL
+    const targetUrl = `https://tickets.revival.com/reports/${reportPath}${queryString ? '?' + queryString : ''}`;
+    
+    console.log('Proxying reports request to:', targetUrl);
+    
+    // Forward the request to tickets.revival.com
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': req.headers.authorization || '',
+        'Accept': 'text/csv,application/csv,text/plain',
+        'User-Agent': 'River-Winner-App/1.0'
+      }
+    });
+    
+    // Get the response body
+    const body = await response.text();
+    
+    // Forward the response back to the client
+    res.status(response.status);
+    res.set({
+      'Content-Type': response.headers.get('content-type') || 'text/csv',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type'
+    });
+    res.send(body);
+    
+  } catch (error) {
+    console.error('Reports proxy error:', error);
+    res.status(500).json({ error: 'Failed to fetch report: ' + error.message });
+  }
+});
+
+// Handle OPTIONS requests for CORS preflight
+apiRouter.options('/reports-proxy/*', (req, res) => {
+  res.set({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Max-Age': '86400'
+  });
+  res.sendStatus(204);
 });
 
 // EZ Texting API endpoint - MUST come before generic collection routes

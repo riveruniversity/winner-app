@@ -3,6 +3,8 @@
 // ================================
 
 import { Database } from './database.js';
+import { DOMUtils } from './dom-utils.js';
+import eventManager from './event-manager.js';
 import { UI } from './ui.js';
 import { clearCurrentWinners } from '../app.js';
 import { Lists } from './lists.js';

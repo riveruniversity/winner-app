@@ -3,6 +3,8 @@
 // ================================
 
 import { Database } from './database.js';
+import { DOMUtils } from './dom-utils.js';
+import eventManager from './event-manager.js';
 import { UI } from './ui.js';
 
 // Application settings with defaults (internal - access via Settings.data)
@@ -285,6 +287,30 @@ function loadSettingsToForm() {
   }
 
   // Load SMS template
+}
+
+// Helper function to safely render placeholders
+function renderPlaceholders(container, placeholders) {
+  if (!container) return;
+  
+  container.textContent = '';
+  const labelText = document.createTextNode('Available placeholders: ');
+  container.appendChild(labelText);
+  
+  placeholders.forEach((p, index) => {
+    const code = document.createElement('code');
+    code.textContent = `{${p}}`;
+    container.appendChild(code);
+    if (index < placeholders.length - 1) {
+      container.appendChild(document.createTextNode(', '));
+    }
+  });
+  
+  container.appendChild(document.createElement('br'));
+  const charCountSpan = document.createElement('span');
+  charCountSpan.id = 'smsCharCount';
+  charCountSpan.textContent = '0 characters, 1 SMS';
+  container.appendChild(charCountSpan);
   const smsTemplate = document.getElementById('smsTemplate');
   if (smsTemplate && settings.smsTemplate) {
     smsTemplate.value = settings.smsTemplate;
@@ -322,30 +348,43 @@ function updateSMSPlaceholders() {
         // Combine default placeholders with CSV fields
         const allPlaceholders = [...new Set([...placeholders, ...csvFields])];
         
-        // Update the display
-        const placeholderHTML = allPlaceholders.map(p => `<code>{${p}}</code>`).join(', ');
-        placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
-        updateSMSCharCount(); // Update character count after changing HTML
+        // Update the display safely
+        placeholdersContainer.textContent = '';
+        const labelText = document.createTextNode('Available placeholders: ');
+        placeholdersContainer.appendChild(labelText);
+        
+        allPlaceholders.forEach((p, index) => {
+          const code = document.createElement('code');
+          code.textContent = `{${p}}`;
+          placeholdersContainer.appendChild(code);
+          if (index < allPlaceholders.length - 1) {
+            placeholdersContainer.appendChild(document.createTextNode(', '));
+          }
+        });
+        
+        placeholdersContainer.appendChild(document.createElement('br'));
+        const charCountSpan = document.createElement('span');
+        charCountSpan.id = 'smsCharCount';
+        charCountSpan.textContent = '0 characters, 1 SMS';
+        placeholdersContainer.appendChild(charCountSpan);
+        updateSMSCharCount();
       } else {
         console.log('List has no entries or entries is not an array');
-        // Show default placeholders
-        const placeholderHTML = placeholders.map(p => `<code>{${p}}</code>`).join(', ');
-        placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
+        // Show default placeholders safely
+        renderPlaceholders(placeholdersContainer, placeholders);
         updateSMSCharCount();
       }
     }).catch(err => {
       console.error('Error loading list for placeholders:', err);
-      // Show default placeholders on error
-      const placeholderHTML = placeholders.map(p => `<code>{${p}}</code>`).join(', ');
-      placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
+      // Show default placeholders on error safely
+      renderPlaceholders(placeholdersContainer, placeholders);
       updateSMSCharCount();
     });
   } else {
     console.log('No list selected');
-    // No list selected, show default placeholders
-    const placeholderHTML = placeholders.map(p => `<code>{${p}}</code>`).join(', ');
-    placeholdersContainer.innerHTML = `Available placeholders: ${placeholderHTML}<br><span id="smsCharCount">0 characters, 1 SMS</span>`;
-    updateSMSCharCount(); // Update character count after changing HTML
+    // No list selected, show default placeholders safely
+    renderPlaceholders(placeholdersContainer, placeholders);
+    updateSMSCharCount();
   }
 }
 
@@ -402,11 +441,11 @@ function toggleTheme() {
 
   if (currentTheme === 'dark') {
     body.setAttribute('data-theme', 'light');
-    themeToggle.innerHTML = '<i class="bi bi-moon-fill"></i>';
+    DOMUtils.safeSetHTML(themeToggle, '<i class="bi bi-moon-fill"></i>', true);
     themeToggle.classList.remove('dark');
   } else {
     body.setAttribute('data-theme', 'dark');
-    themeToggle.innerHTML = '<i class="bi bi-sun-fill"></i>';
+    DOMUtils.safeSetHTML(themeToggle, '<i class="bi bi-sun-fill"></i>', true);
     themeToggle.classList.add('dark');
   }
 }
@@ -959,12 +998,20 @@ function testSoundEffect(phase) {
   }
 }
 
-// Store the debounced function and event listeners to prevent duplicates
-let debouncedQuickSave = null;
-let quickSetupListeners = new Map();
+// Store cleanup functions for event listeners
+let cleanupFunctions = [];
 
-// Setup auto-save listeners for quick setup fields
+// Cleanup existing listeners before adding new ones
+function cleanupEventListeners() {
+  cleanupFunctions.forEach(cleanup => cleanup());
+  cleanupFunctions = [];
+}
+
+// Setup auto-save listeners for quick setup fields with proper cleanup
 function setupQuickSetupAutoSave() {
+  // Clean up any existing listeners first
+  cleanupEventListeners();
+  
   const quickFields = [
     'quickListSelect',
     'quickPrizeSelect', 
@@ -982,43 +1029,29 @@ function setupQuickSetupAutoSave() {
     'celebrationAutoTrigger'
   ];
 
-  // Create the debounced function only once
-  if (!debouncedQuickSave) {
-    debouncedQuickSave = debounce(() => autoSaveQuickSetup(), 300);
-  }
-
   quickFields.forEach(fieldId => {
     const field = document.getElementById(fieldId);
     if (field) {
-      // Remove any existing listeners stored in our map
-      if (quickSetupListeners.has(fieldId)) {
-        const listeners = quickSetupListeners.get(fieldId);
-        listeners.forEach(({ event, handler }) => {
-          field.removeEventListener(event, handler);
-        });
-      }
-      
       // Create field-specific handlers that pass the field ID
       const fieldSpecificDebouncedSave = debounce(() => autoSaveQuickSetup(fieldId), 300);
       const fieldSpecificImmediateSave = () => autoSaveQuickSetup(fieldId);
       
-      // Create new listeners for this field
-      const newListeners = [];
-      
       if (field.type === 'number' || field.type === 'text') {
-        field.addEventListener('input', fieldSpecificDebouncedSave);
-        field.addEventListener('change', fieldSpecificImmediateSave); // Immediate save on blur
-        newListeners.push({ event: 'input', handler: fieldSpecificDebouncedSave });
-        newListeners.push({ event: 'change', handler: fieldSpecificImmediateSave });
+        cleanupFunctions.push(
+          eventManager.on(field, 'input', fieldSpecificDebouncedSave),
+          eventManager.on(field, 'change', fieldSpecificImmediateSave)
+        );
       } else {
-        field.addEventListener('change', fieldSpecificImmediateSave);
-        newListeners.push({ event: 'change', handler: fieldSpecificImmediateSave });
+        cleanupFunctions.push(
+          eventManager.on(field, 'change', fieldSpecificImmediateSave)
+        );
         
         // Update SMS placeholders when list changes
         if (fieldId === 'quickListSelect') {
           const updatePlaceholdersHandler = () => updateSMSPlaceholders();
-          field.addEventListener('change', updatePlaceholdersHandler);
-          newListeners.push({ event: 'change', handler: updatePlaceholdersHandler });
+          cleanupFunctions.push(
+            eventManager.on(field, 'change', updatePlaceholdersHandler)
+          );
         }
       }
       
@@ -1029,14 +1062,11 @@ function setupQuickSetupAutoSave() {
             UI.updateSelectionInfo();
           }
         };
-        field.addEventListener('input', updateUIHandler);
-        field.addEventListener('change', updateUIHandler);
-        newListeners.push({ event: 'input', handler: updateUIHandler });
-        newListeners.push({ event: 'change', handler: updateUIHandler });
+        cleanupFunctions.push(
+          eventManager.on(field, 'input', updateUIHandler),
+          eventManager.on(field, 'change', updateUIHandler)
+        );
       }
-      
-      // Store the listeners for this field
-      quickSetupListeners.set(fieldId, newListeners);
       
       debugLog(`Quick setup auto-save listener added for: ${fieldId} (type: ${field.type})`);
     }
@@ -1162,6 +1192,7 @@ export const Settings = {
   updateSMSPlaceholders,
   updateSettings: function(newSettings) { Object.assign(settings, newSettings); },
   debugLog,
+  cleanupEventListeners, // Add cleanup function to exports
   
   // Direct access to specific settings (for backward compatibility)
   get(key) { return settings[key]; },

@@ -6,8 +6,8 @@ import { Database } from './database.js';
 import { UI } from './ui.js';
 import { Lists } from './lists.js';
 
-// Reports API configuration
-const REPORTS_API_BASE = '/reports';  // Same domain, no need for full URL
+// Reports API configuration - using proxy to avoid CORS issues
+const REPORTS_API_BASE = '/api/reports-proxy';  // Proxy through our server to avoid CORS
 const REPORTS_AUTH = {
   username: 'admin',
   password: 'revival'

@@ -1,6 +1,8 @@
 // ================================
 // UI UTILITIES & MODALS
 // ================================
+import { DOMUtils } from './dom-utils.js';
+import eventManager from './event-manager.js';
 
 // ================================
 // UI UTILITIES & MODALS

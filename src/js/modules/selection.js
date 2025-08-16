@@ -3,6 +3,8 @@
 // ================================
 
 import { UI } from './ui.js';
+import { DOMUtils } from './dom-utils.js';
+import eventManager from './event-manager.js';
 import { Database } from './database.js';
 import { Lists } from './lists.js';
 import { Winners } from './winners.js';
@@ -264,12 +266,17 @@ async function selectWinnersWithDelay(numWinners, selectedPrize, selectionMode, 
       }
       
       // Stop delay sound and play end-of-delay sound
-      delayPromise = delayPromise.then(() => {
+      delayPromise = delayPromise.then(async () => {
         if (settings.soundDuringDelay === 'drum-roll' && preSelectionDelay > 1) {
           playSound('drumroll-stop'); // This will stop the drumroll
         }
+        // Add a small delay before playing the next sound to avoid conflicts
         if (settings.soundEndOfDelay === 'sting-rimshot-drum-roll') {
+          // Use a promise-based delay so we wait for it before continuing
+          await new Promise(resolve => setTimeout(resolve, 100));
           playSound('sting-rimshot');
+          // Give the sting sound time to start before moving to reveal
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       });
     }
@@ -720,7 +727,10 @@ async function displayWinnersPublicly(winners, prize, selectionMode) {
 
   // Show winners with CSS flexbox
   const winnersGrid = document.getElementById('winnersGrid');
-  winnersGrid.innerHTML = '';
+  // Clear grid safely
+  while (winnersGrid.firstChild) {
+    winnersGrid.removeChild(winnersGrid.firstChild);
+  }
   winnersGrid.className = 'winners-grid';
 
   // Clear any existing animations before starting new ones
@@ -846,21 +856,33 @@ function createWinnerCard(winner, index) {
     });
   }
   
-  let cardHTML = `<div class="winner-number">${winner.position}</div>`;
+  // Build card content safely
+  const numberDiv = document.createElement('div');
+  numberDiv.className = 'winner-number';
+  numberDiv.textContent = String(winner.position);
+  winnerCard.appendChild(numberDiv);
   
   if (info1) {
-    cardHTML += `<div class="winner-info1">${info1}</div>`;
+    const info1Div = document.createElement('div');
+    info1Div.className = 'winner-info1';
+    info1Div.textContent = info1;
+    winnerCard.appendChild(info1Div);
   }
   
   if (info2) {
-    cardHTML += `<div class="winner-info2">${info2}</div>`;
+    const info2Div = document.createElement('div');
+    info2Div.className = 'winner-info2';
+    info2Div.textContent = info2;
+    winnerCard.appendChild(info2Div);
   }
   
   if (info3) {
-    cardHTML += `<div class="winner-info3">${info3}</div>`;
+    const info3Div = document.createElement('div');
+    info3Div.className = 'winner-info3';
+    info3Div.textContent = info3;
+    winnerCard.appendChild(info3Div);
   }
   
-  winnerCard.innerHTML = cardHTML;
   return winnerCard;
 }
 

@@ -3,6 +3,8 @@
 // ================================
 
 import { Database } from './modules/database.js';
+import { DOMUtils } from './modules/dom-utils.js';
+import eventManager from './modules/event-manager.js';
 import { Settings, settings } from './modules/settings.js';
 import { UI } from './modules/ui.js';
 import { Lists } from './modules/lists.js';
@@ -236,13 +238,13 @@ function setupInterfaceToggles() {
   }
 
   if (fullscreenToggle) {
-    fullscreenToggle.addEventListener('click', function () {
+    eventManager.on(fullscreenToggle, 'click', function () {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
-        fullscreenToggle.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+        DOMUtils.safeSetHTML(fullscreenToggle, '<i class="bi bi-fullscreen-exit"></i>', true);
       } else {
         document.exitFullscreen();
-        fullscreenToggle.innerHTML = '<i class="bi bi-fullscreen"></i>';
+        DOMUtils.safeSetHTML(fullscreenToggle, '<i class="bi bi-fullscreen"></i>', true);
       }
     });
   }
@@ -411,13 +413,13 @@ function setupManagementListeners() {
   const restoreOnline = document.getElementById('restoreOnline');
   const undoLastSelection = document.getElementById('undoLastSelection');
 
-  if (exportWinnersBtn) exportWinnersBtn.addEventListener('click', Export.handleExportWinners);
-  if (clearWinnersBtn) clearWinnersBtn.addEventListener('click', Winners.clearAllWinners);
+  if (exportWinnersBtn) eventManager.on(exportWinnersBtn, 'click', Export.handleExportWinners);
+  if (clearWinnersBtn) eventManager.on(clearWinnersBtn, 'click', Winners.clearAllWinners);
   if (checkSMSStatusBtn) {
-    checkSMSStatusBtn.addEventListener('click', async () => {
+    eventManager.on(checkSMSStatusBtn, 'click', async () => {
       const { Texting } = await import('./modules/texting.js');
       checkSMSStatusBtn.disabled = true;
-      checkSMSStatusBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm me-2"></i>Checking...';
+      DOMUtils.safeSetHTML(checkSMSStatusBtn, '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm me-2"></i>Checking...', true);
       
       try {
         const count = await Texting.checkAllPendingStatuses();
@@ -431,15 +433,15 @@ function setupManagementListeners() {
         UI.showToast(`Error checking SMS statuses: ${error.message}`, 'error');
       } finally {
         checkSMSStatusBtn.disabled = false;
-        checkSMSStatusBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Check SMS Status';
+        DOMUtils.safeSetHTML(checkSMSStatusBtn, '<i class="bi bi-arrow-clockwise me-2"></i>Check SMS Status', true);
       }
     });
   }
-  if (backupData) backupData.addEventListener('click', Export.handleBackupData);
-  if (restoreData) restoreData.addEventListener('click', Export.handleRestoreData);
-  if (backupOnline) backupOnline.addEventListener('click', Export.handleBackupOnline);
-  if (restoreOnline) restoreOnline.addEventListener('click', Export.handleRestoreOnline);
-  if (undoLastSelection) undoLastSelection.addEventListener('click', Winners.undoLastSelection);
+  if (backupData) eventManager.on(backupData, 'click', Export.handleBackupData);
+  if (restoreData) eventManager.on(restoreData, 'click', Export.handleRestoreData);
+  if (backupOnline) eventManager.on(backupOnline, 'click', Export.handleBackupOnline);
+  if (restoreOnline) eventManager.on(restoreOnline, 'click', Export.handleRestoreOnline);
+  if (undoLastSelection) eventManager.on(undoLastSelection, 'click', Winners.undoLastSelection);
 
   // Clear filters button
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
@@ -487,27 +489,54 @@ function loadHistoryUI(history) {
     if (!tbody) return;
 
     if (history.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No selection history yet.</td></tr>';
+      DOMUtils.safeSetHTML(tbody, '<tr><td colspan="6" class="text-center text-muted">No selection history yet.</td></tr>', true);
       return;
     }
 
     // Sort by timestamp descending
     history.sort((a, b) => b.timestamp - a.timestamp);
 
-    tbody.innerHTML = history.map(entry => `
-      <tr>
-        <td>${new Date(entry.timestamp).toLocaleDateString()}</td>
-        <td>${entry.listName || 'Unknown'}</td>
-        <td>${entry.prize}</td>
-        <td>${entry.winners.length}</td>
-        <td>${entry.winners.map(w => w.displayName).join(', ')}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-danger" data-history-id="${entry.historyId}" onclick="deleteHistoryConfirm(this.dataset.historyId)">
-            <i class="bi bi-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
+    // Clear existing content
+    tbody.textContent = '';
+    
+    // Create rows safely
+    const fragment = DOMUtils.createFragment(history, (entry) => {
+      const row = document.createElement('tr');
+      
+      // Create cells with sanitized content
+      const cells = [
+        new Date(entry.timestamp).toLocaleDateString(),
+        entry.listName || 'Unknown',
+        entry.prize,
+        String(entry.winners.length),
+        entry.winners.map(w => w.displayName).join(', ')
+      ];
+      
+      cells.forEach(content => {
+        const td = document.createElement('td');
+        td.textContent = DOMUtils.sanitizeHTML(String(content));
+        row.appendChild(td);
+      });
+      
+      // Add action cell
+      const actionCell = document.createElement('td');
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn btn-sm btn-outline-danger';
+      deleteBtn.setAttribute('data-history-id', entry.historyId);
+      DOMUtils.safeSetHTML(deleteBtn, '<i class="bi bi-trash"></i>', true);
+      actionCell.appendChild(deleteBtn);
+      row.appendChild(actionCell);
+      
+      return row;
+    });
+    
+    tbody.appendChild(fragment);
+    
+    // Setup event delegation for delete buttons
+    eventManager.delegate(tbody, '[data-history-id]', 'click', function(e) {
+      const historyId = this.getAttribute('data-history-id');
+      deleteHistoryConfirm(historyId);
+    });
   } catch (error) {
     console.error('Error loading history:', error);
   }

@@ -328,10 +328,29 @@ Integrates with the Giveaway Reports API to import attendee lists directly. Fetc
 - **Undo functionality** - Fixed race condition where prize selection was cleared after undo
 - **SMS status tracking** - Corrected field names for proper status checking
 - **Prize quantity restoration** - Ensured quantities are properly restored during undo
+- **Entry count display** - Fixed issue where lists showing 0 entries would fall back to cached count
+- **UI refresh issues** - Added proper async/await to ensure UI updates complete before displaying
+- **Single vs Multiple list selection** - Fixed bug where single list selection was creating duplicate lists
+
+### UI/UX Improvements (August 16, 2025)
+- **Lists tab redesign** - Changed from checkbox selection to clickable cards that turn green when selected
+- **Card-based selection** - Lists now use same selection UI pattern as Prizes page for consistency
+- **Public View refresh** - Added comprehensive data refresh when clicking "Public View" to sync all settings
+- **Selection state persistence** - Fixed issues with selection states not persisting properly across UI updates
+- **Zero entry handling** - Properly displays "0" when all entries are removed from a list
+
+### Technical Improvements
+- **Async operation handling** - Fixed race conditions in list deletion and UI updates
+- **Proper promise handling** - Used Promise.all() for parallel UI updates
+- **Entry count logic** - Changed from falsy check to explicit undefined check for 0 entries
+- **SMS module exports** - Added missing checkAllPendingStatuses export
+- **Domain migration support** - Updated from tickets.revival.com/win to win.revival.com
 
 ## 📝 Summary
-The River Winner App has evolved from a Firebase-based PWA to a containerized, self-hosted solution with local data storage. The refactoring removed external dependencies while maintaining all features and improving performance through batch operations and optimized state management. The app is now deployed at tickets.revival.com/win with full Docker containerization and nginx reverse proxy configuration.
+The River Winner App has evolved from a Firebase-based PWA to a containerized, self-hosted solution with local data storage. The refactoring removed external dependencies while maintaining all features and improving performance through batch operations and optimized state management. The app is now deployed at win.revival.com with full Docker containerization and nginx reverse proxy configuration.
+
+Recent updates focused on UI consistency, fixing selection bugs, and ensuring proper data synchronization across browser sessions. The Lists tab now matches the Prizes page design pattern with click-to-select cards, and all async operations have been properly handled to prevent UI refresh issues.
 
 ---
 *Generated on: November 7, 2024*
-*Last Updated: August 14, 2025 - Major refactoring to remove Firebase, Docker containerization, and route migration*
+*Last Updated: August 16, 2025 - UI improvements, bug fixes for list selection, and async operation handling*
