@@ -23,6 +23,65 @@ let listsCache = null;
 let lastLoadTime = 0;
 const CACHE_DURATION = 5000; // 5 seconds cache
 
+/**
+ * Normalizes winner data for backward compatibility
+ * Handles both old and new data structures
+ */
+function normalizeWinner(winner) {
+  // Already normalized or new structure
+  if (winner._normalized) return winner;
+  
+  // Extract contact info from various possible locations
+  const contactInfo = winner.contactInfo || {};
+  
+  // Get phone number from various possible locations
+  if (!contactInfo.phoneNumber) {
+    contactInfo.phoneNumber = winner.data?.phoneNumber || 
+                              winner.data?.phone || 
+                              winner.originalEntry?.data?.phoneNumber ||
+                              winner.originalEntry?.data?.phone ||
+                              null;
+  }
+  
+  // Get order ID from various possible locations
+  if (!contactInfo.orderId) {
+    contactInfo.orderId = winner.data?.orderId || 
+                         winner.data?.['Order ID'] ||
+                         winner.originalEntry?.data?.orderId ||
+                         winner.originalEntry?.data?.['Order ID'] ||
+                         null;
+  }
+  
+  // Get email from various possible locations
+  if (!contactInfo.email) {
+    contactInfo.email = winner.data?.email || 
+                       winner.data?.orderEmail ||
+                       winner.originalEntry?.data?.email ||
+                       winner.originalEntry?.data?.orderEmail ||
+                       null;
+  }
+  
+  // Normalize SMS status
+  let smsStatus = winner.smsStatus;
+  if (winner.sms?.status) {
+    smsStatus = winner.sms.status;
+  } else if (winner.smsStatus?.success === true) {
+    smsStatus = 'delivered';
+  } else if (winner.smsStatus?.success === false) {
+    smsStatus = 'failed';
+  } else if (winner.smsStatus?.sent === true) {
+    smsStatus = 'sent';
+  }
+  
+  // Return normalized structure
+  return {
+    ...winner,
+    contactInfo,
+    smsStatus,
+    _normalized: true
+  };
+}
+
 async function loadWinners(winnersData = null, listsData = null) {
   try {
     let winners, lists;
@@ -55,6 +114,8 @@ async function loadWinners(winnersData = null, listsData = null) {
       lastLoadTime = Date.now();
     }
     
+    // Normalize all winners for backward compatibility
+    winners = (winners || []).map(w => normalizeWinner(w));
     allWinners = winners; // Store all winners
     const tbody = document.getElementById('winnersTableBody');
 
@@ -75,7 +136,12 @@ async function loadWinners(winnersData = null, listsData = null) {
 
     const filteredWinners = winners.filter(winner => {
       const prizeMatch = !filterPrize || winner.prize === filterPrize;
-      const listName = listNameMap[winner.listId] || 'Unknown';
+      // Use stored list name first, then try to look up by ID
+      const listName = winner.sourceListName || 
+                      listNameMap[winner.sourceListId] || 
+                      listNameMap[winner.listId] || 
+                      listNameMap[winner.originalEntry?.sourceListId] || 
+                      'Unknown';
       const listMatch = !filterList || listName === filterList;
       const selectionMatch = !filterSelection || winner.historyId === filterSelection;
       
@@ -100,12 +166,11 @@ async function loadWinners(winnersData = null, listsData = null) {
     }
 
     tbody.innerHTML = filteredWinners.map(winner => {
-      // Display Order ID instead of winner ID
-      const orderId = winner.data?.orderId || 
-                      winner.originalEntry?.data?.orderId || 
-                      winner.data?.['Order ID'] ||
-                      winner.originalEntry?.data?.['Order ID'] ||
-                      'N/A';
+      // Normalize winner data for backward compatibility
+      const normalizedWinner = normalizeWinner(winner);
+      
+      // Display Order ID from normalized structure
+      const orderId = normalizedWinner.contactInfo?.orderId || 'N/A';
       const pickupStatus = winner.pickedUp ? 
         `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
         `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
@@ -162,7 +227,7 @@ async function loadWinners(winnersData = null, listsData = null) {
           <td>${winner.displayName}</td>
           <td>${winner.prize}</td>
           <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
-          <td>${listNameMap[winner.listId] || 'Unknown'}</td>
+          <td>${winner.sourceListName || listNameMap[winner.sourceListId || winner.listId || winner.originalEntry?.sourceListId] || 'Unknown'}</td>
           <td>${pickupStatus}</td>
           <td>${smsStatusBadge}</td>
           <td>
@@ -200,7 +265,12 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   const prizes = [...new Set(winners.map(w => w.prize))].sort();
   
   // Get unique list names and sort by timestamp (most recent first)
-  const uniqueListNames = [...new Set(winners.map(w => listNameMap[w.listId] || 'Unknown'))];
+  const uniqueListNames = [...new Set(winners.map(w => {
+    // Use stored list name first, then try to look up by ID
+    return w.sourceListName || 
+           listNameMap[w.sourceListId || w.listId || w.originalEntry?.sourceListId] || 
+           'Unknown';
+  }))];
   const sortedListNames = uniqueListNames.sort((a, b) => {
     const timestampA = listTimestampMap[a] || 0;
     const timestampB = listTimestampMap[b] || 0;
@@ -220,7 +290,12 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   // Populate List Filter (now sorted by timestamp)
   listFilter.innerHTML = '<option value="">All Lists</option>';
   sortedListNames.forEach(listName => {
-    const count = winners.filter(w => (listNameMap[w.listId] || 'Unknown') === listName).length;
+    const count = winners.filter(w => {
+      const winnerListName = w.sourceListName || 
+                             listNameMap[w.sourceListId || w.listId || w.originalEntry?.sourceListId] || 
+                             'Unknown';
+      return winnerListName === listName;
+    }).length;
     listFilter.innerHTML += `<option value="${listName}">${listName} (${count})</option>`;
   });
   listFilter.value = selectedList;
@@ -352,22 +427,26 @@ async function clearAllWinners() {
     message,
     async () => {
       try {
-        UI.showProgress('Clearing Winners', `Removing ${winnersToDelete.length} winner records...`);
+        UI.showProgress('Clearing Winners', `Preparing to remove ${winnersToDelete.length} winner records...`);
         
-        let deletedCount = 0;
-
+        // Prepare batch delete operations
+        const operations = [];
         for (const winner of winnersToDelete) {
-          try {
-            await Database.deleteFromStore('winners', winner.winnerId); // Wait for each deletion
-            deletedCount++;
-            UI.updateProgress((deletedCount / winnersToDelete.length) * 100, `Deleted ${deletedCount} of ${winnersToDelete.length} winners...`);
-          } catch (error) {
-            console.error(`Failed to delete winner ${winner.winnerId}:`, error);
-          }
+          operations.push({
+            collection: 'winners',
+            operation: 'delete',
+            id: winner.winnerId
+          });
         }
-
+        
+        UI.updateProgress(30, `Deleting ${winnersToDelete.length} winners in batch...`);
+        
+        // Execute batch delete
+        await Database.batchSave(operations);
+        
+        UI.updateProgress(90, 'Finalizing...');
         UI.hideProgress();
-        UI.showToast(`Successfully deleted ${deletedCount} winner records`, 'success');
+        UI.showToast(`Successfully deleted ${winnersToDelete.length} winner records`, 'success');
         
         // Clear currentWinners array
         const { clearCurrentWinners } = await import('../app.js');

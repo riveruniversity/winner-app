@@ -12,7 +12,8 @@ let settings = {
   preventDuplicates: false,
   hideEntryCounts: false,
   enableDebugLogs: false,
-  skipExistingWinners: false,
+  skipExistingWinners: false, // Only used in CSV import, not general settings
+  preventSamePrize: false,
   fontFamily: 'Open Sans',
   primaryColor: '#6366f1',
   secondaryColor: '#8b5cf6',
@@ -103,6 +104,7 @@ async function handleSaveSettings() {
   try {
     const settingsForm = {
       preventDuplicates: document.getElementById('preventDuplicates')?.checked || settings.preventDuplicates,
+      preventSamePrize: document.getElementById('preventSamePrize')?.checked || settings.preventSamePrize,
       hideEntryCounts: document.getElementById('hideEntryCounts')?.checked || settings.hideEntryCounts,
       enableDebugLogs: document.getElementById('enableDebugLogs')?.checked || settings.enableDebugLogs,
       fontFamily: document.getElementById('fontFamily')?.value || settings.fontFamily,
@@ -201,9 +203,10 @@ function loadSettingsToForm() {
 
   const settingsFields = {
     'preventDuplicates': settings.preventDuplicates,
+    'preventSamePrize': settings.preventSamePrize,
     'hideEntryCounts': settings.hideEntryCounts,
     'enableDebugLogs': settings.enableDebugLogs,
-    'skipExistingWinners': settings.skipExistingWinners,
+    // skipExistingWinners is handled separately in CSV import dialog
     'fontFamily': settings.fontFamily,
     'primaryColor': settings.primaryColor,
     'secondaryColor': settings.secondaryColor,
@@ -886,6 +889,7 @@ async function autoSaveIndividualSetting(fieldId) {
     // Map field ID to setting key
     const fieldToSettingMap = {
       'preventDuplicates': 'preventDuplicates',
+      'preventSamePrize': 'preventSamePrize',
       'hideEntryCounts': 'hideEntryCounts',
       'celebrationAutoTrigger': 'celebrationAutoTrigger',
       'enableDebugLogs': 'enableDebugLogs',
@@ -1057,9 +1061,9 @@ function setupQuickSetupAutoSave() {
       
       // Update UI when winner count or prize changes
       if (fieldId === 'quickWinnersCount' || fieldId === 'quickPrizeSelect') {
-        const updateUIHandler = () => {
+        const updateUIHandler = async () => {
           if (UI && UI.updateSelectionInfo) {
-            UI.updateSelectionInfo();
+            await UI.updateSelectionInfo();
           }
         };
         cleanupFunctions.push(
@@ -1078,9 +1082,10 @@ function setupQuickSetupAutoSave() {
 function setupAllSettingsAutoSave() {
   const allSettingsFields = [
     'preventDuplicates',
+    'preventSamePrize',
     'hideEntryCounts',
     'enableDebugLogs',
-    'skipExistingWinners',
+    // 'skipExistingWinners', - handled in CSV import dialog
     'fontFamily',
     'primaryColor',
     'secondaryColor',
@@ -1123,11 +1128,11 @@ function debounce(func, wait) {
 }
 
 // Update UI displays when quick selection fields change
-function updateQuickSelectionUI() {
+async function updateQuickSelectionUI() {
   // This function is now handled by UI.updateSelectionInfo()
   // since we switched to checkboxes for list selection
   if (UI && UI.updateSelectionInfo) {
-    UI.updateSelectionInfo();
+    await UI.updateSelectionInfo();
   }
 }
 

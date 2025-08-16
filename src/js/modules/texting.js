@@ -49,7 +49,7 @@ class TextingService {
         // Extract messageId from the response
         const messageId = result?.data?.id || null;
         
-        // Update winner record with SMS status including messageId
+        // Update winner record with minimal SMS data (optimized structure)
         const smsUpdateData = {
           status: 'queued',
           messageId: messageId,
@@ -368,14 +368,20 @@ class TextingService {
     try {
       // Find winners with phone numbers
       const winnersWithPhone = currentWinners.filter(winner => {
+        // Check new structure first
+        if (winner.contactInfo?.phoneNumber) {
+          return true;
+        }
+        
         // Check direct properties
         if (winner.phone || winner.Phone || winner.mobile || winner.phoneNumber) {
           return true;
         }
-        // Check data object (camelized CSV fields)
+        
+        // Backward compatibility - check data object (camelized CSV fields)
         if (winner.data) {
-          return winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
-                 winner.data.cellPhone || winner.data.cell || winner.data.telephone;
+          return !!(winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
+                    winner.data.cellPhone || winner.data.cell || winner.data.telephone);
         }
         return false;
       });
@@ -388,8 +394,9 @@ class TextingService {
       // Send messages asynchronously with proper rate limiting
       const results = await this.sendBatchTexts(
         winnersWithPhone.map(winner => {
-          // Get phone number from direct properties or camelized data object
-          const phone = winner.phone || winner.Phone || winner.mobile || winner.phoneNumber ||
+          // Get phone number from new structure first, then fallback to old
+          const phone = winner.contactInfo?.phoneNumber ||
+                       winner.phone || winner.Phone || winner.mobile || winner.phoneNumber ||
                        (winner.data && (winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
                                        winner.data.cellPhone || winner.data.cell || winner.data.telephone));
           return {
@@ -680,13 +687,10 @@ class TextingService {
           status = 'sent';
         }
         
-        // Store complete delivery report
-        deliveryInfo.deliveryReport = {
-          delivery: result.data.delivery,
-          engagement: result.data.engagement
-        };
+        // Don't store full delivery report - just extract what we need
+        // This saves ~1KB per winner record
         
-        // Check for engagement actions
+        // Check for engagement actions (only store if true)
         if (result.data.engagement) {
           if (result.data.engagement.opted_out?.data > 0) {
             deliveryInfo.optedOut = true;

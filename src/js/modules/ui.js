@@ -158,7 +158,7 @@ async function populateQuickSelects(lists = null, prizes = null) {
           }
         });
         updateListSelectionCount();
-        updateSelectionInfo(); // Update display after restoring selections
+        await updateSelectionInfo(); // Update display after restoring selections
       } else if (settings.selectedListId) {
         // Backward compatibility - convert single selection to array
         const checkbox = quickListSelect.querySelector(`input[value="${settings.selectedListId}"]`);
@@ -167,7 +167,7 @@ async function populateQuickSelects(lists = null, prizes = null) {
           settings.selectedListIds = [settings.selectedListId];
           settingsChanged = true;
           updateListSelectionCount();
-          updateSelectionInfo(); // Update display after restoring selections
+          await updateSelectionInfo(); // Update display after restoring selections
         }
       } else {
         console.log('No saved list selection to restore');
@@ -208,7 +208,7 @@ async function populateQuickSelects(lists = null, prizes = null) {
       quickWinnersCount.value = settings.winnersCount;
     }
 
-    updateSelectionInfo();
+    await updateSelectionInfo();
     
     // Re-setup auto-save listeners for quick select dropdowns after updating them
     if (Settings && Settings.setupQuickSetupAutoSave) {
@@ -236,14 +236,14 @@ async function syncUI(lists = null, prizes = null) {
   try {
     await populateQuickSelects(lists, prizes);
     applyVisibilitySettings();
-    updateSelectionInfo();
+    await updateSelectionInfo();
   } catch (error) {
     console.error('Error syncing UI:', error);
     showToast('Failed to refresh the application interface.', 'error');
   }
 }
 
-function updateSelectionInfo() {
+async function updateSelectionInfo() {
   const quickListSelect = document.getElementById('quickListSelect');
   const quickPrizeSelect = document.getElementById('quickPrizeSelect');
   const quickWinnersCount = document.getElementById('quickWinnersCount');
@@ -271,13 +271,78 @@ function updateSelectionInfo() {
   
   const prizeOption = quickPrizeSelect.options[quickPrizeSelect.selectedIndex];
   const prizeText = prizeOption ? prizeOption.textContent.split(' (')[0] : 'Not Selected';
+  const prizeNameOnly = prizeOption ? prizeOption.textContent.split(' (')[0].trim() : null;
 
   document.getElementById('currentListDisplay').textContent = listText;
   document.getElementById('currentPrizeDisplay').textContent = prizeText;
   document.getElementById('winnersCountDisplay').textContent = quickWinnersCount.value;
 
-  // Update total entries display
-  document.getElementById('totalEntriesDisplay').textContent = totalEntryCount.toLocaleString();
+  // Calculate eligible entries (excluding same prize winners if setting is enabled)
+  let eligibleEntryCount = totalEntryCount;
+  let excludedCount = 0;
+  
+  // Check if we should filter out same prize winners
+  if (settings?.preventSamePrize && prizeNameOnly && selectedCheckboxes.length > 0) {
+    console.log('Checking for same prize exclusions. Prize:', prizeNameOnly, 'Setting enabled:', settings.preventSamePrize);
+    try {
+      // Get all winners who won this specific prize
+      const winners = await Database.getFromStore('winners');
+      const samePrizeWinnerIds = new Set();
+      
+      if (winners && Array.isArray(winners)) {
+        winners.forEach(winner => {
+          // Only check winners who won this specific prize
+          if (winner.prize === prizeNameOnly) {
+            // Collect all possible IDs for this winner
+            if (winner.entryId) samePrizeWinnerIds.add(winner.entryId);
+            if (winner.originalEntry?.id) samePrizeWinnerIds.add(winner.originalEntry.id);
+            if (winner.data?.['Ticket Code']) samePrizeWinnerIds.add(winner.data['Ticket Code']);
+            if (winner.data?.ticketCode) samePrizeWinnerIds.add(winner.data.ticketCode);
+          }
+        });
+        console.log('Found', samePrizeWinnerIds.size, 'previous winners of', prizeNameOnly);
+      }
+      
+      // If we have excluded IDs, we need to fetch the actual lists to count accurately
+      if (samePrizeWinnerIds.size > 0) {
+        const listIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        const fetchRequests = listIds.map(id => ({ collection: 'lists', id }));
+        const batchResults = await Database.batchFetch(fetchRequests);
+        
+        let actualEligible = 0;
+        for (const listId of listIds) {
+          const list = batchResults[`lists:${listId}`];
+          if (list && list.entries && Array.isArray(list.entries)) {
+            for (const entry of list.entries) {
+              const entryId = entry.id || entry.data?.['Ticket Code'] || entry.data?.ticketCode;
+              if (!entryId || !samePrizeWinnerIds.has(entryId)) {
+                actualEligible++;
+              } else {
+                excludedCount++;
+              }
+            }
+          }
+        }
+        eligibleEntryCount = actualEligible;
+        console.log('Eligible entries after exclusion:', actualEligible, 'Excluded:', excludedCount);
+      }
+    } catch (error) {
+      console.error('Error calculating eligible entries:', error);
+      // Fall back to total count if there's an error
+    }
+  }
+
+  // Update total entries display with excluded count if applicable
+  let displayText = eligibleEntryCount.toLocaleString();
+  if (excludedCount > 0) {
+    displayText += ` (${excludedCount} excluded)`;
+    console.log('Updating display with exclusions:', displayText);
+  }
+  // Fix: The actual element ID in the HTML is 'totalSelectedEntries', not 'totalEntriesDisplay'
+  const totalEntriesElement = document.getElementById('totalSelectedEntries');
+  if (totalEntriesElement) {
+    totalEntriesElement.textContent = displayText;
+  }
 
   // Enable play button only if at least one list and a prize are selected
   const bigPlayButton = document.getElementById('bigPlayButton');
@@ -289,7 +354,7 @@ function updateSelectionInfo() {
 async function updateTotalEntries() {
   // This function is now handled by updateSelectionInfo() for multiple lists
   // Keeping it for backward compatibility but just call updateSelectionInfo
-  updateSelectionInfo();
+  await updateSelectionInfo();
 }
 
 // Promise-based confirmation modal

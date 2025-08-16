@@ -300,10 +300,10 @@ function setupQuickSelection() {
   // Add change listener for checkboxes (using event delegation)
   const quickListSelect = document.getElementById('quickListSelect');
   if (quickListSelect) {
-    quickListSelect.addEventListener('change', (e) => {
+    quickListSelect.addEventListener('change', async (e) => {
       if (e.target.classList.contains('list-checkbox')) {
         UI.updateListSelectionCount();
-        UI.updateSelectionInfo(); // Update the display info
+        await UI.updateSelectionInfo(); // Update the display info
         // Save the selection
         const selectedIds = Array.from(document.querySelectorAll('#quickListSelect .list-checkbox:checked'))
           .map(cb => cb.value);

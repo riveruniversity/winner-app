@@ -160,56 +160,11 @@ async function processRestoreFile(event) {
     const jsonText = await UI.readFileAsText(file);
     const backupData = JSON.parse(jsonText);
 
-    if (!backupData.version) {
-      throw new Error('Invalid backup file format');
-    }
+    // Use the shared restore function that has batch import
+    await restoreBackupData(backupData);
 
-    UI.updateProgress(25, 'Restoring lists...');
-    if (backupData.lists) {
-      for (const list of backupData.lists) {
-        await Database.saveToStore('lists', list);
-      }
-    }
-
-    UI.updateProgress(50, 'Restoring prizes...');
-    if (backupData.prizes) {
-      for (const prize of backupData.prizes) {
-        await Database.saveToStore('prizes', prize);
-      }
-    }
-
-    UI.updateProgress(75, 'Restoring winners and history...');
-    if (backupData.winners) {
-      for (const winner of backupData.winners) {
-        await Database.saveToStore('winners', winner);
-      }
-    }
-
-    if (backupData.history) {
-      for (const historyEntry of backupData.history) {
-        await Database.saveToStore('history', historyEntry);
-      }
-    }
-
-    if (backupData.settings) {
-      Settings.updateSettings(backupData.settings); // Use imported Settings
-      await Settings.saveSettings();
-      // Settings.saveSettings already queues for sync, so no need to queue here again
-      Settings.applyTheme();
-      Settings.loadSettingsToForm();
-    }
-
-    UI.updateProgress(100, 'Finalizing...');
-
-    setTimeout(async () => {
-      UI.hideProgress();
-      UI.showToast('Data restored successfully', 'success');
-
-      // This needs to be handled by app.js or a central orchestrator
-      // await initializeApp(); 
-      // For now, we'll just reload the page to ensure full UI refresh
-      location.reload();
-    }, 500);
+    UI.hideProgress();
+    UI.showToast('Data restored successfully', 'success');
 
   } catch (error) {
     UI.hideProgress();
@@ -474,37 +429,106 @@ async function restoreBackupData(backupData) {
     throw new Error('Invalid backup file format');
   }
 
-  UI.updateProgress(20, 'Restoring lists...');
+  UI.updateProgress(10, 'Preparing batch restore...');
+  
+  // Prepare batch operations for all collections
+  const operations = [];
+  
+  // Add lists to batch
   if (backupData.lists) {
     for (const list of backupData.lists) {
-      await Database.saveToStore('lists', list);
+      operations.push({
+        collection: 'lists',
+        data: list,
+        operation: 'save'
+      });
     }
   }
-
-  UI.updateProgress(40, 'Restoring prizes...');
+  
+  // Add prizes to batch
   if (backupData.prizes) {
     for (const prize of backupData.prizes) {
-      await Database.saveToStore('prizes', prize);
+      operations.push({
+        collection: 'prizes',
+        data: prize,
+        operation: 'save'
+      });
     }
   }
-
-  UI.updateProgress(60, 'Restoring winners...');
+  
+  // Add winners to batch (with data structure optimization)
   if (backupData.winners) {
     for (const winner of backupData.winners) {
-      await Database.saveToStore('winners', winner);
+      // Migrate to optimized structure during restore
+      const optimizedWinner = {
+        winnerId: winner.winnerId,
+        entryId: winner.entryId,
+        displayName: winner.displayName,
+        prize: winner.prize,
+        timestamp: winner.timestamp,
+        sourceListId: winner.sourceListId || winner.listId,
+        sourceListName: winner.sourceListName || winner.listName || null, // Preserve list name
+        historyId: winner.historyId,
+        pickedUp: winner.pickedUp || false,
+        pickupTimestamp: winner.pickupTimestamp || null,
+        // Extract only essential contact info
+        contactInfo: {
+          phoneNumber: winner.contactInfo?.phoneNumber ||
+                      winner.data?.phoneNumber || 
+                      winner.originalEntry?.data?.phoneNumber ||
+                      null,
+          orderId: winner.contactInfo?.orderId ||
+                  winner.data?.orderId || 
+                  winner.data?.['Order ID'] ||
+                  winner.originalEntry?.data?.orderId ||
+                  winner.originalEntry?.data?.['Order ID'] ||
+                  null,
+          email: winner.contactInfo?.email ||
+                winner.data?.email || 
+                winner.data?.orderEmail ||
+                winner.originalEntry?.data?.email ||
+                winner.originalEntry?.data?.orderEmail ||
+                null
+        },
+        // Only store SMS status, not full reports
+        smsStatus: winner.sms?.status || winner.smsStatus || null,
+        smsMessageId: winner.sms?.messageId || null
+      };
+      
+      operations.push({
+        collection: 'winners',
+        data: optimizedWinner,
+        operation: 'save'
+      });
     }
   }
-
-  UI.updateProgress(80, 'Restoring history...');
+  
+  // Add history to batch
   if (backupData.history) {
     for (const historyEntry of backupData.history) {
-      await Database.saveToStore('history', historyEntry);
+      operations.push({
+        collection: 'history',
+        data: historyEntry,
+        operation: 'save'
+      });
     }
   }
-
-  UI.updateProgress(90, 'Restoring settings...');
+  
+  UI.updateProgress(30, `Restoring ${operations.length} items in batch...`);
+  
+  // Execute batch save for all collections at once
+  if (operations.length > 0) {
+    await Database.batchSave(operations);
+  }
+  
+  UI.updateProgress(80, 'Restoring settings...');
+  
+  // Settings are handled separately as they use a different storage mechanism
   if (backupData.settings) {
     Settings.updateSettings(backupData.settings);
+    await Settings.saveSettings();
+    Settings.applyTheme();
+    Settings.loadSettingsToForm();
   }
 
   UI.updateProgress(100, 'Finalizing...');

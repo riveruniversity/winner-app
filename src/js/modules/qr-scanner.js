@@ -60,6 +60,17 @@ export class QRScannerModule {
     try {
       const ticketCode = result.data;
       
+      // Validate QR code format: exactly 24 lowercase alphanumeric characters
+      const isValidFormat = /^[a-z0-9]{24}$/.test(ticketCode);
+      
+      if (!isValidFormat) {
+        // Silently ignore invalid codes - no error message shown
+        console.log('Invalid QR code format:', ticketCode);
+        // Resume scanning immediately for invalid codes
+        setTimeout(() => this.startScanning(), 100);
+        return;
+      }
+      
       // Stop scanning temporarily to prevent multiple reads
       this.stopScanning();
       

@@ -100,19 +100,35 @@ async function handleBigPlayClick() {
     fetchRequests.push({ collection: 'prizes' });
     const batchResults = await Database.batchFetch(fetchRequests);
     
-    // Fetch previous winners if skipExistingWinners is enabled
-    let previousWinnerIds = new Set();
-    let winnersExcluded = 0;
+    // Get the selected prize first
+    const prizes = batchResults.prizes || [];
+    const selectedPrize = prizes.find(p => p.prizeId === prizeId);
+
+    if (!selectedPrize) {
+      UI.showToast('Selected prize not found', 'error');
+      return;
+    }
     
-    if (settings.skipExistingWinners) {
+    // Fetch previous winners if preventSamePrize is enabled
+    let samePrizeWinnerIds = new Set();
+    let samePrizeExcluded = 0;
+    
+    if (settings.preventSamePrize) {
       const winners = await Database.getFromStore('winners');
       if (winners && Array.isArray(winners)) {
         winners.forEach(winner => {
-          // Add various ID formats to catch all previous winners
-          if (winner.entryId) previousWinnerIds.add(winner.entryId);
-          if (winner.originalEntry?.id) previousWinnerIds.add(winner.originalEntry.id);
-          if (winner.data?.['Ticket Code']) previousWinnerIds.add(winner.data['Ticket Code']);
-          if (winner.data?.ticketCode) previousWinnerIds.add(winner.data.ticketCode);
+          // Only check winners who won this specific prize
+          if (winner.prize === selectedPrize.name) {
+            const entryIds = [];
+            // Collect all possible IDs for this winner
+            if (winner.entryId) entryIds.push(winner.entryId);
+            if (winner.originalEntry?.id) entryIds.push(winner.originalEntry.id);
+            if (winner.data?.['Ticket Code']) entryIds.push(winner.data['Ticket Code']);
+            if (winner.data?.ticketCode) entryIds.push(winner.data.ticketCode);
+            
+            // Add to same prize exclusion set
+            entryIds.forEach(id => samePrizeWinnerIds.add(id));
+          }
         });
       }
     }
@@ -140,34 +156,35 @@ async function handleBigPlayClick() {
             continue; // Skip duplicate
           }
           
-          // Check if this person already won (if skipExistingWinners is enabled)
-          if (settings.skipExistingWinners && entryId && previousWinnerIds.has(entryId)) {
-            winnersExcluded++;
-            continue; // Skip previous winner
+          // Check if this person already won this same prize (if preventSamePrize is enabled)
+          if (settings.preventSamePrize && entryId && samePrizeWinnerIds.has(entryId)) {
+            samePrizeExcluded++;
+            continue; // Skip person who already won this prize
           }
           
           if (entryId) {
             entryIdSet.add(entryId);
           }
-          // Store source list ID with each entry for removal later (only for multiple lists)
+          // Store source list ID and name with each entry (for tracking origin)
           if (listIds.length > 1) {
             entry.sourceListId = listId;
+            entry.sourceListName = list.metadata?.name || 'Unknown';
+          } else {
+            // Even for single list, store the info for consistency
+            entry.sourceListId = listId;
+            entry.sourceListName = list.metadata?.name || 'Unknown';
           }
           allEntries.push(entry);
         }
       }
     }
     
-    const prizes = batchResults.prizes || [];
-    const selectedPrize = prizes.find(p => p.prizeId === prizeId);
-
-    if (!selectedPrize) {
-      UI.showToast('Selected prize not found', 'error');
-      return;
-    }
-    
     if (allEntries.length === 0) {
-      UI.showToast('No entries found in selected lists', 'error');
+      let message = 'No eligible entries found in selected lists';
+      if (samePrizeExcluded > 0) {
+        message += ` (${samePrizeExcluded} excluded - already won ${selectedPrize.name})`;
+      }
+      UI.showToast(message, 'error');
       return;
     }
     
@@ -181,8 +198,8 @@ async function handleBigPlayClick() {
       if (duplicatesRemoved > 0) {
         messages.push(`${duplicatesRemoved} duplicates removed`);
       }
-      if (winnersExcluded > 0) {
-        messages.push(`${winnersExcluded} previous winners excluded`);
+      if (samePrizeExcluded > 0) {
+        messages.push(`${samePrizeExcluded} excluded (already won ${selectedPrize.name})`);
       }
       console.log('Selection summary:', messages.join(' • '));
     }
@@ -363,19 +380,29 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
     } while (winnerIds.has(winnerId));
     winnerIds.add(winnerId);
     
+    // Extract only essential contact info to avoid duplication
+    const contactInfo = {
+      phoneNumber: entry.data?.phoneNumber || entry.data?.phone || entry.data?.mobile || 
+                   entry.data?.cellPhone || entry.data?.cell || entry.data?.telephone || null,
+      orderId: entry.data?.orderId || entry.data?.['Order ID'] || null,
+      email: entry.data?.email || entry.data?.orderEmail || null
+    };
+    
     return {
       winnerId: winnerId,
       entryId: entry.id, // Store the list entry ID for ticket scanning
-      data: entry.data, // Store all original data
       displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
       prize: selectedPrize.name,
       timestamp: timestamp + index, // Ensure unique timestamps
-      originalEntry: entry, // Store complete entry including ID
-      listId: getCurrentList().listId || getCurrentList().metadata.listId,
-      position: index + 1,
+      sourceListId: entry.sourceListId || getCurrentList().listId || getCurrentList().metadata.listId,
+      sourceListName: entry.sourceListName || getCurrentList().metadata.name, // Use entry's source list name if available
       historyId: historyId,
+      contactInfo: contactInfo, // Only essential fields, not full data
       pickedUp: false, // Initialize pickup status
-      pickupTimestamp: null
+      pickupTimestamp: null,
+      // For backward compatibility during migration, keep originalEntry temporarily
+      // This will be removed in phase 2
+      originalEntry: entry
     };
   });
 
@@ -859,7 +886,7 @@ function createWinnerCard(winner, index) {
   // Build card content safely
   const numberDiv = document.createElement('div');
   numberDiv.className = 'winner-number';
-  numberDiv.textContent = String(winner.position);
+  numberDiv.textContent = String(winner.position || index + 1);
   winnerCard.appendChild(numberDiv);
   
   if (info1) {
@@ -947,10 +974,30 @@ function formatInfoTemplate(template, winner) {
     if (winner[trimmedKey]) {
       return winner[trimmedKey];
     }
-    // Then check in the data object where CSV fields are stored
+    
+    // Check in contactInfo for common fields (new structure)
+    if (winner.contactInfo) {
+      if (trimmedKey === 'phoneNumber' || trimmedKey === 'phone') {
+        if (winner.contactInfo.phoneNumber) return winner.contactInfo.phoneNumber;
+      }
+      if (trimmedKey === 'orderId' || trimmedKey === 'Order ID') {
+        if (winner.contactInfo.orderId) return winner.contactInfo.orderId;
+      }
+      if (trimmedKey === 'email' || trimmedKey === 'orderEmail') {
+        if (winner.contactInfo.email) return winner.contactInfo.email;
+      }
+    }
+    
+    // For backward compatibility, check originalEntry.data
+    if (winner.originalEntry?.data && winner.originalEntry.data[trimmedKey]) {
+      return winner.originalEntry.data[trimmedKey];
+    }
+    
+    // Fallback to old structure (data field)
     if (winner.data && winner.data[trimmedKey]) {
       return winner.data[trimmedKey];
     }
+    
     return '';
   }).trim();
   

@@ -116,6 +116,14 @@ async function searchByTicketCode() {
     return;
   }
   
+  // Validate ticket code format: exactly 24 lowercase alphanumeric characters
+  const isValidFormat = /^[a-z0-9]{24}$/.test(ticketCode);
+  
+  if (!isValidFormat) {
+    UI.showToast('Invalid ticket code format. Must be 24 lowercase letters/numbers.', 'error');
+    return;
+  }
+  
   try {
     const winnerData = await QRScanner.findWinnerByTicketCode(ticketCode);
     
