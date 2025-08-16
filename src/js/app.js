@@ -202,9 +202,36 @@ function setupInterfaceToggles() {
   }
 
   if (backToPublicBtn) {
-    backToPublicBtn.addEventListener('click', function () {
-      document.getElementById('managementInterface').classList.remove('active');
-      document.getElementById('publicInterface').style.display = 'flex';
+    backToPublicBtn.addEventListener('click', async function () {
+      try {
+        // Force reload ALL data from database to ensure everything is current
+        await Settings.loadSettings();
+        Settings.applyTheme();
+        Settings.loadSettingsToForm();
+        
+        // Reload lists and prizes
+        const lists = await Database.getFromStore('lists');
+        const prizes = await Database.getFromStore('prizes');
+        
+        // Update all UI components
+        await UI.populateQuickSelects(lists, prizes);
+        UI.updateSelectionInfo();
+        UI.applyVisibilitySettings();
+        UI.updateListSelectionCount();
+        
+        // Reload winners
+        await Winners.loadWinners();
+        
+        // Update history stats
+        await loadHistory();
+        
+        // Switch to public interface
+        document.getElementById('managementInterface').classList.remove('active');
+        document.getElementById('publicInterface').style.display = 'flex';
+      } catch (error) {
+        console.error('Error refreshing data:', error);
+        UI.showToast('Error refreshing data: ' + error.message, 'error');
+      }
     });
   }
 
@@ -400,7 +427,8 @@ function setupManagementListeners() {
           UI.showToast('No pending SMS messages to check', 'info');
         }
       } catch (error) {
-        UI.showToast('Error checking SMS statuses', 'error');
+        console.error('SMS status check error:', error);
+        UI.showToast(`Error checking SMS statuses: ${error.message}`, 'error');
       } finally {
         checkSMSStatusBtn.disabled = false;
         checkSMSStatusBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-2"></i>Check SMS Status';

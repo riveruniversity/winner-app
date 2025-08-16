@@ -49,7 +49,8 @@ async function loadLists(listsData = null) {
       const listId = list.listId || list.metadata.listId;
       // Check if this list is in the selectedListIds array
       const isSelected = settings.selectedListIds && settings.selectedListIds.includes(listId);
-      const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
+      // Use entries.length if entries exist (even if 0), otherwise use metadata
+      const entryCount = list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0);
       
       return `
       <div class="col-md-6 col-lg-4">
@@ -111,7 +112,7 @@ async function loadLists(listsData = null) {
               <h6 class="card-title mb-0">${list.metadata.name}</h6>
               <div>
                 ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i></span>' : ''}
-                ${!settings.hideEntryCounts ? `<span class="badge bg-primary">${list.entries?.length || list.metadata?.entryCount || 0}</span>` : ''}
+                ${!settings.hideEntryCounts ? `<span class="badge bg-primary">${list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0)}</span>` : ''}
               </div>
             </div>
           </div>
@@ -241,7 +242,7 @@ async function viewList(listId) {
       modalBody.innerHTML = `
         ${!settings.hideEntryCounts ? `
         <div class="mb-3">
-          <strong>Total Entries:</strong> ${list.entries?.length || list.metadata?.entryCount || 0}
+          <strong>Total Entries:</strong> ${list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0)}
           ${list.metadata.skippedWinners ? `<span class="text-muted ms-2">(${list.metadata.skippedWinners} winners skipped during upload)</span>` : ''}
         </div>
         ` : ''}
@@ -297,12 +298,17 @@ function deleteListConfirm(listId) {
   UI.showConfirmationModal(
     'Delete List',
     'Are you sure you want to delete this list? This action cannot be undone.',
-    () => {
+    async () => {
       try {
-        Database.deleteFromStore('lists', listId); // Fire and forget
+        // Wait for delete to complete
+        await Database.deleteFromStore('lists', listId);
         UI.showToast('List deleted successfully', 'success');
-        loadLists(); // Fire and forget
-        UI.populateQuickSelects(); // Fire and forget
+        
+        // Wait for UI updates to complete
+        await Promise.all([
+          loadLists(),
+          UI.populateQuickSelects()
+        ]);
       } catch (error) {
         console.error('Error deleting list:', error);
         UI.showToast('Error deleting list: ' + error.message, 'error');

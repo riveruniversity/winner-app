@@ -455,16 +455,27 @@ async function performUndoBackgroundSync(lastAction) {
           }
         }
       } else {
-        // Single list - restore normally
-        currentList.entries.push(...lastAction.removedEntries);
-        currentList.metadata.entryCount = currentList.entries.length; // Update count
-        if (!currentList.listId && currentList.metadata && currentList.metadata.listId) {
-          currentList.listId = currentList.metadata.listId;
+        // Single list - fetch the actual list from database to ensure we have the right one
+        const listId = currentList.listId || currentList.metadata?.listId;
+        if (listId) {
+          const actualList = await Database.getFromStore('lists', listId);
+          if (actualList) {
+            actualList.entries.push(...lastAction.removedEntries);
+            actualList.metadata.entryCount = actualList.entries.length;
+            operations.push({ 
+              collection: 'lists', 
+              data: actualList 
+            });
+          }
+        } else {
+          // Fallback to current list if no ID found
+          currentList.entries.push(...lastAction.removedEntries);
+          currentList.metadata.entryCount = currentList.entries.length;
+          operations.push({ 
+            collection: 'lists', 
+            data: currentList 
+          });
         }
-        operations.push({ 
-          collection: 'lists', 
-          data: currentList 
-        });
       }
     }
 

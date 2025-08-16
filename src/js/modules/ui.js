@@ -132,7 +132,8 @@ async function populateQuickSelects(lists = null, prizes = null) {
       } else {
         sortedLists.forEach(list => {
           const listId = list.listId || list.metadata.listId;
-          const entryCount = list.entries?.length || list.metadata?.entryCount || 0;
+          // Use entries.length if entries exist (even if 0), otherwise use metadata
+          const entryCount = list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0);
           
           const checkboxDiv = document.createElement('div');
           checkboxDiv.className = 'form-check';

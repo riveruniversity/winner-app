@@ -147,8 +147,10 @@ async function handleBigPlayClick() {
           if (entryId) {
             entryIdSet.add(entryId);
           }
-          // Store source list ID with each entry for removal later
-          entry.sourceListId = listId;
+          // Store source list ID with each entry for removal later (only for multiple lists)
+          if (listIds.length > 1) {
+            entry.sourceListId = listId;
+          }
           allEntries.push(entry);
         }
       }
@@ -193,24 +195,38 @@ async function handleBigPlayClick() {
       return;
     }
 
-    // Create a combined list object for processing
-    // Use the first list's configuration for display purposes
-    const firstList = batchResults[`lists:${listIds[0]}`];
-    const combinedList = {
-      entries: allEntries,
-      metadata: {
-        name: listIds.length > 1 ? `Combined Lists (${listIds.length})` : (firstList?.metadata?.name || 'Unknown'),
-        entryCount: allEntries.length,
-        isCombined: listIds.length > 1,
-        sourceListIds: listIds,
-        // Inherit display configuration from the first list
-        nameConfig: firstList?.metadata?.nameConfig,
-        infoConfig: firstList?.metadata?.infoConfig
+    // For single list, use the original list directly; for multiple, create combined
+    if (listIds.length === 1) {
+      // Single list - use the original list directly
+      const originalList = batchResults[`lists:${listIds[0]}`];
+      originalList.entries = allEntries; // Use filtered entries (duplicates/winners removed)
+      
+      // Ensure the list has its ID properly set
+      if (!originalList.listId) {
+        originalList.listId = listIds[0];
       }
-    };
-
-    // Set current list for global access
-    setCurrentList(combinedList);
+      
+      // Set current list for global access
+      setCurrentList(originalList);
+    } else {
+      // Multiple lists - create a combined list object for processing
+      const firstList = batchResults[`lists:${listIds[0]}`];
+      const combinedList = {
+        entries: allEntries,
+        metadata: {
+          name: `Combined Lists (${listIds.length})`,
+          entryCount: allEntries.length,
+          isCombined: true,
+          sourceListIds: listIds,
+          // Inherit display configuration from the first list
+          nameConfig: firstList?.metadata?.nameConfig,
+          infoConfig: firstList?.metadata?.infoConfig
+        }
+      };
+      
+      // Set current list for global access
+      setCurrentList(combinedList);
+    }
 
     Settings.debugLog('Big play clicked, selection mode:', selectionMode, 'delay visual:', delayVisualType);
     

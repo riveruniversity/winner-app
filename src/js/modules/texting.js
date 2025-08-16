@@ -633,6 +633,8 @@ class TextingService {
       // API base path - use relative path to work from any base URL
       const apiBase = './api';
       
+      console.log('Checking message status for:', { winnerId, messageId, url: `${apiBase}/ez-texting` });
+      
       const response = await fetch(`${apiBase}/ez-texting`, {
         method: 'POST',
         headers: {
@@ -751,7 +753,12 @@ class TextingService {
       return pendingWinners.length;
     } catch (error) {
       console.error('Error checking pending statuses:', error);
-      return 0;
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      throw error; // Re-throw to see in the UI
     }
   }
 
@@ -813,6 +820,7 @@ export const Texting = {
   sendBulkWinnerSMS: (winners) => textingInstance.sendBulkWinnerSMS(winners),
   sendCurrentWinnersSMS: () => textingInstance.sendCurrentWinnersSMS(),
   sendToCurrentWinners: () => textingInstance.sendToCurrentWinners(),  // Add the correct method
+  checkAllPendingStatuses: () => textingInstance.checkAllPendingStatuses(),  // Add missing export
   abortSending: () => textingInstance.abortSending(),
   getSMSStats: (messageId) => textingInstance.getSMSStats(messageId),
   showSMSDialog: () => textingInstance.showSMSDialog(),
