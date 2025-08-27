@@ -14,7 +14,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        scan: resolve(__dirname, 'scan.html')
+        scan: resolve(__dirname, 'scan.html'),
+        conditions: resolve(__dirname, 'conditions.html')
       },
       output: {
         // Organize assets in build

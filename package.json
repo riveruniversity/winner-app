@@ -8,9 +8,11 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "dev:server": "nodemon backend/server.js",
+    "dev:server": "nodemon --exec ts-node -P tsconfig.backend.json backend/server.ts",
     "dev:all": "npm run dev:server & npm run dev",
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.backend.json",
+    "build:frontend": "vite build",
+    "build:backend": "tsc -p tsconfig.backend.json",
     "preview": "vite preview",
     "server": "node backend/server.js",
     "start": "npm run build && npm run server"
@@ -31,6 +33,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^20.19.11",
+    "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.0",

@@ -12,16 +12,26 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,
-    "outDir": "./dist",
-    "rootDir": "./",
-    "types": ["node"]
+    "outDir": "./backend",
+    "rootDir": "./backend",
+    "types": ["node"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
   "include": [
-    "src/**/*.ts"
+    "backend/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "backend"
-  ]
+    "src"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node",
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }

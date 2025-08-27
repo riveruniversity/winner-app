@@ -7,6 +7,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+COPY tsconfig*.json ./
 
 # Install all dependencies (including dev dependencies for build)
 # Use npm install instead of npm ci since package-lock.json may be out of sync
@@ -42,8 +43,8 @@ RUN npm install --omit=dev && \
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy backend folder
-COPY backend ./backend
+# Copy compiled backend (TypeScript compiled to JavaScript in-place)
+COPY --from=builder /app/backend ./backend
 
 # Copy conditions.html
 COPY conditions.html ./

@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { promises as fs } from 'fs';
 import path from 'path';
 import cors from 'cors';
@@ -7,17 +8,19 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const ROOT_DIR = path.join(__dirname, '..');  // Project root directory
+const DIST_DIR = path.join(ROOT_DIR, 'dist');  // Dist folder (contains everything after build)
+const DATA_DIR = path.join(ROOT_DIR, 'data');  // Data folder
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const DATA_DIR = path.join(ROOT_DIR, 'data');
+const PORT: number = parseInt(process.env.PORT || '3001', 10);
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 // Set Content Security Policy and cache headers
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   // Only set CSP for HTML pages, not API calls
   if (!req.path.includes('/api/')) {
     res.setHeader(
@@ -45,25 +48,35 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from dist (built app)
-app.use(express.static(path.join(ROOT_DIR, 'dist')));
-app.use('/win', express.static(path.join(ROOT_DIR, 'dist')));
+// Serve static files from dist (includes all built assets and public files)
+app.use(express.static(DIST_DIR));
+app.use('/win', express.static(DIST_DIR));
 
-// Serve static files from public (sounds, images, etc.)
-app.use(express.static(path.join(ROOT_DIR, 'public')));
-app.use('/win', express.static(path.join(ROOT_DIR, 'public')));
+// Type definitions
+interface CollectionItem {
+  [key: string]: any;
+}
 
-// Handle /win subdirectory
-app.use('/win', express.static(path.join(ROOT_DIR, 'dist')));
-app.use('/win', express.static(path.join(ROOT_DIR, 'public')));
+type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'sounds' | 'backups' | 'ez-texting';
 
-async function ensureDataDir() {
+interface KeyFields {
+  lists: 'listId';
+  winners: 'winnerId';
+  prizes: 'prizeId';
+  history: 'historyId';
+  settings: 'key';
+  sounds: 'soundId';
+  backups: 'backupId';
+  [key: string]: string;
+}
+
+async function ensureDataDir(): Promise<void> {
   try {
     await fs.access(DATA_DIR);
   } catch {
     await fs.mkdir(DATA_DIR, { recursive: true });
     
-    const collections = ['lists', 'winners', 'prizes', 'history', 'settings', 'sounds', 'backups'];
+    const collections: CollectionName[] = ['lists', 'winners', 'prizes', 'history', 'settings', 'sounds', 'backups'];
     for (const collection of collections) {
       const filePath = path.join(DATA_DIR, `${collection}.json`);
       await fs.writeFile(filePath, '[]', 'utf8');
@@ -72,7 +85,7 @@ async function ensureDataDir() {
   }
 }
 
-async function readCollection(collection) {
+async function readCollection(collection: string): Promise<CollectionItem[]> {
   try {
     const filePath = path.join(DATA_DIR, `${collection}.json`);
     const data = await fs.readFile(filePath, 'utf8');
@@ -83,7 +96,7 @@ async function readCollection(collection) {
   }
 }
 
-async function writeCollection(collection, data) {
+async function writeCollection(collection: string, data: CollectionItem[]): Promise<boolean> {
   try {
     const filePath = path.join(DATA_DIR, `${collection}.json`);
     await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
@@ -94,8 +107,8 @@ async function writeCollection(collection, data) {
   }
 }
 
-function getKeyField(collection) {
-  const keyFields = {
+function getKeyField(collection: string): string {
+  const keyFields: KeyFields = {
     lists: 'listId',
     winners: 'winnerId',
     prizes: 'prizeId',
@@ -111,19 +124,19 @@ function getKeyField(collection) {
 const apiRouter = express.Router();
 
 // Health check endpoint
-apiRouter.get('/health', (req, res) => {
+apiRouter.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 // Batch endpoint for fetching multiple collections at once
-apiRouter.post('/batch', async (req, res) => {
+apiRouter.post('/batch', async (req: Request, res: Response) => {
   try {
     const { requests } = req.body;
     if (!Array.isArray(requests)) {
       return res.status(400).json({ error: 'requests must be an array' });
     }
     
-    const results = {};
+    const results: { [key: string]: any } = {};
     
     for (const request of requests) {
       const { collection, id } = request;
@@ -139,20 +152,20 @@ apiRouter.post('/batch', async (req, res) => {
           const data = await readCollection(collection);
           results[collection] = data;
         }
-      } catch (error) {
+      } catch (error: any) {
         results[collection] = { error: error.message };
       }
     }
     
     res.json(results);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in batch endpoint:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Batch save endpoint for saving multiple documents at once (atomic)
-apiRouter.post('/batch-save', async (req, res) => {
+apiRouter.post('/batch-save', async (req: Request, res: Response) => {
   try {
     const { operations } = req.body;
     if (!Array.isArray(operations)) {
@@ -160,8 +173,8 @@ apiRouter.post('/batch-save', async (req, res) => {
     }
     
     // First, validate all operations and prepare the changes
-    const changes = {};
-    const results = [];
+    const changes: { [collection: string]: CollectionItem[] } = {};
+    const results: any[] = [];
     
     for (const op of operations) {
       const { collection, data, operation, id } = op;
@@ -212,25 +225,25 @@ apiRouter.post('/batch-save', async (req, res) => {
       console.log(`Batch save: ${operations.length} documents`);
     }
     res.json({ results });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Batch save failed:', error.message);
     res.status(500).json({ error: `Batch save failed: ${error.message}` });
   }
 });
 
 // Collection routes
-apiRouter.get('/:collection', async (req, res) => {
+apiRouter.get('/:collection', async (req: Request, res: Response) => {
   try {
     const { collection } = req.params;
     const data = await readCollection(collection);
     res.json(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in GET /:collection:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-apiRouter.get('/:collection/:id', async (req, res) => {
+apiRouter.get('/:collection/:id', async (req: Request, res: Response) => {
   try {
     const { collection, id } = req.params;
     const data = await readCollection(collection);
@@ -241,14 +254,14 @@ apiRouter.get('/:collection/:id', async (req, res) => {
       return res.status(404).json({ error: 'Not found' });
     }
     res.json(item);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in GET /:collection/:id:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 // Reports API Proxy endpoint - to avoid CORS issues
-apiRouter.get('/reports-proxy/*', async (req, res) => {
+apiRouter.get('/reports-proxy/*', async (req: Request, res: Response) => {
   try {
     // Extract the path after /reports-proxy/
     const reportPath = req.params[0];
@@ -282,14 +295,14 @@ apiRouter.get('/reports-proxy/*', async (req, res) => {
     });
     res.send(body);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Reports proxy error:', error);
     res.status(500).json({ error: 'Failed to fetch report: ' + error.message });
   }
 });
 
 // Handle OPTIONS requests for CORS preflight
-apiRouter.options('/reports-proxy/*', (req, res) => {
+apiRouter.options('/reports-proxy/*', (req: Request, res: Response) => {
   res.set({
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -299,8 +312,8 @@ apiRouter.options('/reports-proxy/*', (req, res) => {
   res.sendStatus(204);
 });
 
-// EZ Texting API endpoint - MUST come before generic collection routes
-apiRouter.post('/ez-texting', async (req, res) => {
+// EZ Texting API endpoint
+apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
   // Log only in development mode
   if (process.env.NODE_ENV !== 'production') {
     console.log('EZ Texting endpoint called:', req.body.action);
@@ -322,7 +335,7 @@ apiRouter.post('/ez-texting', async (req, res) => {
     const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
     
     // Handle different actions
-    let result;
+    let result: any;
     
     switch (action) {
       case 'sendMessage':
@@ -349,7 +362,7 @@ apiRouter.post('/ez-texting', async (req, res) => {
         });
         
         const responseText = await ezTextingResponse.text();
-        let responseData;
+        let responseData: any;
         try {
           responseData = JSON.parse(responseText);
         } catch (e) {
@@ -385,7 +398,7 @@ apiRouter.post('/ez-texting', async (req, res) => {
         });
         
         const reportText = await reportResponse.text();
-        let reportData;
+        let reportData: any;
         try {
           reportData = JSON.parse(reportText);
         } catch (e) {
@@ -422,7 +435,7 @@ apiRouter.post('/ez-texting', async (req, res) => {
     
     res.json(result);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('EZ Texting error:', error.message);
     res.status(500).json({
       success: false,
@@ -431,7 +444,7 @@ apiRouter.post('/ez-texting', async (req, res) => {
   }
 });
 
-apiRouter.post('/:collection', async (req, res) => {
+apiRouter.post('/:collection', async (req: Request, res: Response) => {
   try {
     const { collection } = req.params;
     const newItem = req.body;
@@ -461,13 +474,13 @@ apiRouter.post('/:collection', async (req, res) => {
     
     await writeCollection(collection, data);
     res.json({ success: true, id: newItem[keyField] });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in POST /:collection:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-apiRouter.put('/:collection/:id', async (req, res) => {
+apiRouter.put('/:collection/:id', async (req: Request, res: Response) => {
   try {
     const { collection, id } = req.params;
     const updateData = req.body;
@@ -484,13 +497,13 @@ apiRouter.put('/:collection/:id', async (req, res) => {
     await writeCollection(collection, data);
     
     res.json({ success: true, data: data[index] });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in PUT /:collection/:id:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-apiRouter.delete('/:collection/:id', async (req, res) => {
+apiRouter.delete('/:collection/:id', async (req: Request, res: Response) => {
   try {
     const { collection, id } = req.params;
     const keyField = getKeyField(collection);
@@ -506,7 +519,7 @@ apiRouter.delete('/:collection/:id', async (req, res) => {
     await writeCollection(collection, data);
     
     res.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in DELETE /:collection/:id:', error);
     res.status(500).json({ error: error.message });
   }
@@ -518,37 +531,36 @@ app.use('/api', apiRouter);
 app.use('/win/api', apiRouter);
 
 // Route for scanner page
-app.get('/scan', (req, res) => {
-  res.sendFile(path.join(ROOT_DIR, 'dist', 'scan.html'));
+app.get('/scan', (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'scan.html'));
 });
 
 // Route for /win/scan
-app.get('/win/scan', (req, res) => {
-  res.sendFile(path.join(ROOT_DIR, 'dist', 'scan.html'));
+app.get('/win/scan', (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'scan.html'));
 });
 
 // Route for conditions page
-app.get('/conditions', (req, res) => {
+app.get('/conditions', (req: Request, res: Response) => {
   res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
 });
 
 // Route for /win/conditions
-app.get('/win/conditions', (req, res) => {
+app.get('/win/conditions', (req: Request, res: Response) => {
   res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
 });
 
 // Handle win routes
-app.get('/win/*', (req, res) => {
-  res.sendFile(path.join(ROOT_DIR, 'dist', 'index.html'));
+app.get('/win/*', (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
 // Catch-all route for SPA - handle both root and /win paths
-app.get('*', (req, res) => {
-  // For /win paths, still serve the same index.html
-  res.sendFile(path.join(ROOT_DIR, 'dist', 'index.html'));
+app.get('*', (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
-async function startServer() {
+async function startServer(): Promise<void> {
   await ensureDataDir();
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
