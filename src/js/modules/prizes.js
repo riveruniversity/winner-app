@@ -138,18 +138,6 @@ async function loadPrizes(prizesData = null) {
         });
         
         gridContainer.appendChild(fragment);
-        
-        // Setup event delegation for buttons
-        eventManager.delegate(gridContainer, '[data-prize-id]', 'click', function(e) {
-          const prizeId = this.dataset.prizeId;
-          if (this.classList.contains('btn-outline-success') || this.classList.contains('btn-success')) {
-            Prizes.selectPrize(prizeId);
-          } else if (this.classList.contains('btn-outline-primary')) {
-            Prizes.editPrizeModal(prizeId);
-          } else if (this.classList.contains('btn-outline-danger')) {
-            Prizes.deletePrizeConfirm(prizeId);
-          }
-        });
       }
       
       // Backward compatibility for old container
@@ -452,6 +440,23 @@ async function loadPrizes(prizesData = null) {
 let lastToastTime = 0;
 const TOAST_DEBOUNCE_MS = 500; // Half second debounce
 
+// Initialize event delegation once at startup
+function initPrizeEventDelegation() {
+  const gridContainer = document.getElementById('prizesGrid');
+  if (gridContainer) {
+    eventManager.delegate(gridContainer, '[data-prize-id]', 'click', function(e) {
+      const prizeId = this.dataset.prizeId;
+      if (this.classList.contains('btn-outline-success') || this.classList.contains('btn-success')) {
+        Prizes.selectPrize(prizeId);
+      } else if (this.classList.contains('btn-outline-primary')) {
+        Prizes.editPrizeModal(prizeId);
+      } else if (this.classList.contains('btn-outline-danger')) {
+        Prizes.deletePrizeConfirm(prizeId);
+      }
+    });
+  }
+}
+
 // Function to select a prize (like selecting from the setup tab)
 async function selectPrize(prizeId) {
   try {
@@ -523,7 +528,8 @@ export const Prizes = {
   editPrize,
   editPrizeModal,
   deletePrizeConfirm,
-  selectPrize
+  selectPrize,
+  initPrizeEventDelegation
 };
 
 window.Prizes = Prizes;

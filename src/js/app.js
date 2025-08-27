@@ -118,6 +118,9 @@ export async function initializeApp() {
     // Initialize report import functionality
     Reports.initReportImport();
     
+    // Initialize prize event delegation (once)
+    Prizes.initPrizeEventDelegation();
+    
     // Initialize MinistryPlatform import functionality
     MinistryPlatform.init();
 

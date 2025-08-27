@@ -103,9 +103,16 @@ async function readCollection(collection: string): Promise<CollectionItem[]> {
     const filePath = path.join(DATA_DIR, `${collection}.json`);
     const data = await fs.readFile(filePath, 'utf8');
     return JSON.parse(data);
-  } catch (error) {
+  } catch (error: any) {
+    // If file doesn't exist, return empty array (this is ok for new collections)
+    if (error.code === 'ENOENT') {
+      console.log(`Collection ${collection} doesn't exist yet, will be created`);
+      return [];
+    }
+    // For any other error (permissions, corrupted JSON, etc), throw it
+    // This prevents data loss by not proceeding with an empty array
     console.error(`Error reading ${collection}:`, error);
-    return [];
+    throw new Error(`Failed to read collection ${collection}: ${error.message}`);
   }
 }
 
@@ -635,7 +642,16 @@ apiRouter.post('/:collection', async (req: Request, res: Response) => {
       newItem[keyField] = uuidv4();
     }
     
-    const data = await readCollection(collection);
+    let data: CollectionItem[];
+    try {
+      data = await readCollection(collection);
+    } catch (readError: any) {
+      console.error(`Failed to read ${collection} for POST operation:`, readError);
+      return res.status(500).json({ 
+        error: `Failed to read existing ${collection} data. Not saving to prevent data loss.`,
+        details: readError.message 
+      });
+    }
     
     if (collection === 'settings') {
       const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
