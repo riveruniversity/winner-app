@@ -177,15 +177,15 @@ async function loadPrizes(prizesData = null) {
               <div class="mt-auto pt-3">
                 <div class="d-flex justify-content-between">
                   <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
-                          onclick="Prizes.selectPrize('${prizeId}')" 
+                          data-prize-id="${prizeId}"
                           ${isSelected || !isAvailable ? 'disabled' : ''}>
                     <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
                   </button>
                   <div>
-                    <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prizeId}" onclick="Prizes.editPrizeModal('${prizeId}')">
+                    <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prizeId}">
                       <i class="bi bi-pencil"></i> Edit
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" data-prize-id="${prizeId}" onclick="Prizes.deletePrizeConfirm('${prizeId}')">
+                    <button class="btn btn-sm btn-outline-danger" data-prize-id="${prizeId}">
                       <i class="bi bi-trash"></i> Delete
                     </button>
                   </div>
@@ -448,6 +448,10 @@ async function loadPrizes(prizesData = null) {
     });
   }
 
+// Track last toast time to prevent duplicates
+let lastToastTime = 0;
+const TOAST_DEBOUNCE_MS = 500; // Half second debounce
+
 // Function to select a prize (like selecting from the setup tab)
 async function selectPrize(prizeId) {
   try {
@@ -493,8 +497,12 @@ async function selectPrize(prizeId) {
     // Note: populateQuickSelects calls updateSelectionInfo which might trigger additional saves
     await UI.populateQuickSelects();
     
-    // Show success message only once
-    UI.showToast(`Prize "${selectedPrize.name}" selected (${selectedPrize.quantity} available)`, 'success');
+    // Show success message only once with debounce to prevent duplicates
+    const now = Date.now();
+    if (now - lastToastTime > TOAST_DEBOUNCE_MS) {
+      UI.showToast(`Prize "${selectedPrize.name}" selected (${selectedPrize.quantity} available)`, 'success');
+      lastToastTime = now;
+    }
     
     // Switch to Setup tab if not already there
     const setupTab = document.querySelector('a[href="#setup"]');
