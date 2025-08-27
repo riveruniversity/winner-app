@@ -447,7 +447,7 @@ class TextingService {
       const currentWinners = getCurrentWinners();
       const sampleWinner = currentWinners[0] || { displayName: 'John Doe', prize: 'Sample Prize', winnerId: 'ABC123' };
       const defaultTemplate = await Templates.getDefaultTemplate();
-      const template = defaultTemplate?.message || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
+      const template = defaultTemplate?.message || 'Congratulations {name}! You won {prize}. Your code: {contactId}';
       
       // Create preview message
       let previewMessage = template

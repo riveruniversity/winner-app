@@ -394,7 +394,7 @@ async function ensureDefaultTemplate() {
       const defaultTemplate = {
         templateId: 'tmpl_default',
         name: 'Default Winner Notification',
-        message: 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}',
+        message: 'Congratulations {name}! You won {prize}. Your code: {contactId}',
         isDefault: true,
         createdAt: new Date().toISOString()
       };

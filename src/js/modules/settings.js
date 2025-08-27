@@ -32,7 +32,7 @@ let settings = {
   soundDuringDelay: 'none',
   soundEndOfDelay: 'none',
   soundDuringReveal: 'none',
-  smsTemplate: 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}',
+  smsTemplate: 'Congratulations {name}! You won {prize}. Your code: {contactId}',
   celebrationEffect: 'confetti',
   celebrationDuration: 4,
   celebrationAutoTrigger: true
