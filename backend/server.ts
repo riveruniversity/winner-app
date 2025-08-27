@@ -7,10 +7,11 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.join(__dirname, '..');  // Project root directory
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = path.join(ROOT_DIR, 'data');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -45,16 +46,16 @@ app.use((req, res, next) => {
 });
 
 // Serve static files from dist (built app)
-app.use(express.static('dist'));
-app.use('/win', express.static('dist'));
+app.use(express.static(path.join(ROOT_DIR, 'dist')));
+app.use('/win', express.static(path.join(ROOT_DIR, 'dist')));
 
 // Serve static files from public (sounds, images, etc.)
-app.use(express.static('public'));
-app.use('/win', express.static('public'));
+app.use(express.static(path.join(ROOT_DIR, 'public')));
+app.use('/win', express.static(path.join(ROOT_DIR, 'public')));
 
 // Handle /win subdirectory
-app.use('/win', express.static('dist'));
-app.use('/win', express.static('public'));
+app.use('/win', express.static(path.join(ROOT_DIR, 'dist')));
+app.use('/win', express.static(path.join(ROOT_DIR, 'public')));
 
 async function ensureDataDir() {
   try {
@@ -518,33 +519,33 @@ app.use('/win/api', apiRouter);
 
 // Route for scanner page
 app.get('/scan', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'scan.html'));
+  res.sendFile(path.join(ROOT_DIR, 'dist', 'scan.html'));
 });
 
 // Route for /win/scan
 app.get('/win/scan', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'scan.html'));
+  res.sendFile(path.join(ROOT_DIR, 'dist', 'scan.html'));
 });
 
 // Route for conditions page
 app.get('/conditions', (req, res) => {
-  res.sendFile(path.join(__dirname, 'conditions.html'));
+  res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
 });
 
 // Route for /win/conditions
 app.get('/win/conditions', (req, res) => {
-  res.sendFile(path.join(__dirname, 'conditions.html'));
+  res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
 });
 
 // Handle win routes
 app.get('/win/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(ROOT_DIR, 'dist', 'index.html'));
 });
 
 // Catch-all route for SPA - handle both root and /win paths
 app.get('*', (req, res) => {
   // For /win paths, still serve the same index.html
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(ROOT_DIR, 'dist', 'index.html'));
 });
 
 async function startServer() {

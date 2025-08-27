@@ -42,8 +42,8 @@ RUN npm install --omit=dev && \
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy server file
-COPY server.js ./
+# Copy backend folder
+COPY backend ./backend
 
 # Copy conditions.html
 COPY conditions.html ./
@@ -69,4 +69,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start the server
-CMD ["node", "server.js"]
+CMD ["node", "backend/server.js"]
