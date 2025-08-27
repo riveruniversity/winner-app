@@ -28,7 +28,9 @@
       "Bash(curl -s http://localhost:3000)",
       "Bash(curl -s http://localhost:3000/api/lists)",
       "Bash(curl -s http://localhost:3000/api/prizes)",
-      "Bash(curl -s http://localhost:3001)"
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(npm install)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "additionalDirectories": [
