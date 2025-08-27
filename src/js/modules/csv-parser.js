@@ -191,7 +191,6 @@ function showCSVPreview(data, listName) {
     return;
   }
 
-  previewCard.style.display = 'block';
   const headers = Object.keys(data[0]);
 
   previewHeaders.innerHTML = '<tr>' +
@@ -209,7 +208,15 @@ function showCSVPreview(data, listName) {
   const previewTitle = document.querySelector('#dataPreviewCard .card-title');
   previewTitle.innerHTML = `Data Preview - <span class="list-name">"${listName}"</span> <span class="list-count">(${data.length} total records, showing first ${previewData.length})</span>`;
 
+  // Set the list name in the input field
+  const listNameInput = document.getElementById('listName');
+  if (listNameInput) {
+    listNameInput.value = listName || '';
+  }
+
   showNameConfiguration(headers, data[0]);
+
+  previewCard.style.display = 'block';
 
   // Scroll to configuration card instead of preview since config is on top
   const nameConfigCard = document.getElementById('nameConfigCard');
@@ -218,6 +225,79 @@ function showCSVPreview(data, listName) {
   }
 
   UI.showToast(`Preview ready! Showing first ${previewData.length} of ${data.length} records`, 'info');
+}
+
+// Intelligently detect name fields from headers
+function detectNameTemplate(headers, firstRow) {
+  // Normalize headers for case-insensitive matching
+  const normalizedHeaders = {};
+  headers.forEach(header => {
+    normalizedHeaders[header.toLowerCase().replace(/[^a-z0-9]/g, '')] = header;
+  });
+  
+  // Priority 1: Look for firstName and lastName fields
+  const firstNameVariants = ['firstname', 'first_name', 'fname', 'givenname', 'given_name', 'first'];
+  const lastNameVariants = ['lastname', 'last_name', 'lname', 'surname', 'familyname', 'family_name', 'last'];
+  
+  let firstNameField = null;
+  let lastNameField = null;
+  
+  // Find first name field
+  for (const variant of firstNameVariants) {
+    const normalized = variant.replace(/[^a-z0-9]/g, '');
+    if (normalizedHeaders[normalized]) {
+      firstNameField = normalizedHeaders[normalized];
+      break;
+    }
+  }
+  
+  // Find last name field
+  for (const variant of lastNameVariants) {
+    const normalized = variant.replace(/[^a-z0-9]/g, '');
+    if (normalizedHeaders[normalized]) {
+      lastNameField = normalizedHeaders[normalized];
+      break;
+    }
+  }
+  
+  if (firstNameField && lastNameField) {
+    return `{${firstNameField}} {${lastNameField}}`;
+  }
+  
+  // Priority 2: Look for fullName or name field
+  const fullNameVariants = ['fullname', 'full_name', 'name', 'displayname', 'display_name', 'contactname', 'contact_name', 'customername', 'customer_name'];
+  
+  for (const variant of fullNameVariants) {
+    const normalized = variant.replace(/[^a-z0-9]/g, '');
+    if (normalizedHeaders[normalized]) {
+      return `{${normalizedHeaders[normalized]}}`;
+    }
+  }
+  
+  // Priority 3: Look for any field containing "name"
+  for (const header of headers) {
+    if (header.toLowerCase().includes('name')) {
+      return `{${header}}`;
+    }
+  }
+  
+  // Priority 4: Look for email field (common identifier)
+  const emailVariants = ['email', 'emailaddress', 'email_address', 'mail', 'e_mail'];
+  for (const variant of emailVariants) {
+    const normalized = variant.replace(/[^a-z0-9]/g, '');
+    if (normalizedHeaders[normalized]) {
+      return `{${normalizedHeaders[normalized]}}`;
+    }
+  }
+  
+  // Fallback: Use first two columns if multiple columns exist, otherwise first column
+  if (headers.length > 2) {
+    return `{${headers[1]}} {${headers[2]}}`;
+  } else if (headers.length > 0) {
+    return `{${headers[0]}}`;
+  }
+  
+  return '';
 }
 
 function showNameConfiguration(headers, firstRow) {
@@ -314,13 +394,14 @@ function showNameConfiguration(headers, firstRow) {
     idColumnSelect.appendChild(option);
   });
 
-  // Set default name template
-  const defaultTemplate = headers.length > 2 ? `{${headers[1]}} {${headers[2]}}` : `{${headers[0]}}`;
+  // Intelligently detect name fields
+  const defaultTemplate = detectNameTemplate(headers, firstRow);
   nameTemplateInput.value = defaultTemplate;
 
   // Set default info templates
   if (headers.length >= 1) info1Template.value = `{${headers[0]}}`;
-  if (headers.length >= 2) info2Template.value = `{${headers[1]}}`;
+  // Set info2 to be the same as the display name
+  info2Template.value = defaultTemplate;
   // Keep info3 blank by default
   info3Template.value = '';
 
@@ -652,7 +733,8 @@ export const CSVParser = {
   handleConfirmUpload,
   handleCancelUpload,
   showCSVPreview,
-  setPendingCSVData: (data) => { pendingCSVData = data; }
+  get pendingCSVData() { return pendingCSVData; },
+  set pendingCSVData(data) { pendingCSVData = data; }
 };
 
 window.CSVParser = CSVParser;

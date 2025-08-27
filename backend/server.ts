@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import dotenv from 'dotenv';
+import { createMPInstance, type MPInstance, type ErrorDetails } from 'mp-js-api';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -345,6 +346,117 @@ apiRouter.get('/reports-proxy/*', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Reports proxy error:', error);
     res.status(500).json({ error: 'Failed to fetch report: ' + error.message });
+  }
+});
+
+// MinistryPlatform API endpoint
+apiRouter.get('/mp/queries', async (req: Request, res: Response) => {
+  try {
+    // Read the mp.json file to get available queries
+    const mpConfigPath = path.join(DATA_DIR, 'mp.json');
+    const mpConfig = await fs.readFile(mpConfigPath, 'utf-8');
+    const config = JSON.parse(mpConfig);
+    
+    // Return list of available queries
+    res.json({
+      success: true,
+      queries: config.queries.map((q: any) => ({
+        id: q.id,
+        name: q.name,
+        description: q.description,
+        category: q.metadata?.category,
+        params: q.params
+      }))
+    });
+  } catch (error: any) {
+    console.error('Error reading MP queries:', error);
+    res.status(500).json({ error: 'Failed to read MP queries: ' + error.message });
+  }
+});
+
+apiRouter.post('/mp/execute', async (req: Request, res: Response) => {
+  try {
+    const { queryId, params } = req.body;
+    
+    // Check for MP credentials
+    if (!process.env.MP_USERNAME || !process.env.MP_PASSWORD) {
+      return res.status(400).json({ 
+        error: 'MinistryPlatform credentials not configured. Please add MP_USERNAME and MP_PASSWORD to .env file.' 
+      });
+    }
+    
+    // Read the mp.json file
+    const mpConfigPath = path.join(DATA_DIR, 'mp.json');
+    const mpConfig = await fs.readFile(mpConfigPath, 'utf-8');
+    const config = JSON.parse(mpConfig);
+    
+    // Find the query
+    const query = config.queries.find((q: any) => q.id === queryId);
+    if (!query) {
+      return res.status(404).json({ error: `Query '${queryId}' not found` });
+    }
+    
+    // Replace parameters in filter if needed
+    let filter = query.filter || '';
+    if (params && query.params) {
+      for (const [key, value] of Object.entries(params)) {
+        filter = filter.replace(`{{${key}}}`, String(value));
+      }
+    }
+    
+    // Initialize MP instance
+    const mp: MPInstance = createMPInstance({
+      auth: {
+        username: process.env.MP_USERNAME,
+        password: process.env.MP_PASSWORD
+      }
+    });
+    
+    // Build the method name dynamically based on the table
+    // Convert table name from underscore to camelCase for the method name
+    const tableName = query.table;
+    const camelCaseTable = tableName.replace(/_([a-z])/gi, (match, letter) => letter.toUpperCase());
+    const methodName = `get${camelCaseTable}` as keyof MPInstance;
+    
+    console.log(`Table: ${tableName}, Method: ${methodName}`);
+    
+    // Execute the query
+    const mpMethod = mp[methodName] as any;
+    if (typeof mpMethod !== 'function') {
+      return res.status(400).json({ error: `Invalid table name: ${tableName} (method: ${methodName})` });
+    }
+    
+    const queryOptions: any = {};
+    if (query.select) queryOptions.select = query.select;
+    if (filter) queryOptions.filter = filter;
+    
+    console.log(`Executing MP query: ${queryId}`, queryOptions);
+    
+    const results = await mpMethod(queryOptions);
+    
+    // Check for errors
+    if ('error' in results) {
+      console.error('MP API Error:', results.error);
+      return res.status(500).json({ error: `MP API Error: ${results.error.message || 'Unknown error'}` });
+    }
+    
+    // Convert results to CSV-like format for compatibility with existing import
+    const data = Array.isArray(results) ? results : [];
+    
+    res.json({
+      success: true,
+      data: data,
+      count: data.length,
+      query: {
+        id: query.id,
+        name: query.name,
+        fields: query.metadata?.fields || Object.keys(data[0] || {})
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('Error executing MP query:', error);
+    res.status(500).json({ error: 'Failed to execute MP query: ' + error.message });
   }
 });
 

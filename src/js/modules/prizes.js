@@ -489,10 +489,11 @@ async function selectPrize(prizeId) {
     // Refresh the prizes display to show the selected state
     await loadPrizes();
     
-    // Update quick selects
+    // Update quick selects - this will also update the selection info
+    // Note: populateQuickSelects calls updateSelectionInfo which might trigger additional saves
     await UI.populateQuickSelects();
     
-    // Show success message
+    // Show success message only once
     UI.showToast(`Prize "${selectedPrize.name}" selected (${selectedPrize.quantity} available)`, 'success');
     
     // Switch to Setup tab if not already there

@@ -20,7 +20,10 @@ function initReportImport() {
   const timeRangeSelect = document.getElementById('timeRange');
   
   if (addFromReportBtn) {
-    addFromReportBtn.addEventListener('click', showReportImportModal);
+    addFromReportBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // Prevent anchor default behavior
+      showReportImportModal();
+    });
   }
   
   if (importReportBtn) {

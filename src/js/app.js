@@ -16,6 +16,7 @@ import { Export } from './modules/export.js';
 import { Sounds } from './modules/sounds.js';
 import { Texting } from './modules/texting.js';
 import { Reports } from './modules/reports.js';
+import { MinistryPlatform } from './modules/ministryplatform.js';
 
 // Global state variables (now truly central)
 export let appModal = null;
@@ -116,6 +117,9 @@ export async function initializeApp() {
     
     // Initialize report import functionality
     Reports.initReportImport();
+    
+    // Initialize MinistryPlatform import functionality
+    MinistryPlatform.init();
 
     // Initialize modal after everything else is ready
     setTimeout(() => {
@@ -339,7 +343,8 @@ function setupManagementListeners() {
   // Upload List Button - Opens file browser directly
   const uploadListModalBtn = document.getElementById('uploadListModalBtn');
   if (uploadListModalBtn) {
-    uploadListModalBtn.addEventListener('click', () => {
+    uploadListModalBtn.addEventListener('click', (e) => {
+      e.preventDefault(); // Prevent anchor default behavior
       // Just trigger the file input directly - no modal needed for step 1
       const csvFileInput = document.getElementById('csvFile');
       if (csvFileInput) {
