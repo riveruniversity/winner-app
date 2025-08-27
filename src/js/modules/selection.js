@@ -119,15 +119,10 @@ async function handleBigPlayClick() {
         winners.forEach(winner => {
           // Only check winners who won this specific prize
           if (winner.prize === selectedPrize.name) {
-            const entryIds = [];
-            // Collect all possible IDs for this winner
-            if (winner.entryId) entryIds.push(winner.entryId);
-            if (winner.originalEntry?.id) entryIds.push(winner.originalEntry.id);
-            if (winner.data?.['Ticket Code']) entryIds.push(winner.data['Ticket Code']);
-            if (winner.data?.ticketCode) entryIds.push(winner.data.ticketCode);
-            
-            // Add to same prize exclusion set
-            entryIds.forEach(id => samePrizeWinnerIds.add(id));
+            // Use the entry ID to exclude this winner
+            if (winner.entryId) {
+              samePrizeWinnerIds.add(winner.entryId);
+            }
           }
         });
       }
@@ -380,29 +375,19 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
     } while (winnerIds.has(winnerId));
     winnerIds.add(winnerId);
     
-    // Extract only essential contact info to avoid duplication
-    const contactInfo = {
-      phoneNumber: entry.data?.phoneNumber || entry.data?.phone || entry.data?.mobile || 
-                   entry.data?.cellPhone || entry.data?.cell || entry.data?.telephone || null,
-      orderId: entry.data?.orderId || entry.data?.['Order ID'] || null,
-      email: entry.data?.email || entry.data?.orderEmail || null
-    };
-    
     return {
       winnerId: winnerId,
       entryId: entry.id, // Store the list entry ID for ticket scanning
       displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
       prize: selectedPrize.name,
       timestamp: timestamp + index, // Ensure unique timestamps
-      sourceListId: entry.sourceListId || getCurrentList().listId || getCurrentList().metadata.listId,
-      sourceListName: entry.sourceListName || getCurrentList().metadata.name, // Use entry's source list name if available
+      listId: entry.sourceListId || getCurrentList().listId || getCurrentList().metadata.listId,
+      listName: entry.sourceListName || getCurrentList().metadata.name, // Use entry's source list name if available
       historyId: historyId,
-      contactInfo: contactInfo, // Only essential fields, not full data
       pickedUp: false, // Initialize pickup status
       pickupTimestamp: null,
-      // For backward compatibility during migration, keep originalEntry temporarily
-      // This will be removed in phase 2
-      originalEntry: entry
+      // Keep all original entry data under data key
+      data: entry.data
     };
   });
 
@@ -596,16 +581,16 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     const winners = selectedEntries.map((entry, index) => ({
       winnerId: UI.generateId(),
       entryId: entry.id, // Store the list entry ID for ticket scanning
-      data: entry.data, // Store all original data
       displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
       prize: selectedPrize.name,
       timestamp: Date.now(),
-      originalEntry: entry, // Store complete entry including ID
       listId: getCurrentList().listId || getCurrentList().metadata.listId,
       position: index + 1,
       historyId: historyId,
       pickedUp: false, // Initialize pickup status
-      pickupTimestamp: null
+      pickupTimestamp: null,
+      // Keep all original entry data under data key
+      data: entry.data
     }));
 
     UI.updateProgress(75, 'Saving winners...');
@@ -988,9 +973,9 @@ function formatInfoTemplate(template, winner) {
       }
     }
     
-    // For backward compatibility, check originalEntry.data
-    if (winner.originalEntry?.data && winner.originalEntry.data[trimmedKey]) {
-      return winner.originalEntry.data[trimmedKey];
+    // Check flattened data fields
+    if (winner[trimmedKey]) {
+      return winner[trimmedKey];
     }
     
     // Fallback to old structure (data field)

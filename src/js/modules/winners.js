@@ -23,64 +23,6 @@ let listsCache = null;
 let lastLoadTime = 0;
 const CACHE_DURATION = 5000; // 5 seconds cache
 
-/**
- * Normalizes winner data for backward compatibility
- * Handles both old and new data structures
- */
-function normalizeWinner(winner) {
-  // Already normalized or new structure
-  if (winner._normalized) return winner;
-  
-  // Extract contact info from various possible locations
-  const contactInfo = winner.contactInfo || {};
-  
-  // Get phone number from various possible locations
-  if (!contactInfo.phoneNumber) {
-    contactInfo.phoneNumber = winner.data?.phoneNumber || 
-                              winner.data?.phone || 
-                              winner.originalEntry?.data?.phoneNumber ||
-                              winner.originalEntry?.data?.phone ||
-                              null;
-  }
-  
-  // Get order ID from various possible locations
-  if (!contactInfo.orderId) {
-    contactInfo.orderId = winner.data?.orderId || 
-                         winner.data?.['Order ID'] ||
-                         winner.originalEntry?.data?.orderId ||
-                         winner.originalEntry?.data?.['Order ID'] ||
-                         null;
-  }
-  
-  // Get email from various possible locations
-  if (!contactInfo.email) {
-    contactInfo.email = winner.data?.email || 
-                       winner.data?.orderEmail ||
-                       winner.originalEntry?.data?.email ||
-                       winner.originalEntry?.data?.orderEmail ||
-                       null;
-  }
-  
-  // Normalize SMS status
-  let smsStatus = winner.smsStatus;
-  if (winner.sms?.status) {
-    smsStatus = winner.sms.status;
-  } else if (winner.smsStatus?.success === true) {
-    smsStatus = 'delivered';
-  } else if (winner.smsStatus?.success === false) {
-    smsStatus = 'failed';
-  } else if (winner.smsStatus?.sent === true) {
-    smsStatus = 'sent';
-  }
-  
-  // Return normalized structure
-  return {
-    ...winner,
-    contactInfo,
-    smsStatus,
-    _normalized: true
-  };
-}
 
 async function loadWinners(winnersData = null, listsData = null) {
   try {
@@ -114,8 +56,7 @@ async function loadWinners(winnersData = null, listsData = null) {
       lastLoadTime = Date.now();
     }
     
-    // Normalize all winners for backward compatibility
-    winners = (winners || []).map(w => normalizeWinner(w));
+    winners = winners || [];
     allWinners = winners; // Store all winners
     const tbody = document.getElementById('winnersTableBody');
 
@@ -137,10 +78,8 @@ async function loadWinners(winnersData = null, listsData = null) {
     const filteredWinners = winners.filter(winner => {
       const prizeMatch = !filterPrize || winner.prize === filterPrize;
       // Use stored list name first, then try to look up by ID
-      const listName = winner.sourceListName || 
-                      listNameMap[winner.sourceListId] || 
+      const listName = winner.listName || 
                       listNameMap[winner.listId] || 
-                      listNameMap[winner.originalEntry?.sourceListId] || 
                       'Unknown';
       const listMatch = !filterList || listName === filterList;
       const selectionMatch = !filterSelection || winner.historyId === filterSelection;
@@ -166,11 +105,8 @@ async function loadWinners(winnersData = null, listsData = null) {
     }
 
     tbody.innerHTML = filteredWinners.map(winner => {
-      // Normalize winner data for backward compatibility
-      const normalizedWinner = normalizeWinner(winner);
-      
-      // Display Order ID from normalized structure
-      const orderId = normalizedWinner.contactInfo?.orderId || 'N/A';
+      // Display Order ID from data or use 'N/A'
+      const orderId = winner.data?.orderId || winner.data?.['Order ID'] || 'N/A';
       const pickupStatus = winner.pickedUp ? 
         `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
         `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
@@ -201,17 +137,6 @@ async function loadWinners(winnersData = null, listsData = null) {
           default:
             smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
         }
-      } else if (winner.smsStatus) {
-        // Backward compatibility with old structure
-        if (winner.smsStatus.success === true) {
-          smsStatusBadge = '<span class="badge bg-success" title="SMS Sent"><i class="bi bi-check-circle-fill"></i> Sent</span>';
-        } else if (winner.smsStatus.success === false) {
-          smsStatusBadge = `<span class="badge bg-danger" title="SMS Failed: ${winner.smsStatus.error || 'Unknown'}"><i class="bi bi-x-circle-fill"></i> Failed</span>`;
-        } else if (winner.smsStatus.sent === true) {
-          smsStatusBadge = '<span class="badge bg-info" title="SMS Sending"><i class="bi bi-clock-fill"></i> Sending</span>';
-        } else {
-          smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
-        }
       } else {
         smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
       }
@@ -227,7 +152,7 @@ async function loadWinners(winnersData = null, listsData = null) {
           <td>${winner.displayName}</td>
           <td>${winner.prize}</td>
           <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
-          <td>${winner.sourceListName || listNameMap[winner.sourceListId || winner.listId || winner.originalEntry?.sourceListId] || 'Unknown'}</td>
+          <td>${winner.listName || listNameMap[winner.listId] || 'Unknown'}</td>
           <td>${pickupStatus}</td>
           <td>${smsStatusBadge}</td>
           <td>
@@ -267,8 +192,8 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   // Get unique list names and sort by timestamp (most recent first)
   const uniqueListNames = [...new Set(winners.map(w => {
     // Use stored list name first, then try to look up by ID
-    return w.sourceListName || 
-           listNameMap[w.sourceListId || w.listId || w.originalEntry?.sourceListId] || 
+    return w.listName || 
+           listNameMap[w.listId] || 
            'Unknown';
   }))];
   const sortedListNames = uniqueListNames.sort((a, b) => {
@@ -291,8 +216,8 @@ function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList 
   listFilter.innerHTML = '<option value="">All Lists</option>';
   sortedListNames.forEach(listName => {
     const count = winners.filter(w => {
-      const winnerListName = w.sourceListName || 
-                             listNameMap[w.sourceListId || w.listId || w.originalEntry?.sourceListId] || 
+      const winnerListName = w.listName || 
+                             listNameMap[w.listId] || 
                              'Unknown';
       return winnerListName === listName;
     }).length;
@@ -654,17 +579,26 @@ async function returnToList(winnerId) {
     
     // Check if the original list still exists
     const lists = await Database.getFromStore('lists');
-    const list = lists.find(l => (l.listId || l.metadata?.listId) === winner.listId);
+    const sourceListId = winner.listId;
+    
+    console.log('Winner restoration debug:', {
+      winner,
+      sourceListId,
+      winnerListId: winner.listId,
+      lists: lists.map(l => ({ listId: l.listId, metaListId: l.metadata?.listId, name: l.metadata?.name }))
+    });
+    
+    const list = lists.find(l => (l.listId || l.metadata?.listId) === sourceListId);
     
     if (!list) {
+      console.error('List not found! Looking for:', sourceListId);
       UI.showToast('Original list no longer exists', 'warning');
       return;
     }
     
     // Check if the entry already exists in the list (to avoid duplicates)
     const entryExists = list.entries.some(entry => 
-      entry.id === winner.entryId || 
-      entry.id === winner.originalEntry?.id
+      entry.id === winner.entryId
     );
     
     if (entryExists) {
@@ -679,13 +613,9 @@ async function returnToList(winnerId) {
         try {
           // Create entry to add back to list
           const entryToRestore = {
-            id: winner.originalEntry?.id || winner.entryId || UI.generateId(),
+            id: winner.entryId,  // Use the original entry ID
             index: list.entries.length,
-            data: winner.originalEntry?.data || {
-              name: winner.displayName,
-              // Try to reconstruct data from winner info if available
-              ...(winner.originalData || {})
-            }
+            data: winner.data  // Use the data key that contains all original info
           };
           
           // Add entry back to the list
@@ -729,7 +659,7 @@ async function showQRCode(winnerId) {
     }
     
     // Use original entry ID if available, otherwise fall back to winnerId
-    const ticketCode = winner.originalEntry?.id || winner.entryId || winnerId;
+    const ticketCode = winner.entryId || winnerId;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticketCode)}`;
     
     const modalElement = document.getElementById('appModal');

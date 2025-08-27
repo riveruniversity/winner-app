@@ -147,6 +147,7 @@ function setupTheme() {
   applyTheme();
   loadSettingsToForm();
   setupSoundTestButtons();
+  setupBackgroundTypeHandler();
   
   // Reload sound settings after dropdowns are populated by initSounds
   setTimeout(() => {
@@ -196,6 +197,28 @@ function applyTheme() {
 
   const gradient = `linear-gradient(135deg, ${settings.primaryColor} 0%, ${settings.secondaryColor} 100%)`;
   root.style.setProperty('--gradient-bg', gradient);
+  document.body.style.fontFamily = `'${settings.fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
+  
+  // Apply background to PUBLIC interface only
+  const publicInterface = document.getElementById('publicInterface');
+  if (publicInterface) {
+    if (settings.backgroundType === 'gradient') {
+      publicInterface.style.background = gradient;
+    } else if (settings.backgroundType === 'solid') {
+      publicInterface.style.background = settings.primaryColor;
+    } else if (settings.backgroundType === 'image' && settings.customBackgroundImage) {
+      publicInterface.style.backgroundImage = `url('${settings.customBackgroundImage}')`;
+      publicInterface.style.backgroundSize = 'cover';
+      publicInterface.style.backgroundPosition = 'center';
+      publicInterface.style.backgroundAttachment = 'fixed';
+    } else {
+      // Default to gradient if no custom image is set
+      publicInterface.style.background = gradient;
+    }
+  }
+  
+  // Keep body background clean for management interface
+  document.body.style.background = '';
   document.body.style.fontFamily = `'${settings.fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
 }
 
@@ -964,6 +987,157 @@ function setupSoundTestButtons() {
   }
 }
 
+// Function to show/hide image sections (called from HTML)
+function showImageSection(section) {
+  const selectExistingSection = document.getElementById('selectExistingSection');
+  const uploadNewSection = document.getElementById('uploadNewSection');
+  const selectExistingBtn = document.getElementById('selectExistingBtn');
+  const uploadNewBtn = document.getElementById('uploadNewBtn');
+  
+  if (section === 'existing') {
+    selectExistingSection.style.display = 'block';
+    uploadNewSection.style.display = 'none';
+    selectExistingBtn.classList.add('active');
+    uploadNewBtn.classList.remove('active');
+  } else if (section === 'upload') {
+    selectExistingSection.style.display = 'none';
+    uploadNewSection.style.display = 'block';
+    selectExistingBtn.classList.remove('active');
+    uploadNewBtn.classList.add('active');
+  }
+}
+
+// Setup background type handler for showing/hiding image upload
+function setupBackgroundTypeHandler() {
+  const backgroundTypeSelect = document.getElementById('backgroundType');
+  const backgroundImageUpload = document.getElementById('backgroundImageUpload');
+  const backgroundImageInput = document.getElementById('backgroundImage');
+  const existingImagesGallery = document.getElementById('existingImagesGallery');
+  
+  if (backgroundTypeSelect && backgroundImageUpload) {
+    // Show/hide image upload based on background type
+    backgroundTypeSelect.addEventListener('change', async (e) => {
+      if (e.target.value === 'image') {
+        backgroundImageUpload.style.display = 'block';
+        await loadExistingImages(); // Load gallery when shown
+      } else {
+        backgroundImageUpload.style.display = 'none';
+      }
+    });
+    
+    // Set initial visibility
+    if (settings.backgroundType === 'image') {
+      backgroundImageUpload.style.display = 'block';
+      loadExistingImages(); // Load gallery on init
+    }
+  }
+  
+  // Handle new image upload
+  if (backgroundImageInput) {
+    backgroundImageInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        try {
+          // Create FormData and upload file to server
+          const formData = new FormData();
+          formData.append('image', file);
+          
+          const response = await fetch('./api/upload-background', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!response.ok) {
+            let errorMessage = 'Failed to upload image';
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch {
+              // If response is not JSON, try text
+              try {
+                const text = await response.text();
+                if (text.includes('File too large')) {
+                  errorMessage = 'Image file is too large. Maximum size is 10MB.';
+                } else if (text.includes('Only image files')) {
+                  errorMessage = 'Please select a valid image file.';
+                }
+              } catch {}
+            }
+            throw new Error(errorMessage);
+          }
+          
+          const result = await response.json();
+          
+          // Save the image path in settings
+          settings.customBackgroundImage = result.imagePath;
+          await saveSingleSetting('customBackgroundImage', settings.customBackgroundImage);
+          applyTheme();
+          UI.showToast('Background image uploaded and applied', 'success');
+          
+          // Reload gallery to show new image
+          await loadExistingImages();
+          
+          // Switch to select existing section to show the new upload
+          showImageSection('existing');
+        } catch (error) {
+          console.error('Error uploading background image:', error);
+          UI.showToast('Failed to upload background image', 'error');
+        }
+      }
+    });
+  }
+  
+  // Load existing images into gallery
+  async function loadExistingImages() {
+    if (!existingImagesGallery) return;
+    
+    try {
+      const response = await fetch('./api/uploaded-images');
+      const images = await response.json();
+      
+      if (images.length === 0) {
+        existingImagesGallery.innerHTML = '<div class="col-12 text-center text-muted">No images uploaded yet</div>';
+        return;
+      }
+      
+      existingImagesGallery.innerHTML = images.map(img => `
+        <div class="col-4 col-md-3">
+          <div class="position-relative image-thumbnail" style="cursor: pointer; border: 2px solid transparent; border-radius: 8px; overflow: hidden; aspect-ratio: 1;">
+            <img src="${img.url}" 
+                 data-path="${img.path}" 
+                 class="w-100 h-100" 
+                 style="object-fit: cover;"
+                 alt="${img.filename}">
+            ${settings.customBackgroundImage === img.path ? '<div class="position-absolute top-0 end-0 m-1"><i class="bi bi-check-circle-fill text-success"></i></div>' : ''}
+          </div>
+        </div>
+      `).join('');
+      
+      // Add click handlers to images
+      existingImagesGallery.querySelectorAll('img').forEach(img => {
+        img.addEventListener('click', async () => {
+          const imagePath = img.dataset.path;
+          settings.customBackgroundImage = imagePath;
+          await saveSingleSetting('customBackgroundImage', settings.customBackgroundImage);
+          applyTheme();
+          UI.showToast('Background image selected', 'success');
+          
+          // Update UI to show selection
+          existingImagesGallery.querySelectorAll('.bi-check-circle-fill').forEach(check => check.remove());
+          const checkIcon = document.createElement('div');
+          checkIcon.className = 'position-absolute top-0 end-0 m-1';
+          checkIcon.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+          img.parentElement.appendChild(checkIcon);
+        });
+      });
+      
+    } catch (error) {
+      console.error('Error loading existing images:', error);
+      existingImagesGallery.innerHTML = '<div class="col-12 text-center text-danger">Failed to load images</div>';
+    }
+  }
+}
+
 // Test sound effects based on current dropdown selections
 function testSoundEffect(phase) {
   if (phase === 'delay') {
@@ -1187,6 +1361,8 @@ export const Settings = {
   testDelay,
   setDelaySettings,
   setupSoundTestButtons,
+  setupBackgroundTypeHandler,
+  showImageSection,
   testSoundEffect,
   autoSaveQuickSetup,
   autoSaveIndividualSetting,

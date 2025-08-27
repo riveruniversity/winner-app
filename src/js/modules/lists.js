@@ -125,7 +125,7 @@ async function loadLists(listsData = null) {
             <div class="mt-auto pt-3">
               <div class="d-flex justify-content-between">
                 <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
-                        onclick="Lists.selectList('${listId}')" 
+                        onclick="console.log('Button clicked for list:', '${listId}'); Lists.selectList('${listId}')" 
                         ${isSelected ? 'disabled' : ''}>
                   <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
                 </button>
@@ -412,6 +412,7 @@ async function deleteListEntry(listId, entryId) {
 
 // Function to select a list (like selecting from the setup tab)
 async function selectList(listId) {
+  console.log('selectList called with listId:', listId);
   try {
     // Save only the selected list setting
     await Settings.saveSingleSetting('selectedListId', listId);

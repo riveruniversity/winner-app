@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Texting</title></head>
+<body>
+<button onclick="testTexting()">Test Texting API</button>
+<pre id="result"></pre>
+<script>
+async function testTexting() {
+  const resultEl = document.getElementById('result');
+  try {
+    resultEl.textContent = 'Sending...';
+    const response = await fetch('./api/texting', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'sendMessage',
+        data: {
+          message: 'Test message',
+          phoneNumbers: ['5551234567'],
+          options: {}
+        }
+      })
+    });
+    
+    const result = await response.json();
+    resultEl.textContent = 'Response:\n' + JSON.stringify(result, null, 2);
+  } catch (error) {
+    resultEl.textContent = 'Error: ' + error.message + '\n' + error.stack;
+  }
+}
+</script>
+</body>
+</html>

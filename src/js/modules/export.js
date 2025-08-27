@@ -53,8 +53,8 @@ async function handleExportWinners() {
     // Add all original record fields as headers
     const allFields = new Set();
     winnersWithIds.forEach(winner => {
-      if (winner.originalEntry && winner.originalEntry.data) {
-        Object.keys(winner.originalEntry.data).forEach(field => allFields.add(field));
+      if (winner.data) {
+        Object.keys(winner.data).forEach(field => allFields.add(field));
       }
     });
     
@@ -73,7 +73,7 @@ async function handleExportWinners() {
         ];
 
         const fieldData = fieldHeaders.map(field => {
-          const value = winner.originalEntry?.data?.[field] || '';
+          const value = winner.data?.[field] || '';
           return `"${value}"`;
         });
 
@@ -358,11 +358,11 @@ async function handleRestoreOnline() {
             <small class="text-muted d-block">${formatBackupSize(backup)}</small>
             <div class="btn-group btn-group-sm mt-1" role="group">
               <button class="btn btn-outline-success" onclick="selectBackup('${backup.backupId}')" 
-                      title="Restore" data-bs-toggle="tooltip" data-bs-placement="top">
+                      title="Restore">
                 <i class="bi bi-arrow-down-circle" style="font-size: 0.875rem;"></i>
               </button>
               <button class="btn btn-outline-danger" onclick="deleteBackup('${backup.backupId}')"
-                      title="Delete" data-bs-toggle="tooltip" data-bs-placement="top">
+                      title="Delete">
                 <i class="bi bi-trash" style="font-size: 0.875rem;"></i>
               </button>
             </div>
@@ -466,33 +466,15 @@ async function restoreBackupData(backupData) {
         displayName: winner.displayName,
         prize: winner.prize,
         timestamp: winner.timestamp,
-        sourceListId: winner.sourceListId || winner.listId,
-        sourceListName: winner.sourceListName || winner.listName || null, // Preserve list name
+        listId: winner.listId || winner.sourceListId,
+        listName: winner.listName || winner.sourceListName || null, // Preserve list name
         historyId: winner.historyId,
         pickedUp: winner.pickedUp || false,
         pickupTimestamp: winner.pickupTimestamp || null,
-        // Extract only essential contact info
-        contactInfo: {
-          phoneNumber: winner.contactInfo?.phoneNumber ||
-                      winner.data?.phoneNumber || 
-                      winner.originalEntry?.data?.phoneNumber ||
-                      null,
-          orderId: winner.contactInfo?.orderId ||
-                  winner.data?.orderId || 
-                  winner.data?.['Order ID'] ||
-                  winner.originalEntry?.data?.orderId ||
-                  winner.originalEntry?.data?.['Order ID'] ||
-                  null,
-          email: winner.contactInfo?.email ||
-                winner.data?.email || 
-                winner.data?.orderEmail ||
-                winner.originalEntry?.data?.email ||
-                winner.originalEntry?.data?.orderEmail ||
-                null
-        },
-        // Only store SMS status, not full reports
-        smsStatus: winner.sms?.status || winner.smsStatus || null,
-        smsMessageId: winner.sms?.messageId || null
+        // Store all original data under data key
+        data: winner.data || {},
+        // Store SMS info if exists
+        sms: winner.sms || null
       };
       
       operations.push({

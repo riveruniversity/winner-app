@@ -5,6 +5,11 @@ import path from 'path';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import multer from 'multer';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +17,7 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.join(__dirname, '..');  // Project root directory
 const DIST_DIR = path.join(ROOT_DIR, 'dist');  // Dist folder (contains everything after build)
 const DATA_DIR = path.join(ROOT_DIR, 'data');  // Data folder
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');  // Uploads folder for images
 
 const app = express();
 const PORT: number = parseInt(process.env.PORT || '3001', 10);
@@ -48,16 +54,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Serve static files from dist (includes all built assets and public files)
-app.use(express.static(DIST_DIR));
-app.use('/win', express.static(DIST_DIR));
+// Static files will be served from mainRouter below
 
 // Type definitions
 interface CollectionItem {
   [key: string]: any;
 }
 
-type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'sounds' | 'backups' | 'ez-texting';
+type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'sounds' | 'backups';
 
 interface KeyFields {
   lists: 'listId';
@@ -82,6 +86,14 @@ async function ensureDataDir(): Promise<void> {
       await fs.writeFile(filePath, '[]', 'utf8');
     }
     console.log('Data directory initialized');
+  }
+  
+  // Ensure uploads directory exists
+  try {
+    await fs.access(UPLOADS_DIR);
+  } catch {
+    await fs.mkdir(UPLOADS_DIR, { recursive: true });
+    console.log('Uploads directory initialized');
   }
 }
 
@@ -119,6 +131,33 @@ function getKeyField(collection: string): string {
   };
   return keyFields[collection] || 'id';
 }
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'background-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Create API router for all API endpoints
 const apiRouter = express.Router();
@@ -231,31 +270,39 @@ apiRouter.post('/batch-save', async (req: Request, res: Response) => {
   }
 });
 
-// Collection routes
-apiRouter.get('/:collection', async (req: Request, res: Response) => {
+// Get list of uploaded images (defined before generic routes)
+apiRouter.get('/uploaded-images', async (req: Request, res: Response) => {
   try {
-    const { collection } = req.params;
-    const data = await readCollection(collection);
-    res.json(data);
+    const files = await fs.readdir(UPLOADS_DIR);
+    const imageFiles = files.filter(file => 
+      /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file)
+    );
+    
+    const images = imageFiles.map(filename => ({
+      filename,
+      path: `/uploads/${filename}`,
+      url: `/uploads/${filename}`
+    }));
+    
+    res.json(images);
   } catch (error: any) {
-    console.error('Error in GET /:collection:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error listing uploaded images:', error);
+    res.json([]); // Return empty array if uploads dir doesn't exist
   }
 });
 
-apiRouter.get('/:collection/:id', async (req: Request, res: Response) => {
+// Image upload endpoint (defined before generic routes)
+apiRouter.post('/upload-background', upload.single('image'), async (req: Request, res: Response) => {
   try {
-    const { collection, id } = req.params;
-    const data = await readCollection(collection);
-    const keyField = getKeyField(collection);
-    
-    const item = data.find(d => d[keyField] === id);
-    if (!item) {
-      return res.status(404).json({ error: 'Not found' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
-    res.json(item);
+    
+    // Return the path that can be used to access the image
+    const imagePath = `/uploads/${req.file.filename}`;
+    res.json({ success: true, imagePath });
   } catch (error: any) {
-    console.error('Error in GET /:collection/:id:', error);
+    console.error('Error uploading image:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -312,11 +359,11 @@ apiRouter.options('/reports-proxy/*', (req: Request, res: Response) => {
   res.sendStatus(204);
 });
 
-// EZ Texting API endpoint
-apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
+// Texting API endpoint
+apiRouter.post('/texting', async (req: Request, res: Response) => {
   // Log only in development mode
   if (process.env.NODE_ENV !== 'production') {
-    console.log('EZ Texting endpoint called:', req.body.action);
+    console.log('Texting endpoint called:', req.body.action);
   }
   try {
     const { action, data } = req.body;
@@ -327,7 +374,7 @@ apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
     
     if (!username || !password) {
       return res.status(500).json({ 
-        error: 'Server configuration error: EZ Texting credentials not configured' 
+        error: 'Server configuration error: Texting credentials not configured' 
       });
     }
     
@@ -352,7 +399,7 @@ apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
         // Log SMS send in production-friendly way
         console.log(`Sending SMS to ${data.phoneNumbers.length} recipient(s)`);
         
-        const ezTextingResponse = await fetch('https://a.eztexting.com/v1/messages', {
+        const textingResponse = await fetch('https://a.eztexting.com/v1/messages', {
           method: 'POST',
           headers: {
             'Authorization': authHeader,
@@ -361,7 +408,7 @@ apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
           body: JSON.stringify(requestBody)
         });
         
-        const responseText = await ezTextingResponse.text();
+        const responseText = await textingResponse.text();
         let responseData: any;
         try {
           responseData = JSON.parse(responseText);
@@ -370,15 +417,15 @@ apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
         }
         
         // Log result concisely
-        if (ezTextingResponse.ok) {
+        if (textingResponse.ok) {
           console.log(`SMS sent successfully: ${responseData.id}`);
         } else {
-          console.error(`SMS failed: ${ezTextingResponse.status}`, responseData);
+          console.error(`SMS failed: ${textingResponse.status}`, responseData);
         }
         
         result = {
-          success: ezTextingResponse.ok,
-          statusCode: ezTextingResponse.status,
+          success: textingResponse.ok,
+          statusCode: textingResponse.status,
           data: responseData,
           rawResponse: responseText
         };
@@ -417,26 +464,11 @@ apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
         throw new Error(`Unknown action: ${action}`);
     }
     
-    // Save the action and result to log
-    try {
-      const ezLog = await readCollection('ez-texting');
-      const logEntry = { 
-        action, 
-        data, 
-        result,
-        timestamp: new Date().toISOString(),
-        id: uuidv4() 
-      };
-      ezLog.push(logEntry);
-      await writeCollection('ez-texting', ezLog);
-    } catch (logError) {
-      console.error('Failed to save EZ Texting log:', logError);
-    }
-    
+    // Return the result directly without logging
     res.json(result);
     
   } catch (error: any) {
-    console.error('EZ Texting error:', error.message);
+    console.error('Texting error:', error.message);
     res.status(500).json({
       success: false,
       error: error.message || 'An unexpected error occurred'
@@ -444,11 +476,48 @@ apiRouter.post('/ez-texting', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================
+// GENERIC COLLECTION ROUTES - MUST BE LAST!
+// ============================================
+
+// GET all documents from a collection
+apiRouter.get('/:collection', async (req: Request, res: Response) => {
+  try {
+    const { collection } = req.params;
+    const data = await readCollection(collection);
+    res.json(data);
+  } catch (error: any) {
+    console.error('Error in GET /:collection:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET single document from a collection
+apiRouter.get('/:collection/:id', async (req: Request, res: Response) => {
+  try {
+    const { collection, id } = req.params;
+    const data = await readCollection(collection);
+    const keyField = getKeyField(collection);
+    
+    const item = data.find(d => d[keyField] === id);
+    if (!item) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.json(item);
+  } catch (error: any) {
+    console.error('Error in GET /:collection/:id:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST new document to a collection
 apiRouter.post('/:collection', async (req: Request, res: Response) => {
   try {
     const { collection } = req.params;
     const newItem = req.body;
     const keyField = getKeyField(collection);
+    
+    console.log(`POST /${collection}:`, { keyField, newItem });
     
     if (!newItem[keyField]) {
       newItem[keyField] = uuidv4();
@@ -480,6 +549,7 @@ apiRouter.post('/:collection', async (req: Request, res: Response) => {
   }
 });
 
+// PUT update document in a collection
 apiRouter.put('/:collection/:id', async (req: Request, res: Response) => {
   try {
     const { collection, id } = req.params;
@@ -503,6 +573,7 @@ apiRouter.put('/:collection/:id', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE document from a collection
 apiRouter.delete('/:collection/:id', async (req: Request, res: Response) => {
   try {
     const { collection, id } = req.params;
@@ -525,40 +596,36 @@ apiRouter.delete('/:collection/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Mount the API router at both /api and /win/api for flexibility
-// This allows the app to work from any base path
-app.use('/api', apiRouter);
-app.use('/win/api', apiRouter);
+// Create main router that will be mounted at multiple base paths
+const mainRouter = express.Router();
+
+// Mount API router FIRST (before static files)
+mainRouter.use('/api', apiRouter);
+
+// Serve uploaded images
+mainRouter.use('/uploads', express.static(UPLOADS_DIR));
+
+// Serve static files from dist (after API routes so they don't interfere)
+mainRouter.use(express.static(DIST_DIR));
 
 // Route for scanner page
-app.get('/scan', (req: Request, res: Response) => {
-  res.sendFile(path.join(DIST_DIR, 'scan.html'));
-});
-
-// Route for /win/scan
-app.get('/win/scan', (req: Request, res: Response) => {
+mainRouter.get('/scan', (req: Request, res: Response) => {
   res.sendFile(path.join(DIST_DIR, 'scan.html'));
 });
 
 // Route for conditions page
-app.get('/conditions', (req: Request, res: Response) => {
+mainRouter.get('/conditions', (req: Request, res: Response) => {
   res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
 });
 
-// Route for /win/conditions
-app.get('/win/conditions', (req: Request, res: Response) => {
-  res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
-});
-
-// Handle win routes
-app.get('/win/*', (req: Request, res: Response) => {
+// Catch-all route for SPA
+mainRouter.get('*', (req: Request, res: Response) => {
   res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
-// Catch-all route for SPA - handle both root and /win paths
-app.get('*', (req: Request, res: Response) => {
-  res.sendFile(path.join(DIST_DIR, 'index.html'));
-});
+// Mount the main router at both root and /win paths
+app.use('/', mainRouter);
+app.use('/win', mainRouter);
 
 async function startServer(): Promise<void> {
   await ensureDataDir();

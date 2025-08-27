@@ -1,6 +1,6 @@
 /**
  * SMS Texting Module for Winner Notifications
- * Integrates with EZ Texting API via Netlify Functions
+ * Integrates with Texting API
  */
 
 import { Database } from './database.js';
@@ -17,7 +17,7 @@ class TextingService {
   }
 
   /**
-   * Makes a POST request to the EZ Texting Netlify function (fire-and-forget)
+   * Makes a POST request to the Texting API (fire-and-forget)
    * Returns immediately after sending, doesn't wait for response
    */
   makeRequestFireAndForget(body, winnerId = null) {
@@ -25,7 +25,7 @@ class TextingService {
     const apiBase = './api';
     
     // Fire the request without awaiting
-    fetch(`${apiBase}/ez-texting`, {
+    fetch(`${apiBase}/texting`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -84,13 +84,13 @@ class TextingService {
   }
 
   /**
-   * Makes a POST request to the EZ Texting Netlify function (awaitable)
+   * Makes a POST request to the Texting API (awaitable)
    */
   async makeRequest(body) {
     // API base path - use relative path to work from any base URL
     const apiBase = './api';
     
-    const response = await fetch(`${apiBase}/ez-texting`, {
+    const response = await fetch(`${apiBase}/texting`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -264,16 +264,6 @@ class TextingService {
           if (!winner.sms) winner.sms = {};
           Object.assign(winner.sms, update.smsData);
           
-          // Backward compatibility
-          winner.smsStatus = {
-            sent: update.smsData.status !== 'failed',
-            success: update.smsData.status === 'delivered',
-            timestamp: update.smsData.sentAt || Date.now()
-          };
-          if (update.smsData.error) {
-            winner.smsStatus.error = update.smsData.error;
-          }
-          
           operations.push({ collection: 'winners', data: winner });
         } else {
           // Track missing winners but don't fail
@@ -320,15 +310,6 @@ class TextingService {
         // Update in-memory winner for immediate UI feedback
         if (!winner.sms) winner.sms = {};
         Object.assign(winner.sms, smsData);
-        
-        winner.smsStatus = {
-          sent: smsData.status !== 'failed',
-          success: smsData.status === 'delivered',
-          timestamp: smsData.sentAt || Date.now()
-        };
-        if (smsData.error) {
-          winner.smsStatus.error = smsData.error;
-        }
       }
     } catch (error) {
       console.error('Error updating winner SMS status:', error);
@@ -633,16 +614,16 @@ class TextingService {
   }
 
   /**
-   * Check message status using EZ Texting API
+   * Check message status using Texting API
    */
   async checkMessageStatus(winnerId, messageId) {
     try {
       // API base path - use relative path to work from any base URL
       const apiBase = './api';
       
-      console.log('Checking message status for:', { winnerId, messageId, url: `${apiBase}/ez-texting` });
+      console.log('Checking message status for:', { winnerId, messageId, url: `${apiBase}/texting` });
       
-      const response = await fetch(`${apiBase}/ez-texting`, {
+      const response = await fetch(`${apiBase}/texting`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

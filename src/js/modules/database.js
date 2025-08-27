@@ -41,11 +41,7 @@ async function saveToStore(collectionName, data, options = {}) {
       throw new Error(`Document must have a '${keyField}' field`);
     }
     
-    // Special handling for lists that might need sharding
-    if (collectionName === 'lists' && data.entries && data.entries.length > 1000) {
-      // Large list detected - use sharding
-      return await handleLargeListSharding(data, options.onProgress);
-    }
+    // No longer need sharding - local storage handles large lists fine
     
     // Save to server
     
@@ -215,11 +211,6 @@ async function getFromStore(collectionName, key = null) {
     
     // If key provided, get single document
     if (key) {
-      // Special handling for lists - check if it's sharded
-      if (collectionName === 'lists') {
-        return await getListWithShards(key);
-      }
-      
       // Standard single document retrieval
       const response = await fetch(`${API_BASE}/${collectionName}/${key}`);
       
@@ -248,7 +239,8 @@ async function getFromStore(collectionName, key = null) {
     
   } catch (error) {
     console.error(`Error getting from ${collectionName}:`, error);
-    throw error;
+    // Return empty array if API is unavailable - app should work with defaults
+    return [];
   }
 }
 
@@ -409,7 +401,12 @@ async function batchFetch(requests) {
     
   } catch (error) {
     console.error('Error in batch fetch:', error);
-    throw error;
+    // Return empty results if API is unavailable
+    const emptyResults = {};
+    requests.forEach(req => {
+      emptyResults[req.collection] = [];
+    });
+    return emptyResults;
   }
 }
 

@@ -98,16 +98,8 @@ export class QRScannerModule {
       
       // Find winners with matching entry ID (from their original list entry)
       const matchingWinners = winners.filter(w => {
-        // Primary check: original entry ID matches the scanned ticket code
-        if (w.originalEntry && w.originalEntry.id === ticketCode) {
-          return true;
-        }
-        // Secondary check: direct entryId field (if stored separately)
-        if (w.entryId === ticketCode) {
-          return true;
-        }
-        // Removed the broad data object search to prevent false matches
-        return false;
+        // Check if entryId matches the scanned ticket code
+        return w.entryId === ticketCode;
       });
       
       if (matchingWinners.length === 0) {
@@ -180,7 +172,7 @@ export class QRScannerModule {
     winnerNameDiv.textContent = winner.displayName || 'Unknown Winner';
     
     // Display winner details
-    const ticketCode = winner.originalEntry?.id || winner.entryId || winner.winnerId;
+    const ticketCode = winner.entryId;
     const metaItems = [];
     
     metaItems.push(`
@@ -359,8 +351,7 @@ export class QRScannerModule {
   async refreshCurrentDisplay() {
     // Helper method to refresh the current display if needed
     if (this.currentWinnerData) {
-      const ticketCode = this.currentWinnerData.winner.originalEntry?.id || 
-                        this.currentWinnerData.winner.entryId || 
+      const ticketCode = this.currentWinnerData.winner.entryId || 
                         this.currentWinnerData.winner.winnerId;
       const updatedData = await this.findWinnerByTicketCode(ticketCode);
       if (updatedData) {

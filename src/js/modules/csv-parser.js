@@ -436,11 +436,7 @@ async function handleConfirmUpload() {
 
       // Collect all winner IDs (unique IDs only, not names)
       winners.forEach(winner => {
-        // Check for original entry ID (preferred)
-        if (winner.originalEntry?.id) {
-          winnerIds.add(winner.originalEntry.id);
-        }
-        // Also check entryId field
+        // Check entryId field
         if (winner.entryId) {
           winnerIds.add(winner.entryId);
         }

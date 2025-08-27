@@ -293,11 +293,8 @@ async function updateSelectionInfo() {
         winners.forEach(winner => {
           // Only check winners who won this specific prize
           if (winner.prize === prizeNameOnly) {
-            // Collect all possible IDs for this winner
+            // Use the entry ID to exclude this winner
             if (winner.entryId) samePrizeWinnerIds.add(winner.entryId);
-            if (winner.originalEntry?.id) samePrizeWinnerIds.add(winner.originalEntry.id);
-            if (winner.data?.['Ticket Code']) samePrizeWinnerIds.add(winner.data['Ticket Code']);
-            if (winner.data?.ticketCode) samePrizeWinnerIds.add(winner.data.ticketCode);
           }
         });
         console.log('Found', samePrizeWinnerIds.size, 'previous winners of', prizeNameOnly);

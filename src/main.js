@@ -4,6 +4,17 @@ import { UI } from './js/modules/ui.js';
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function () {
   try {
+    // Initialize Bootstrap tooltips for all elements with title attribute
+    const tooltipTriggerList = document.querySelectorAll('[title]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => {
+      // Use bottom placement for public interface tooltips
+      const isPublicInterface = tooltipTriggerEl.closest('#publicInterface');
+      return new bootstrap.Tooltip(tooltipTriggerEl, {
+        placement: isPublicInterface ? 'bottom' : 'top',
+        trigger: 'hover focus'
+      });
+    });
+    
     // Initialize database and load settings are now handled within initializeApp
     
     // Initialize the app

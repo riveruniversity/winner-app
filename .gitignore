@@ -13,6 +13,7 @@ nul
 # Backend compiled JavaScript files
 backend/*.js
 backend/**/*.js
+backend/**/*.map
 # Keep TypeScript files
 !backend/*.ts
 !backend/**/*.ts
