@@ -422,7 +422,7 @@ apiRouter.post('/mp/execute', async (req: Request, res: Response) => {
     // Build the method name dynamically based on the table
     // Convert table name from underscore to camelCase for the method name
     const tableName = query.table;
-    const camelCaseTable = tableName.replace(/_([a-z])/gi, (match, letter) => letter.toUpperCase());
+    const camelCaseTable = tableName.replace(/_([a-z])/gi, (match: string, letter: string) => letter.toUpperCase());
     const methodName = `get${camelCaseTable}` as keyof MPInstance;
     
     console.log(`Table: ${tableName}, Method: ${methodName}`);
