@@ -15,8 +15,8 @@
     "outDir": "./backend",
     "rootDir": "./backend",
     "types": ["node"],
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true
   },
   "include": [

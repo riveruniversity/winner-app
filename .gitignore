@@ -9,3 +9,10 @@ pnpm-lock.yaml
 .netlify
 package-lock.json
 nul
+
+# Backend compiled JavaScript files
+backend/*.js
+backend/**/*.js
+# Keep TypeScript files
+!backend/*.ts
+!backend/**/*.ts
