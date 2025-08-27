@@ -7,6 +7,7 @@ import { Database } from './database.js';
 import { UI } from './ui.js';
 import { getCurrentWinners } from '../app.js';
 import { settings } from './settings.js';
+import { Templates } from './templates.js';
 
 
 // Internal class (not exported)
@@ -157,8 +158,15 @@ class TextingService {
         continue;
       }
 
+      // Use recipient's specific template or fall back to the provided template
+      const templateToUse = recipient.messageTemplate || messageTemplate;
+      if (!templateToUse) {
+        console.error('No message template for recipient:', recipient);
+        continue;
+      }
+      
       // Personalize message with all available placeholders
-      let personalizedMessage = messageTemplate;
+      let personalizedMessage = templateToUse;
       
       // Replace standard placeholders
       personalizedMessage = personalizedMessage.replace(/{name}/g, recipient.displayName || recipient.name || 'Winner');
@@ -336,10 +344,12 @@ class TextingService {
     // const confirmed = await this.showSMSConfirmationModal(currentWinners.length);
     // if (!confirmed) return;
 
-    // Use SMS template from settings
-    const message = settings.smsTemplate;
-    if (!message.trim()) {
-      UI.showToast('SMS template is empty. Please set a template in Settings.', 'warning');
+    // Get templates for prize-specific messages
+    const templates = await Templates.loadTemplates();
+    const defaultTemplate = templates.find(t => t.isDefault);
+    
+    if (!defaultTemplate && templates.length === 0) {
+      UI.showToast('No SMS templates found. Please create a template in the Templates tab.', 'warning');
       return;
     }
 
@@ -349,20 +359,12 @@ class TextingService {
     try {
       // Find winners with phone numbers
       const winnersWithPhone = currentWinners.filter(winner => {
-        // Check new structure first
-        if (winner.contactInfo?.phoneNumber) {
-          return true;
-        }
-        
-        // Check direct properties
-        if (winner.phone || winner.Phone || winner.mobile || winner.phoneNumber) {
-          return true;
-        }
-        
-        // Backward compatibility - check data object (camelized CSV fields)
+        // Check if winner has phone data in the standard data object
         if (winner.data) {
+          // Check standard field name first, then common variations
           return !!(winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
-                    winner.data.cellPhone || winner.data.cell || winner.data.telephone);
+                    winner.data.cellPhone || winner.data.cell || winner.data.telephone ||
+                    winner.data.Phone || winner.data.Mobile || winner.data.CellPhone);
         }
         return false;
       });
@@ -372,20 +374,37 @@ class TextingService {
         return;
       }
 
+      // Load prizes to get template mappings
+      const prizes = await Database.getFromStore('prizes');
+      
       // Send messages asynchronously with proper rate limiting
       const results = await this.sendBatchTexts(
         winnersWithPhone.map(winner => {
-          // Get phone number from new structure first, then fallback to old
-          const phone = winner.contactInfo?.phoneNumber ||
-                       winner.phone || winner.Phone || winner.mobile || winner.phoneNumber ||
-                       (winner.data && (winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
-                                       winner.data.cellPhone || winner.data.cell || winner.data.telephone));
+          // Get phone number from the standard data object (phoneNumber is preferred)
+          const phone = winner.data && (
+            winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
+            winner.data.cellPhone || winner.data.cell || winner.data.telephone ||
+            winner.data.Phone || winner.data.Mobile || winner.data.CellPhone
+          );
+          
+          // Find the prize and its template
+          const prize = prizes.find(p => p.name === winner.prize);
+          let templateMessage = defaultTemplate?.message;
+          
+          if (prize?.templateId) {
+            const prizeTemplate = templates.find(t => t.templateId === prize.templateId);
+            if (prizeTemplate) {
+              templateMessage = prizeTemplate.message;
+            }
+          }
+          
           return {
             ...winner,
-            phone: this.cleanPhoneNumber(phone)
+            phone: this.cleanPhoneNumber(phone),
+            messageTemplate: templateMessage
           };
         }),
-        message
+        null // No single message template since each winner may have their own
       );
       
       // Ensure all SMS status updates are saved before finishing
@@ -417,7 +436,7 @@ class TextingService {
    * Shows SMS confirmation modal with template preview
    */
   async showSMSConfirmationModal(winnerCount) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       const modal = document.getElementById('appModal');
       const modalTitle = document.getElementById('appModalLabel');
       const modalBody = document.getElementById('appModalBody');
@@ -427,7 +446,8 @@ class TextingService {
       
       const currentWinners = getCurrentWinners();
       const sampleWinner = currentWinners[0] || { displayName: 'John Doe', prize: 'Sample Prize', winnerId: 'ABC123' };
-      const template = settings.smsTemplate || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
+      const defaultTemplate = await Templates.getDefaultTemplate();
+      const template = defaultTemplate?.message || 'Congratulations {name}! You won {prize}. Your ticket: {ticketCode}';
       
       // Create preview message
       let previewMessage = template

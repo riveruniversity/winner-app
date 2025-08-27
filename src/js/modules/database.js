@@ -26,7 +26,8 @@ function getKeyField(collectionName) {
     history: 'historyId',
     settings: 'key',
     sounds: 'soundId',
-    backups: 'backupId'
+    backups: 'backupId',
+    templates: 'templateId'
   };
   return keyFields[collectionName] || 'id';
 }

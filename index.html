@@ -148,6 +148,11 @@
             </button>
           </li>
           <li class="nav-item" role="presentation">
+            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button" role="tab">
+              <i class="bi bi-chat-text me-2"></i>Templates
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
             <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
               <i class="bi bi-clock-history me-2"></i>History
             </button>
@@ -381,29 +386,6 @@
                         </button>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Row 4: Full Width SMS Settings -->
-            <div class="card mt-3">
-              <div class="card-header">
-                <h5 class="card-title">
-                  <i class="bi bi-envelope-fill me-2"></i>SMS Settings
-                  <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Configure SMS messages for winners"></i>
-                </h5>
-              </div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <label class="form-label fw-semibold" for="smsTemplate">
-                    SMS Template
-                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Template for SMS messages sent to winners. Use placeholders: {name}, {prize}, {ticketCode}"></i>
-                  </label>
-                  <textarea class="form-control" id="smsTemplate" rows="7" placeholder="Congratulations {name}! You won {prize}. Your ticket: {ticketCode}">Congratulations {name}! You won {prize}. Your ticket: {ticketCode}</textarea>
-                  <div class="form-text">
-                    Available placeholders: <code>{name}</code>, <code>{prize}</code>, <code>{ticketCode}</code>
-                    <br><span id="smsCharCount">0 characters, 1 SMS</span>
                   </div>
                 </div>
               </div>
@@ -662,6 +644,29 @@
               <button class="btn btn-primary" onclick="document.getElementById('addPrizeModalBtn').click()">
                 <i class="bi bi-plus-circle me-2"></i>Add
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Templates Tab -->
+      <div class="tab-pane fade" id="templates" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h5 class="card-title mb-0">SMS Templates</h5>
+              <button class="btn btn-primary" id="addTemplateBtn">
+                <i class="bi bi-plus-circle me-2"></i>Add Template
+              </button>
+            </div>
+            
+            <div class="alert alert-info" id="templatePlaceholders">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Available placeholders:</strong>
+              <span id="placeholdersList">Loading...</span>
+            </div>
+            
+            <div id="templatesGrid" class="row g-3">
+              <!-- Templates will be loaded here -->
             </div>
           </div>
         </div>

@@ -64,7 +64,7 @@ async function loadWinners(winnersData = null, listsData = null) {
 
     const listNameMap = {};
     lists.forEach(list => {
-      const listId = list.listId || list.metadata.listId;
+      const listId = list.listId;
       listNameMap[listId] = list.metadata.name;
     });
 
@@ -696,4 +696,5 @@ export const Winners = {
   showQRCode
 };
 
+// Keep for onclick handlers
 window.Winners = Winners;

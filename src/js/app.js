@@ -17,6 +17,7 @@ import { Sounds } from './modules/sounds.js';
 import { Texting } from './modules/texting.js';
 import { Reports } from './modules/reports.js';
 import { MinistryPlatform } from './modules/ministryplatform.js';
+import { Templates } from './modules/templates.js';
 
 // Global state variables (now truly central)
 export let appModal = null;
@@ -120,6 +121,9 @@ export async function initializeApp() {
     
     // Initialize prize event delegation (once)
     Prizes.initPrizeEventDelegation();
+    
+    // Initialize templates functionality
+    Templates.initTemplates();
     
     // Initialize MinistryPlatform import functionality
     MinistryPlatform.init();

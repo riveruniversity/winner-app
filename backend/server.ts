@@ -135,7 +135,8 @@ function getKeyField(collection: string): string {
     history: 'historyId',
     settings: 'key',
     sounds: 'soundId',
-    backups: 'backupId'
+    backups: 'backupId',
+    templates: 'templateId'
   };
   return keyFields[collection] || 'id';
 }

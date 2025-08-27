@@ -298,19 +298,14 @@ async importData() {
       const listNameInput = document.getElementById('mpListName');
       const importBtn = document.getElementById('mpImportBtn');
       
-      // Validate inputs
-      if (!listNameInput.value.trim()) {
-        throw new Error('Please enter a list name');
-      }
-      
       if (!this.currentData || this.currentData.length === 0) {
         throw new Error('No data to import');
       }
       
       // Store data for CSV parser
-      const listNameValue = listNameInput.value.trim();
-      const dataToImport = this.currentData;
       const queryName = this.currentQuery ? this.currentQuery.name : 'Query';
+      const listNameValue = listNameInput.value.trim() || queryName;
+      const dataToImport = this.currentData;
       
       // Close MP modal
       this.modal.hide();

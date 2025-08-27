@@ -19,8 +19,7 @@ let settings = {
   secondaryColor: '#8b5cf6',
   backgroundType: 'gradient',
   customBackgroundImage: null,
-  selectedListId: '', // Legacy single selection
-  selectedListIds: [], // New multiple selection
+  selectedListIds: [], // Multiple list selection
   selectedPrizeId: '',
   winnersCount: 1,
   enableWebhook: false,
@@ -1380,7 +1379,7 @@ export const Settings = {
   set(key, value) { settings[key] = value; }
 };
 
-// Backward compatibility export - will be removed in future
+
 // Export getter that returns the internal settings object
 export { settings };
 

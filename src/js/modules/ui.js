@@ -133,7 +133,7 @@ async function populateQuickSelects(lists = null, prizes = null) {
         quickListSelect.innerHTML = '<div class="text-muted p-2">No lists available</div>';
       } else {
         sortedLists.forEach(list => {
-          const listId = list.listId || list.metadata.listId;
+          const listId = list.listId;
           // Use entries.length if entries exist (even if 0), otherwise use metadata
           const entryCount = list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0);
           
@@ -159,16 +159,6 @@ async function populateQuickSelects(lists = null, prizes = null) {
         });
         updateListSelectionCount();
         await updateSelectionInfo(); // Update display after restoring selections
-      } else if (settings.selectedListId) {
-        // Backward compatibility - convert single selection to array
-        const checkbox = quickListSelect.querySelector(`input[value="${settings.selectedListId}"]`);
-        if (checkbox) {
-          checkbox.checked = true;
-          settings.selectedListIds = [settings.selectedListId];
-          settingsChanged = true;
-          updateListSelectionCount();
-          await updateSelectionInfo(); // Update display after restoring selections
-        }
       } else {
         console.log('No saved list selection to restore');
       }

@@ -72,9 +72,12 @@ async function handleReportImport() {
   const reportType = document.getElementById('reportType').value;
   const eventId = document.getElementById('eventId').value;
   const timeRange = document.getElementById('timeRange').value;
-  const listName = document.getElementById('reportListName').value;
+  const listNameInput = document.getElementById('reportListName');
   
-  if (!reportType || !eventId || !timeRange || !listName) {
+  // Use provided list name, otherwise it will be auto-generated later
+  const listName = listNameInput.value.trim() || listNameInput.placeholder || '';
+  
+  if (!reportType || !eventId || !timeRange) {
     UI.showToast('Please fill in all required fields', 'error');
     return;
   }

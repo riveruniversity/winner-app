@@ -478,7 +478,7 @@ async function handleConfirmUpload() {
   try {
     UI.showProgress('Processing List', 'Validating data...');
 
-    // Read the list name from the input field (user may have changed it)
+    // Read the list name from the input field if provided, otherwise use the filename/report name
     const listNameInput = document.getElementById('listName');
     const finalListName = listNameInput.value.trim() || pendingCSVData.listName;
 

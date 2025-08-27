@@ -21,7 +21,7 @@ async function handleExportWinners() {
     // Create a map of listId to listName for consistent filtering
     const listNameMap = {};
     lists.forEach(list => {
-      const listId = list.listId || list.metadata.listId;
+      const listId = list.listId;
       listNameMap[listId] = list.metadata.name;
     });
 

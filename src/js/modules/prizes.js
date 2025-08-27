@@ -14,21 +14,11 @@ async function loadPrizes(prizesData = null) {
       const gridContainer = document.getElementById('prizesGrid');
       const noPrizesMessage = document.getElementById('noPrizesMessage');
       
-      // Also check for old container for backward compatibility
-      const oldContainer = document.getElementById('prizesContainer');
-
-      if (!gridContainer && !oldContainer) return;
+      if (!gridContainer) return;
 
       if (prizes.length === 0) {
         if (gridContainer) gridContainer.textContent = '';
         if (noPrizesMessage) noPrizesMessage.style.display = 'block';
-        if (oldContainer) {
-          oldContainer.textContent = '';
-          const p = document.createElement('p');
-          p.className = 'text-muted';
-          p.textContent = 'No prizes added yet.';
-          oldContainer.appendChild(p);
-        }
         return;
       }
 
@@ -140,50 +130,6 @@ async function loadPrizes(prizesData = null) {
         gridContainer.appendChild(fragment);
       }
       
-      // Backward compatibility for old container
-      if (oldContainer) {
-        oldContainer.innerHTML = prizes.map(prize => {
-          const prizeId = prize.prizeId;
-          const isSelected = settings.selectedPrizeId === prizeId;
-          const isAvailable = prize.quantity > 0;
-          
-          return `
-          <div class="card mb-3 ${isSelected ? 'border-success border-2' : ''}">
-            <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
-              <div class="d-flex justify-content-between align-items-center">
-                <h6 class="card-title mb-0">${prize.name}</h6>
-                <div>
-                  ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i></span>' : ''}
-                  <span class="badge ${isAvailable ? 'bg-primary' : 'bg-secondary'}">${prize.quantity}</span>
-                </div>
-              </div>
-            </div>
-            <div class="card-body d-flex flex-column">
-              <p class="card-text text-muted small">
-                ${prize.description || 'No description'}
-              </p>
-              <div class="mt-auto pt-3">
-                <div class="d-flex justify-content-between">
-                  <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
-                          data-prize-id="${prizeId}"
-                          ${isSelected || !isAvailable ? 'disabled' : ''}>
-                    <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
-                  </button>
-                  <div>
-                    <button class="btn btn-sm btn-outline-primary me-2" data-prize-id="${prizeId}">
-                      <i class="bi bi-pencil"></i> Edit
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" data-prize-id="${prizeId}">
-                      <i class="bi bi-trash"></i> Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        }).join('');
-      }
     } catch (error) {
       console.error('Error loading prizes:', error);
       UI.showToast('Error loading prizes: ' + error.message, 'error');
@@ -314,9 +260,47 @@ async function loadPrizes(prizesData = null) {
     descDiv.appendChild(descLabel);
     descDiv.appendChild(descTextarea);
     
+    // Template field
+    const templateDiv = document.createElement('div');
+    templateDiv.className = 'mb-3';
+    
+    const templateLabel = document.createElement('label');
+    templateLabel.htmlFor = 'modalPrizeTemplate';
+    templateLabel.className = 'form-label';
+    templateLabel.textContent = 'SMS Template';
+    
+    const templateSelect = document.createElement('select');
+    templateSelect.className = 'form-select';
+    templateSelect.id = 'modalPrizeTemplate';
+    
+    // Load templates and populate dropdown
+    const { Templates } = await import('./templates.js');
+    const templates = await Templates.loadTemplates();
+    
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Use default template';
+    templateSelect.appendChild(defaultOption);
+    
+    // Add templates
+    templates.forEach(template => {
+      const option = document.createElement('option');
+      option.value = template.templateId;
+      option.textContent = template.name;
+      if (template.isDefault) {
+        option.textContent += ' (Default)';
+      }
+      templateSelect.appendChild(option);
+    });
+    
+    templateDiv.appendChild(templateLabel);
+    templateDiv.appendChild(templateSelect);
+    
     modalBody.appendChild(nameDiv);
     modalBody.appendChild(qtyDiv);
     modalBody.appendChild(descDiv);
+    modalBody.appendChild(templateDiv);
     
     confirmBtn.textContent = 'Add Prize';
     confirmBtn.className = 'btn btn-primary';
@@ -330,6 +314,7 @@ async function loadPrizes(prizesData = null) {
       const name = document.getElementById('modalPrizeName').value.trim();
       const quantity = parseInt(document.getElementById('modalPrizeQuantity').value);
       const description = document.getElementById('modalPrizeDescription').value.trim();
+      const templateId = document.getElementById('modalPrizeTemplate').value;
 
       if (!name) {
         UI.showToast('Please enter a prize name', 'warning');
@@ -348,6 +333,7 @@ async function loadPrizes(prizesData = null) {
           name: name,
           quantity: quantity,
           description: description,
+          templateId: templateId || null,
           timestamp: Date.now()
         };
 
@@ -376,7 +362,27 @@ async function loadPrizes(prizesData = null) {
     const modalBody = document.getElementById('appModalBody');
     const confirmBtn = document.getElementById('appModalConfirmBtn');
 
+    // Check if modal elements exist
+    if (!modalTitle || !modalBody || !confirmBtn) {
+      console.error('Modal elements not found');
+      UI.showToast('Error: Modal not properly initialized', 'error');
+      return;
+    }
+
     modalTitle.textContent = 'Edit Prize';
+    
+    // Load templates for dropdown
+    const { Templates } = await import('./templates.js');
+    const templates = await Templates.loadTemplates();
+    
+    // Build template options
+    let templateOptions = '<option value="">Use default template</option>';
+    templates.forEach(template => {
+      const selected = prize.templateId === template.templateId ? 'selected' : '';
+      const label = template.isDefault ? `${template.name} (Default)` : template.name;
+      templateOptions += `<option value="${template.templateId}" ${selected}>${label}</option>`;
+    });
+    
     modalBody.innerHTML = `
       <div class="mb-3">
         <label for="modalPrizeName" class="form-label">Prize Name <span class="text-danger">*</span></label>
@@ -389,6 +395,12 @@ async function loadPrizes(prizesData = null) {
       <div class="mb-3">
         <label for="modalPrizeDescription" class="form-label">Description (Optional)</label>
         <textarea class="form-control" id="modalPrizeDescription" rows="3">${prize.description || ''}</textarea>
+      </div>
+      <div class="mb-3">
+        <label for="modalPrizeTemplate" class="form-label">SMS Template</label>
+        <select class="form-select" id="modalPrizeTemplate">
+          ${templateOptions}
+        </select>
       </div>
     `;
     
@@ -403,11 +415,13 @@ async function loadPrizes(prizesData = null) {
       const newName = document.getElementById('modalPrizeName').value.trim();
       const newQuantity = parseInt(document.getElementById('modalPrizeQuantity').value);
       const newDescription = document.getElementById('modalPrizeDescription').value.trim();
+      const newTemplateId = document.getElementById('modalPrizeTemplate').value;
 
       if (newName && newQuantity >= 0) {
         prize.name = newName;
         prize.quantity = newQuantity;
         prize.description = newDescription;
+        prize.templateId = newTemplateId || null;
         await Database.saveToStore('prizes', prize);
 
         UI.showToast('Prize updated successfully', 'success');
@@ -419,7 +433,13 @@ async function loadPrizes(prizesData = null) {
       }
     }, { once: true });
 
-    window.appModal.show();
+    // Check if modal exists before showing
+    if (window.appModal) {
+      window.appModal.show();
+    } else {
+      console.error('window.appModal not initialized');
+      UI.showToast('Error: Modal not properly initialized', 'error');
+    }
   }
   
   // Keep old editPrize for backward compatibility
@@ -525,7 +545,6 @@ export const Prizes = {
   loadPrizes,
   handleAddPrize,
   showAddPrizeModal,
-  editPrize,
   editPrizeModal,
   deletePrizeConfirm,
   selectPrize,

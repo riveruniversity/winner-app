@@ -15,10 +15,7 @@ async function loadLists(listsData = null) {
   const gridContainer = document.getElementById('listsGrid');
   const noListsMessage = document.getElementById('noListsMessage');
   
-  // Fallback to old container for backward compatibility
-  const oldContainer = document.getElementById('listsContainer');
-  
-  if (!gridContainer && !oldContainer) return;
+  if (!gridContainer) return;
 
   try {
     const lists = listsData || await Database.getFromStore('lists');
@@ -26,19 +23,11 @@ async function loadLists(listsData = null) {
     if (lists.length === 0) {
       if (gridContainer) gridContainer.innerHTML = '';
       if (noListsMessage) noListsMessage.style.display = 'block';
-      if (oldContainer) oldContainer.innerHTML = '<p class="text-muted">No lists uploaded yet.</p>';
       return;
     }
 
     if (noListsMessage) noListsMessage.style.display = 'none';
 
-    // Ensure backward compatibility
-    for (const list of lists) {
-      if (!list.listId && list.metadata && list.metadata.listId) {
-        list.listId = list.metadata.listId;
-        await Database.saveToStore('lists', list);
-      }
-    }
 
     // Sort lists by upload date (most recent first)
     lists.sort((a, b) => {
@@ -48,7 +37,7 @@ async function loadLists(listsData = null) {
     });
 
     const listCards = lists.map(list => {
-      const listId = list.listId || list.metadata.listId;
+      const listId = list.listId;
       // Check if this list is in the selectedListIds array
       const isSelected = settings.selectedListIds && settings.selectedListIds.includes(listId);
       // Use entries.length if entries exist (even if 0), otherwise use metadata
@@ -101,48 +90,6 @@ async function loadLists(listsData = null) {
       // Add event listeners after rendering
       setupListCardClickListeners();
       updateListTabSelectionInfo();
-    } else if (oldContainer) {
-      // Fallback for old container
-      oldContainer.innerHTML = lists.map(list => {
-        const listId = list.listId || list.metadata.listId;
-        const isSelected = settings.selectedListId === listId;
-        
-        return `
-        <div class="card mb-3 ${isSelected ? 'border-success border-2' : ''}">
-          <div class="card-header ${isSelected ? 'bg-success bg-opacity-10' : ''}">
-            <div class="d-flex justify-content-between align-items-center">
-              <h6 class="card-title mb-0">${list.metadata.name}</h6>
-              <div>
-                ${isSelected ? '<span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i></span>' : ''}
-                ${!settings.hideEntryCounts ? `<span class="badge bg-primary">${list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0)}</span>` : ''}
-              </div>
-            </div>
-          </div>
-          <div class="card-body d-flex flex-column">
-            <p class="card-text text-muted small">
-              Uploaded ${new Date(list.metadata.timestamp).toLocaleDateString()}
-            </p>
-            <div class="mt-auto pt-3">
-              <div class="d-flex justify-content-between">
-                <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-outline-success'}" 
-                        onclick="console.log('Button clicked for list:', '${listId}'); Lists.selectList('${listId}')" 
-                        ${isSelected ? 'disabled' : ''}>
-                  <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-check-circle'}"></i> ${isSelected ? 'Selected' : 'Select'}
-                </button>
-                <div>
-                  <button class="btn btn-sm btn-outline-primary me-2" onclick="Lists.viewList('${listId}')">
-                    <i class="bi bi-eye"></i> View
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListConfirm('${listId}')">
-                    <i class="bi bi-trash"></i> Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      }).join('');
     }
   } catch (error) {
     console.error('Error rendering lists:', error);
@@ -163,13 +110,6 @@ async function loadListsTraditional() {
       return;
     }
 
-    // Ensure backward compatibility
-    for (const list of lists) {
-      if (!list.listId && list.metadata && list.metadata.listId) {
-        list.listId = list.metadata.listId;
-        await Database.saveToStore('lists', list);
-      }
-    }
 
     // Sort lists by upload date (most recent first)
     lists.sort((a, b) => {
@@ -191,10 +131,10 @@ async function loadListsTraditional() {
             </small>
           </p>
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.viewList(this.dataset.listId)">
+            <button class="btn btn-outline-primary" data-list-id="${list.listId}" onclick="Lists.viewList(this.dataset.listId)">
               <i class="bi bi-eye"></i> View
             </button>
-            <button class="btn btn-outline-danger" data-list-id="${list.listId || list.metadata.listId}" onclick="Lists.deleteListConfirm(this.dataset.listId)">
+            <button class="btn btn-outline-danger" data-list-id="${list.listId}" onclick="Lists.deleteListConfirm(this.dataset.listId)">
               <i class="bi bi-trash"></i> Delete
             </button>
           </div>
@@ -218,20 +158,38 @@ async function viewList(listId) {
 
       modalTitle.textContent = `List: ${list.metadata.name}`;
       
-      // Create table view with individual record management
+      // Get all unique columns from the data (first 10 entries for performance)
+      const sampleEntries = list.entries.slice(0, 10);
+      const allColumns = new Set();
+      sampleEntries.forEach(entry => {
+        if (entry.data) {
+          Object.keys(entry.data).forEach(col => allColumns.add(col));
+        }
+      });
+      const columns = Array.from(allColumns).sort();
+      
+      // Limit columns shown in table view (show first 5 columns)
+      const displayColumns = columns.slice(0, 5);
+      
+      // Create table headers
+      const tableHeaders = `
+        <tr>
+          <th style="width: 60px;">#</th>
+          <th>Display Name</th>
+          ${displayColumns.map(col => `<th>${col}</th>`).join('')}
+          <th style="width: 80px;">Actions</th>
+        </tr>
+      `;
+      
+      // Create table rows with actual data
       const tableRows = list.entries.map((entry, index) => {
         const displayName = formatDisplayName(entry, list.metadata.nameConfig);
-        const info1 = list.metadata.infoConfig?.info1 ? 
-          list.metadata.infoConfig.info1.replace(/\{([^}]+)\}/g, (match, key) => entry.data[key.trim()] || '').trim() : '';
-        const info2 = list.metadata.infoConfig?.info2 ? 
-          list.metadata.infoConfig.info2.replace(/\{([^}]+)\}/g, (match, key) => entry.data[key.trim()] || '').trim() : '';
         
         return `
           <tr>
             <td>${index + 1}</td>
             <td>${displayName}</td>
-            <td>${info1}</td>
-            <td>${info2}</td>
+            ${displayColumns.map(col => `<td>${entry.data?.[col] || ''}</td>`).join('')}
             <td>
               <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListEntry('${listId}', '${entry.id}')">
                 <i class="bi bi-trash"></i>
@@ -251,16 +209,10 @@ async function viewList(listId) {
         <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
           <table class="table table-striped table-sm">
             <thead class="sticky-top bg-white">
-              <tr>
-                <th style="width: 60px;">#</th>
-                <th>Name</th>
-                <th>Info 1</th>
-                <th>Info 2</th>
-                <th style="width: 80px;">Actions</th>
-              </tr>
+              ${tableHeaders}
             </thead>
             <tbody>
-              ${tableRows || '<tr><td colspan="5" class="text-center text-muted">No entries in this list</td></tr>'}
+              ${tableRows || '<tr><td colspan="${displayColumns.length + 3}" class="text-center text-muted">No entries in this list</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -327,18 +279,6 @@ function formatDisplayName(entry, nameConfig) {
     }).trim() || 'Unknown';
   }
 
-  // Backward compatibility for old object-based format
-  if (nameConfig && nameConfig.columns && nameConfig.columns.length > 0) {
-    let displayName = entry.data[nameConfig.columns[0]] || '';
-    for (let i = 1; i < nameConfig.columns.length; i++) {
-      const delimiter = nameConfig.delimiters[i - 1] || ' ';
-      const value = entry.data[nameConfig.columns[i]] || '';
-      if (value) {
-        displayName += delimiter + value;
-      }
-    }
-    return displayName || 'Unknown';
-  }
 
   // Ultimate fallback: try common name fields
   const commonFields = ['name', 'full_name', 'first_name', 'last_name'];
@@ -534,9 +474,6 @@ function setupListCardClickListeners() {
   }
 }
 
-// Alias for backward compatibility
-const setupListCheckboxListeners = setupListCardClickListeners;
-
 // Update selection info in Lists tab
 function updateListTabSelectionInfo() {
   const selectedIds = settings.selectedListIds || [];
@@ -590,9 +527,8 @@ export const Lists = {
   selectList,
   toggleListSelection,
   setupListCardClickListeners,
-  setupListCheckboxListeners,  // Alias for backward compatibility
   updateListTabSelectionInfo
 };
 
-// 4. Assign to window for legacy inline `onclick` handlers to work during transition
+// Keep for onclick handlers
 window.Lists = Lists;
