@@ -228,8 +228,7 @@ async function loadPrizes(prizesData = null) {
         name: name,
         quantity: quantity,
         description: description,
-        timestamp: Date.now(),
-        id: prizeId
+        timestamp: Date.now()
       };
 
       await Database.saveToStore('prizes', prize);
@@ -361,8 +360,7 @@ async function loadPrizes(prizesData = null) {
           name: name,
           quantity: quantity,
           description: description,
-          timestamp: Date.now(),
-          id: prizeId
+          timestamp: Date.now()
         };
 
         await Database.saveToStore('prizes', prize);

@@ -28,10 +28,9 @@
 ## 🎯 Core Features
 
 ### 1. **List Management**
-- CSV file upload supporting up to 20,000 entries
+- CSV file upload supporting unlimited entries (tested up to 20,000)
 - Flexible name template configuration
 - Data preview before import
-- Automatic sharding for large datasets
 - Support for multiple active lists
 
 ### 2. **Winner Selection Engine**
@@ -135,12 +134,11 @@ winner-app/
 
 ### Local-First Architecture
 - **Immediate response**: UI updates happen instantly without waiting for network
-- **Background sync**: Data syncs to Firebase in the background
+- **Local storage**: All data stored in local JSON files
 - **Offline capability**: Full functionality without internet connection
 - **Fire-and-forget operations**: Non-blocking database writes
 
 ### Performance Optimizations
-- **List sharding**: Automatic splitting of large lists (>1000 entries)
 - **Web Workers**: CPU-intensive operations run in background threads
 - **Lazy loading**: Resources loaded on-demand
 - **Efficient caching**: Service Worker with intelligent cache strategies
@@ -262,10 +260,9 @@ Implements QR code scanning functionality for winner pickup tracking. Provides r
 The app uses a sophisticated randomization system to ensure fair and truly random winner selection:
 
 #### **Data Handling for Large Lists**
-- Lists with >1000 entries are automatically **sharded** into chunks of 1000 entries each
-- Shards are stored separately in Firestore for optimal performance
-- When selecting winners, ALL shards are automatically reconstructed into the complete list
+- Lists of any size are stored as single JSON objects without sharding
 - The selection algorithm receives the ENTIRE list regardless of size (tested up to 20,000 entries)
+- No artificial limits on list size due to local storage
 
 #### **Randomization Algorithm (Updated)**
 Located in `selection.js`, the algorithm uses:
@@ -295,7 +292,7 @@ The original algorithm had several problems:
 
 #### **Current Guarantees**
 - ✅ Every single entry from the uploaded CSV is included
-- ✅ Lists of any size are fully supported (automatic sharding/reconstruction)
+- ✅ Lists of any size are fully supported without sharding
 - ✅ Each entry has an equal, independent probability of selection
 - ✅ No clustering or pattern biases
 - ✅ Cryptographically secure randomness when available

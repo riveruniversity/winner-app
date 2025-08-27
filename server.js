@@ -222,42 +222,7 @@ apiRouter.get('/:collection', async (req, res) => {
   try {
     const { collection } = req.params;
     const data = await readCollection(collection);
-    
-    if (collection === 'lists') {
-      const reconstructed = [];
-      const processedIds = new Set();
-      
-      for (const item of data) {
-        if (processedIds.has(item.listId) || item.metadata?.isListShard) {
-          continue;
-        }
-        
-        if (item.isSharded) {
-          const allEntries = [];
-          for (const shardId of item.shardIds || []) {
-            const shard = data.find(d => d.listId === shardId);
-            if (shard && shard.entries) {
-              allEntries.push(...shard.entries);
-            }
-          }
-          reconstructed.push({
-            ...item,
-            entries: allEntries,
-            metadata: {
-              ...item.metadata,
-              reconstructed: true
-            }
-          });
-        } else {
-          reconstructed.push(item);
-        }
-        processedIds.add(item.listId);
-      }
-      
-      res.json(reconstructed);
-    } else {
-      res.json(data);
-    }
+    res.json(data);
   } catch (error) {
     console.error('Error in GET /:collection:', error);
     res.status(500).json({ error: error.message });
@@ -270,39 +235,11 @@ apiRouter.get('/:collection/:id', async (req, res) => {
     const data = await readCollection(collection);
     const keyField = getKeyField(collection);
     
-    if (collection === 'lists') {
-      const item = data.find(d => d[keyField] === id);
-      
-      if (!item) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      
-      if (item.isSharded) {
-        const allEntries = [];
-        for (const shardId of item.shardIds || []) {
-          const shard = data.find(d => d.listId === shardId);
-          if (shard && shard.entries) {
-            allEntries.push(...shard.entries);
-          }
-        }
-        res.json({
-          ...item,
-          entries: allEntries,
-          metadata: {
-            ...item.metadata,
-            reconstructed: true
-          }
-        });
-      } else {
-        res.json(item);
-      }
-    } else {
-      const item = data.find(d => d[keyField] === id);
-      if (!item) {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      res.json(item);
+    const item = data.find(d => d[keyField] === id);
+    if (!item) {
+      return res.status(404).json({ error: 'Not found' });
     }
+    res.json(item);
   } catch (error) {
     console.error('Error in GET /:collection/:id:', error);
     res.status(500).json({ error: error.message });
@@ -505,77 +442,19 @@ apiRouter.post('/:collection', async (req, res) => {
     
     const data = await readCollection(collection);
     
-    if (collection === 'lists' && newItem.entries && newItem.entries.length > 1000) {
-      const entries = newItem.entries;
-      const maxEntriesPerShard = 1000;
-      const baseListId = newItem.listId;
-      const totalShards = Math.ceil(entries.length / maxEntriesPerShard);
-      const shardIds = [];
-      
-      for (let shardIndex = 0; shardIndex < totalShards; shardIndex++) {
-        const startIndex = shardIndex * maxEntriesPerShard;
-        const endIndex = Math.min(startIndex + maxEntriesPerShard, entries.length);
-        const shardEntries = entries.slice(startIndex, endIndex);
-        
-        const shardId = `${baseListId}-shard-${shardIndex}`;
-        const shardData = {
-          listId: shardId,
-          parentListId: baseListId,
-          shardIndex: shardIndex,
-          metadata: {
-            ...newItem.metadata,
-            listId: shardId,
-            parentListId: baseListId,
-            isListShard: true,
-            shardIndex: shardIndex,
-            entriesInShard: shardEntries.length
-          },
-          entries: shardEntries
-        };
-        
-        data.push(shardData);
-        shardIds.push(shardId);
-      }
-      
-      const mainListData = {
-        ...newItem,
-        entries: [],
-        isSharded: true,
-        totalShards: totalShards,
-        totalEntries: entries.length,
-        shardIds: shardIds
-      };
-      
+    if (collection === 'settings') {
       const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
       if (existingIndex >= 0) {
-        const oldItem = data[existingIndex];
-        if (oldItem.isSharded && oldItem.shardIds) {
-          for (const oldShardId of oldItem.shardIds) {
-            const shardIndex = data.findIndex(d => d.listId === oldShardId);
-            if (shardIndex >= 0) {
-              data.splice(shardIndex, 1);
-            }
-          }
-        }
-        data[existingIndex] = mainListData;
+        data[existingIndex] = { ...data[existingIndex], ...newItem };
       } else {
-        data.push(mainListData);
+        data.push(newItem);
       }
     } else {
-      if (collection === 'settings') {
-        const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
-        if (existingIndex >= 0) {
-          data[existingIndex] = { ...data[existingIndex], ...newItem };
-        } else {
-          data.push(newItem);
-        }
+      const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
+      if (existingIndex >= 0) {
+        data[existingIndex] = newItem;
       } else {
-        const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
-        if (existingIndex >= 0) {
-          data[existingIndex] = newItem;
-        } else {
-          data.push(newItem);
-        }
+        data.push(newItem);
       }
     }
     
@@ -616,20 +495,8 @@ apiRouter.delete('/:collection/:id', async (req, res) => {
     const keyField = getKeyField(collection);
     
     const data = await readCollection(collection);
-    
-    if (collection === 'lists') {
-      const item = data.find(d => d[keyField] === id);
-      if (item && item.isSharded && item.shardIds) {
-        for (const shardId of item.shardIds) {
-          const shardIndex = data.findIndex(d => d.listId === shardId);
-          if (shardIndex >= 0) {
-            data.splice(shardIndex, 1);
-          }
-        }
-      }
-    }
-    
     const index = data.findIndex(d => d[keyField] === id);
+    
     if (index === -1) {
       return res.status(404).json({ error: 'Not found' });
     }

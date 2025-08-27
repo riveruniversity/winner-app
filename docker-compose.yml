@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   winner-app:
     build: .
@@ -9,8 +7,7 @@ services:
     ports:
       - "3001:3001"  # Map container port to host port
     volumes:
-      # Persist data directory using local folder
-      - ./data:/app/data
+      - ./data:/app/data # Persist data directory using local folder
     env_file:
       - .env
     environment:

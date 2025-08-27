@@ -21,8 +21,18 @@
       "Bash(rg:*)",
       "Bash(pnpm run:*)",
       "Bash(taskkill:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(touch /srv/dev/winner-sveltekit/README.md)",
+      "Bash(npm run build)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/api/lists)",
+      "Bash(curl -s http://localhost:3000/api/prizes)",
+      "Bash(curl -s http://localhost:3001)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/srv/dev"
+    ]
   }
 }
