@@ -1019,6 +1019,58 @@ body {
   z-index: 9999;
 }
 
+/* SMS Progress Bar - Subtle Bottom Bar */
+.sms-progress-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  z-index: 1050;
+  padding: 10px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sms-progress-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.sms-progress-content span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  min-width: 140px;
+}
+
+.sms-progress-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sms-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #28a745, #20c997);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.sms-progress-bar button {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.sms-progress-bar button:hover {
+  opacity: 1;
+}
+
 .progress-content {
   background: white;
   padding: 3rem;

@@ -223,9 +223,9 @@ class TextingService {
       // Update progress
       const progress = Math.round((sent / recipients.length) * 100);
       
-      UI.updateProgress(
+      UI.updateSMSProgress(
         progress,
-        `Sent ${sent}/${recipients.length}`
+        `Sent ${sent}/${recipients.length} messages`
       );
 
       // Small delay between requests to avoid overwhelming (10 requests per second max)
@@ -354,7 +354,16 @@ class TextingService {
     }
 
     this.sendingInProgress = true;
-    UI.showProgress('Sending messages...');
+    UI.showSMSProgress('Preparing to send messages...');
+    
+    // Setup cancel button handler
+    const cancelBtn = document.getElementById('smsProgressCancel');
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        this.abortSending();
+        UI.showToast('SMS sending cancelled', 'warning');
+      };
+    }
 
     try {
       // Find winners with phone numbers
@@ -428,7 +437,7 @@ class TextingService {
       // Ensure any pending updates are processed
       await this.processSMSUpdateQueue();
       this.sendingInProgress = false;
-      UI.hideProgress();
+      UI.hideSMSProgress();
     }
   }
 
@@ -782,6 +791,16 @@ class TextingService {
       this.abortController.abort();
       UI.showToast('Sending cancelled', 'info');
     }
+  }
+  
+  /**
+   * Abort sending SMS messages
+   * Alias for cancelSending that also hides the progress bar
+   */
+  abortSending() {
+    this.sendingInProgress = false;
+    this.cancelSending();
+    UI.hideSMSProgress();
   }
 
 

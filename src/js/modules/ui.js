@@ -57,6 +57,38 @@ function hideProgress() {
   document.getElementById('progressOverlay').classList.add('d-none');
 }
 
+// SMS-specific progress functions
+function showSMSProgress(text = 'Sending messages...') {
+  const progressBar = document.getElementById('smsProgressBar');
+  const progressText = document.getElementById('smsProgressText');
+  const progressFill = document.getElementById('smsProgressFill');
+  
+  if (progressBar) {
+    progressText.textContent = text;
+    progressFill.style.width = '0%';
+    progressBar.classList.remove('d-none');
+  }
+}
+
+function updateSMSProgress(percentage, text) {
+  const progressFill = document.getElementById('smsProgressFill');
+  const progressText = document.getElementById('smsProgressText');
+  
+  if (progressFill) {
+    progressFill.style.width = percentage + '%';
+  }
+  if (text && progressText) {
+    progressText.textContent = text;
+  }
+}
+
+function hideSMSProgress() {
+  const progressBar = document.getElementById('smsProgressBar');
+  if (progressBar) {
+    progressBar.classList.add('d-none');
+  }
+}
+
 function showConfirmationModal(title, message, onConfirm) {
   const modalTitle = document.getElementById('appModalLabel');
   const modalBody = document.getElementById('appModalBody');
@@ -431,6 +463,9 @@ export const UI = {
   showProgress,
   updateProgress,
   hideProgress,
+  showSMSProgress,
+  updateSMSProgress,
+  hideSMSProgress,
   showConfirmationModal: enhancedShowConfirmationModal,
   readFileAsText,
   populateQuickSelects,
