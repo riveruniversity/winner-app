@@ -39,9 +39,15 @@ let settings = {
 };
 
 async function saveSettings() {
-  for (const [key, value] of Object.entries(settings)) {
-    const settingToSave = { key, value };
-    await Database.saveToStore('settings', settingToSave);
+  // Use batch save for all settings at once
+  const operations = Object.entries(settings).map(([key, value]) => ({
+    collection: 'settings',
+    data: { key, value }
+  }));
+  
+  if (operations.length > 0) {
+    await Database.batchSave(operations);
+    debugLog(`Batch saved ${operations.length} settings`);
   }
 }
 

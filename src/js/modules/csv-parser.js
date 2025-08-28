@@ -8,6 +8,7 @@ import { Database } from './database.js';
 import { DOMUtils } from './dom-utils.js';
 import eventManager from './event-manager.js';
 import { settings, Settings } from './settings.js';
+import { Validation } from './validation.js';
 
 let pendingCSVData = null;
 
@@ -143,14 +144,18 @@ async function handleCSVUpload() {
   }
 
   const csvFile = csvFileInput.files[0];
+  
+  // Validate CSV file
+  const fileValidation = Validation.validateCSVFile(csvFile);
+  if (!fileValidation.isValid) {
+    UI.showToast(fileValidation.error, 'warning');
+    csvFileInput.value = ''; // Clear the invalid file
+    return;
+  }
+
   const fileName = csvFile.name.replace(/\.[^/.]+$/, "");
   // Don't read list name here - it will be read when confirming
   const listName = fileName; // Use filename as temporary name for preview
-
-  if (!csvFile) {
-    UI.showToast('Please select a CSV file', 'warning');
-    return;
-  }
 
   try {
     UI.showProgress('Processing CSV', 'Reading file...');

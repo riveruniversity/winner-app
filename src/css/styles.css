@@ -1627,6 +1627,84 @@ body {
 }
 
 /* Dark mode list card selection */
+
+/* Keyboard Shortcuts Styles */
+.keyboard-help-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.keyboard-help-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 45px;
+  right: 0;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  min-width: 250px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.keyboard-help-tooltip .help-title {
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.keyboard-help-tooltip .help-shortcuts {
+  font-size: 14px;
+}
+
+.keyboard-help-tooltip .help-shortcuts div {
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.keyboard-help-tooltip kbd {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-family: monospace;
+  min-width: 25px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* Keyboard feedback animation */
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(5px);
+  }
+  30% {
+    opacity: 0.6;
+    transform: translateX(-50%) translateY(0);
+  }
+  70% {
+    opacity: 0.6;
+    transform: translateX(-50%) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+/* Hide keyboard help in management view */
+#managementInterface.active ~ .keyboard-help-indicator {
+  display: none;
+}
+
+/* Dark mode list card selection */
 [data-theme="dark"] .list-card-selectable[style*="background"] {
   background: linear-gradient(135deg, #1a5a2e 0%, #0f3d1f 100%) !important;
 }

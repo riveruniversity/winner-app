@@ -7,6 +7,7 @@ import { DOMUtils } from './dom-utils.js';
 import eventManager from './event-manager.js';
 import { UI } from './ui.js';
 import { settings, Settings } from './settings.js';
+import { Validation } from './validation.js';
 
 async function loadPrizes(prizesData = null) {
     try {
@@ -141,19 +142,27 @@ async function loadPrizes(prizesData = null) {
     const prizeQuantityInput = document.getElementById('prizeQuantity');
     const prizeDescriptionInput = document.getElementById('prizeDescription');
 
-    const name = prizeNameInput.value.trim();
-    const quantity = parseInt(prizeQuantityInput.value);
-    const description = prizeDescriptionInput.value.trim();
-
-    if (!name) {
-      UI.showToast('Please enter a prize name', 'warning');
+    // Validate prize name
+    const nameValidation = Validation.validateName(prizeNameInput.value, 'Prize name');
+    if (!nameValidation.isValid) {
+      UI.showToast(nameValidation.error, 'warning');
+      prizeNameInput.value = nameValidation.value;
       return;
     }
+    const name = nameValidation.value;
 
-    if (quantity < 1) {
-      UI.showToast('Please enter a valid quantity', 'warning');
+    // Validate quantity
+    const quantityValidation = Validation.validatePrizeQuantity(prizeQuantityInput.value);
+    if (!quantityValidation.isValid) {
+      UI.showToast(quantityValidation.error, 'warning');
+      prizeQuantityInput.value = quantityValidation.value;
       return;
     }
+    const quantity = quantityValidation.value;
+
+    // Validate description (optional, but still check length)
+    const descriptionValidation = Validation.validateName(prizeDescriptionInput.value || '', 'Description');
+    const description = descriptionValidation.value;
 
     try {
       const prizeId = UI.generateId();

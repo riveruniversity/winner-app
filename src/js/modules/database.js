@@ -17,6 +17,22 @@ const COLLECTIONS = {
   backups: 'backups'
 };
 
+// Track all active intervals for proper cleanup
+const activeIntervals = new Map();
+let intervalIdCounter = 0;
+
+// Cleanup all intervals on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    activeIntervals.forEach((interval) => {
+      if (interval.intervalId) {
+        clearInterval(interval.intervalId);
+      }
+    });
+    activeIntervals.clear();
+  });
+}
+
 // Get key field for each collection (matches current schema)
 function getKeyField(collectionName) {
   const keyFields = {
@@ -269,8 +285,8 @@ async function deleteFromStore(collectionName, key) {
 
 // Listen to collection changes (polling-based since we don't have WebSocket)
 function listenToCollection(collectionName, callback) {
-  let intervalId;
   let lastData = null;
+  const listenerId = `listener_${collectionName}_${++intervalIdCounter}`;
   
   async function pollForChanges() {
     try {
@@ -287,15 +303,25 @@ function listenToCollection(collectionName, callback) {
   }
   
   // Poll every 5 seconds
-  intervalId = setInterval(pollForChanges, 5000);
+  const intervalId = setInterval(pollForChanges, 5000);
+  
+  // Track this interval
+  activeIntervals.set(listenerId, {
+    intervalId,
+    collectionName,
+    startedAt: Date.now()
+  });
   
   // Initial load
   pollForChanges();
   
   // Return cleanup function
   return () => {
-    if (intervalId) {
-      clearInterval(intervalId);
+    const interval = activeIntervals.get(listenerId);
+    if (interval && interval.intervalId) {
+      clearInterval(interval.intervalId);
+      activeIntervals.delete(listenerId);
+      console.log(`Cleaned up listener for ${collectionName}`);
     }
   };
 }

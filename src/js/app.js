@@ -18,6 +18,7 @@ import { Texting } from './modules/texting.js';
 import { Reports } from './modules/reports.js';
 import { MinistryPlatform } from './modules/ministryplatform.js';
 import { Templates } from './modules/templates.js';
+import KeyboardShortcuts from './modules/keyboard-shortcuts.js';
 
 // Global state variables (now truly central)
 export let appModal = null;
@@ -118,6 +119,9 @@ export async function initializeApp() {
     
     // Initialize report import functionality
     Reports.initReportImport();
+    
+    // Initialize keyboard shortcuts for public view
+    KeyboardShortcuts.init();
     
     // Initialize prize event delegation (once)
     Prizes.initPrizeEventDelegation();

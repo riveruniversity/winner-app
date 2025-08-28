@@ -8,6 +8,7 @@ import eventManager from './event-manager.js';
 import { Database } from './database.js';
 import { Lists } from './lists.js';
 import { Winners } from './winners.js';
+import { Validation } from './validation.js';
 import { settings, Settings } from './settings.js'; // Import settings and Settings module
 import { Animations } from './animations.js';
 import { setCurrentWinners } from '../app.js';
@@ -77,11 +78,18 @@ function createRandomWorker() {
 
 async function handleBigPlayClick() {
   try {
+    // Check if selection controls are hidden (meaning a selection has already been made)
+    const selectionControls = document.getElementById('selectionControls');
+    if (selectionControls && selectionControls.classList.contains('d-none')) {
+      UI.showToast('Please click "New Selection" to start a fresh selection', 'warning');
+      return;
+    }
+    
     // Get selected list IDs (now multiple)
     const selectedCheckboxes = document.querySelectorAll('#quickListSelect .list-checkbox:checked');
     const listIds = Array.from(selectedCheckboxes).map(cb => cb.value);
     const prizeId = document.getElementById('quickPrizeSelect').value;
-    const winnersCount = parseInt(document.getElementById('quickWinnersCount').value);
+    const winnersCountInput = document.getElementById('quickWinnersCount').value;
     const selectionMode = document.getElementById('selectionMode').value;
     const delayVisualType = document.getElementById('delayVisualType').value;
 
@@ -90,10 +98,20 @@ async function handleBigPlayClick() {
       return;
     }
 
-    if (winnersCount < 1) {
-      UI.showToast('Please enter a valid number of winners', 'warning');
+    // Get total available entries first
+    const selectedCheckboxesArray = Array.from(selectedCheckboxes);
+    const totalAvailable = selectedCheckboxesArray.reduce((sum, cb) => {
+      return sum + parseInt(cb.dataset.entryCount || 0);
+    }, 0);
+
+    // Validate winner count
+    const countValidation = Validation.validateWinnerCount(winnersCountInput, totalAvailable);
+    if (!countValidation.isValid) {
+      UI.showToast(countValidation.error, 'warning');
+      document.getElementById('quickWinnersCount').value = countValidation.value;
       return;
     }
+    const winnersCount = countValidation.value;
 
     // Batch fetch all selected lists and prizes
     const fetchRequests = listIds.map(id => ({ collection: 'lists', id }));

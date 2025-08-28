@@ -8,6 +8,7 @@ import eventManager from './event-manager.js';
 import { UI } from './ui.js';
 import { clearCurrentWinners } from '../app.js';
 import { Lists } from './lists.js';
+import { SafeHTML } from './safe-html.js';
 import { settings } from './settings.js'; // Import settings directly
 import { getCurrentList, getLastAction, setLastAction } from '../app.js'; // Import central state
 import { loadHistory } from '../app.js'; // Import loadHistory from app.js
@@ -99,75 +100,143 @@ async function loadWinners(winnersData = null, listsData = null) {
 
     updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection, filterDateInput);
 
+    // Clear tbody safely
+    tbody.innerHTML = '';
+    
     if (filteredWinners.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No winners match the current filters.</td></tr>';
+      const emptyRow = document.createElement('tr');
+      const emptyCell = document.createElement('td');
+      emptyCell.colSpan = 8;
+      emptyCell.className = 'text-center text-muted';
+      emptyCell.textContent = 'No winners match the current filters.';
+      emptyRow.appendChild(emptyCell);
+      tbody.appendChild(emptyRow);
       return;
     }
 
-    tbody.innerHTML = filteredWinners.map(winner => {
+    // Use safe DOM manipulation instead of innerHTML
+    filteredWinners.forEach(winner => {
+      const row = document.createElement('tr');
+      
       // Display Order ID from data or use 'N/A'
       const orderId = winner.data?.orderId || winner.data?.['Order ID'] || 'N/A';
-      const pickupStatus = winner.pickedUp ? 
-        `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> Picked up</span>` : 
-        `<span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>`;
       
-      // Generate SMS status badge based on new structure
-      let smsStatusBadge = '';
+      // Cell 1: Order ID and QR button
+      const idCell = document.createElement('td');
+      const idBadge = SafeHTML.createElement('span', orderId, { className: 'badge bg-primary winner-id-badge' });
+      const qrButton = SafeHTML.createButton('', {
+        className: 'btn btn-sm btn-outline-secondary ms-1',
+        icon: 'bi bi-qr-code',
+        onclick: () => Winners.showQRCode(winner.winnerId),
+        dataset: { winnerId: winner.winnerId }
+      });
+      qrButton.title = 'Show QR Code';
+      idCell.appendChild(idBadge);
+      idCell.appendChild(qrButton);
+      row.appendChild(idCell);
+      
+      // Cell 2: Display Name
+      row.appendChild(SafeHTML.createElement('td', winner.displayName));
+      
+      // Cell 3: Prize
+      row.appendChild(SafeHTML.createElement('td', winner.prize));
+      
+      // Cell 4: Date
+      row.appendChild(SafeHTML.createElement('td', new Date(winner.timestamp).toLocaleDateString()));
+      
+      // Cell 5: List Name
+      row.appendChild(SafeHTML.createElement('td', winner.listName || listNameMap[winner.listId] || 'Unknown'));
+      
+      // Cell 6: Pickup Status
+      const pickupCell = document.createElement('td');
+      const pickupBadge = document.createElement('span');
+      pickupBadge.className = winner.pickedUp ? 'badge bg-success' : 'badge bg-warning';
+      const pickupIcon = document.createElement('i');
+      pickupIcon.className = winner.pickedUp ? 'bi bi-check-circle-fill' : 'bi bi-clock';
+      pickupBadge.appendChild(pickupIcon);
+      pickupBadge.appendChild(document.createTextNode(winner.pickedUp ? ' Picked up' : ' Pending'));
+      pickupCell.appendChild(pickupBadge);
+      row.appendChild(pickupCell);
+      
+      // Cell 7: SMS Status
+      const smsCell = document.createElement('td');
+      const smsBadge = document.createElement('span');
+      
       if (winner.sms && winner.sms.status) {
         const status = winner.sms.status.toLowerCase();
         switch(status) {
           case 'delivered':
-            smsStatusBadge = '<span class="badge bg-success" title="SMS Delivered"><i class="bi bi-check-circle-fill"></i> Delivered</span>';
+            smsBadge.className = 'badge bg-success';
+            smsBadge.title = 'SMS Delivered';
+            smsBadge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Delivered';
             break;
           case 'bounced':
-            smsStatusBadge = `<span class="badge bg-danger" title="SMS Bounced: ${winner.sms.error || 'Unknown'}"><i class="bi bi-x-circle-fill"></i> Bounced</span>`;
+            smsBadge.className = 'badge bg-danger';
+            smsBadge.title = `SMS Bounced: ${winner.sms.error || 'Unknown'}`;
+            smsBadge.innerHTML = '<i class="bi bi-x-circle-fill"></i> Bounced';
             break;
           case 'failed':
-            smsStatusBadge = `<span class="badge bg-danger" title="SMS Failed: ${winner.sms.error || 'Unknown'}"><i class="bi bi-x-circle-fill"></i> Failed</span>`;
+            smsBadge.className = 'badge bg-danger';
+            smsBadge.title = `SMS Failed: ${winner.sms.error || 'Unknown'}`;
+            smsBadge.innerHTML = '<i class="bi bi-x-circle-fill"></i> Failed';
             break;
           case 'queued':
-            smsStatusBadge = '<span class="badge bg-info" title="SMS Queued"><i class="bi bi-clock-fill"></i> Queued</span>';
+            smsBadge.className = 'badge bg-info';
+            smsBadge.title = 'SMS Queued';
+            smsBadge.innerHTML = '<i class="bi bi-clock-fill"></i> Queued';
             break;
           case 'sending':
-            smsStatusBadge = '<span class="badge bg-warning" title="SMS Sending"><i class="bi bi-arrow-up-circle-fill"></i> Sending</span>';
+            smsBadge.className = 'badge bg-warning';
+            smsBadge.title = 'SMS Sending';
+            smsBadge.innerHTML = '<i class="bi bi-arrow-up-circle-fill"></i> Sending';
             break;
           case 'sent':
-            smsStatusBadge = '<span class="badge bg-primary" title="SMS Sent"><i class="bi bi-send-fill"></i> Sent</span>';
+            smsBadge.className = 'badge bg-primary';
+            smsBadge.title = 'SMS Sent';
+            smsBadge.innerHTML = '<i class="bi bi-send-fill"></i> Sent';
             break;
           default:
-            smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
+            smsBadge.className = 'badge bg-secondary';
+            smsBadge.title = 'No SMS';
+            smsBadge.innerHTML = '<i class="bi bi-dash-circle"></i> Not Sent';
         }
       } else {
-        smsStatusBadge = '<span class="badge bg-secondary" title="No SMS"><i class="bi bi-dash-circle"></i> Not Sent</span>';
+        smsBadge.className = 'badge bg-secondary';
+        smsBadge.title = 'No SMS';
+        smsBadge.innerHTML = '<i class="bi bi-dash-circle"></i> Not Sent';
       }
+      smsCell.appendChild(smsBadge);
+      row.appendChild(smsCell);
       
-      return `
-        <tr>
-          <td>
-            <span class="badge bg-primary winner-id-badge">${orderId}</span>
-            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="Winners.showQRCode('${winner.winnerId}')" title="Show QR Code">
-              <i class="bi bi-qr-code"></i>
-            </button>
-          </td>
-          <td>${winner.displayName}</td>
-          <td>${winner.prize}</td>
-          <td>${new Date(winner.timestamp).toLocaleDateString()}</td>
-          <td>${winner.listName || listNameMap[winner.listId] || 'Unknown'}</td>
-          <td>${pickupStatus}</td>
-          <td>${smsStatusBadge}</td>
-          <td>
-            <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-info" data-winner-id="${winner.winnerId}" onclick="Winners.returnToList('${winner.winnerId}')" title="Return to List">
-                <i class="bi bi-arrow-return-left"></i>
-              </button>
-              <button class="btn btn-outline-danger" data-winner-id="${winner.winnerId}" onclick="Winners.deleteWinnerConfirm(this.dataset.winnerId)" title="Delete">
-                <i class="bi bi-trash"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+      // Cell 8: Actions
+      const actionsCell = document.createElement('td');
+      const btnGroup = document.createElement('div');
+      btnGroup.className = 'btn-group btn-group-sm';
+      btnGroup.setAttribute('role', 'group');
+      
+      const returnBtn = SafeHTML.createButton('', {
+        className: 'btn btn-outline-info',
+        icon: 'bi bi-arrow-return-left',
+        onclick: () => Winners.returnToList(winner.winnerId),
+        dataset: { winnerId: winner.winnerId }
+      });
+      returnBtn.title = 'Return to List';
+      
+      const deleteBtn = SafeHTML.createButton('', {
+        className: 'btn btn-outline-danger',
+        icon: 'bi bi-trash',
+        onclick: () => Winners.deleteWinnerConfirm(winner.winnerId),
+        dataset: { winnerId: winner.winnerId }
+      });
+      deleteBtn.title = 'Delete';
+      
+      btnGroup.appendChild(returnBtn);
+      btnGroup.appendChild(deleteBtn);
+      actionsCell.appendChild(btnGroup);
+      row.appendChild(actionsCell);
+      
+      tbody.appendChild(row);
+    });
   } catch (error) {
     console.error('Error loading winners:', error);
     UI.showToast('Error loading winners: ' + error.message, 'error');
