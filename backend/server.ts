@@ -120,9 +120,15 @@ async function writeCollection(collection: string, data: CollectionItem[]): Prom
   try {
     const filePath = path.join(DATA_DIR, `${collection}.json`);
     await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    console.log(`Successfully wrote ${data.length} items to ${collection}.json`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error writing ${collection}:`, error);
+    if (error.code === 'EACCES') {
+      console.error(`Permission denied writing to ${collection}.json. Check file/directory permissions.`);
+    } else if (error.code === 'ENOENT') {
+      console.error(`Directory doesn't exist for ${collection}.json. Path: ${DATA_DIR}`);
+    }
     return false;
   }
 }
@@ -263,16 +269,25 @@ apiRouter.post('/batch-save', async (req: Request, res: Response) => {
       results.push({ success: true, id: data[keyField], collection });
     }
     
-    // Now write all changes atomically - if any fails, none are saved
+    // Now write all changes atomically - if any fails, return error
+    const writeResults: { [key: string]: boolean } = {};
     for (const [collection, data] of Object.entries(changes)) {
-      await writeCollection(collection, data);
+      const success = await writeCollection(collection, data);
+      writeResults[collection] = success;
+      if (!success) {
+        console.error(`Failed to write ${collection} - check permissions on ${DATA_DIR}/${collection}.json`);
+        return res.status(500).json({ 
+          error: `Failed to save ${collection}. Please check server logs for permission issues.`,
+          writeResults 
+        });
+      }
     }
     
     // Log only errors or in dev mode
     if (process.env.NODE_ENV !== 'production') {
       console.log(`Batch save: ${operations.length} documents`);
     }
-    res.json({ results });
+    res.json({ results, writeResults });
   } catch (error: any) {
     console.error('Batch save failed:', error.message);
     res.status(500).json({ error: `Batch save failed: ${error.message}` });
