@@ -398,13 +398,77 @@ function showNameConfiguration(headers, firstRow) {
     option.textContent = header;
     idColumnSelect.appendChild(option);
   });
+  
+  // Auto-select ID column with fallback chain
+  const idFallbackChain = [
+    'idCard', 'ID_Card', 'IDCard',
+    'contactId', 'Contact_ID', 'ContactID', 'contactID',
+    'ticketCode', 'Ticket_Code', 'TicketCode',
+    'userId', 'User_ID', 'UserID', 'userID',
+    'personId', 'Person_ID', 'PersonID', 'personID',
+    'participantId', 'Participant_ID', 'ParticipantID', 'participantID',
+    'id', 'ID', 'Id',
+    'code', 'Code', 'CODE',
+    'number', 'Number', 'NUMBER',
+    'barcode', 'Barcode', 'BARCODE',
+    'qrCode', 'QR_Code', 'QRCode',
+    'identifier', 'Identifier', 'IDENTIFIER'
+  ];
+  
+  // Find the first matching column from the fallback chain
+  let selectedIdColumn = null;
+  for (const fallbackName of idFallbackChain) {
+    // Case-insensitive comparison
+    const matchingHeader = headers.find(h => h.toLowerCase() === fallbackName.toLowerCase());
+    if (matchingHeader) {
+      selectedIdColumn = matchingHeader;
+      break;
+    }
+  }
+  
+  // If we found a matching column, select it and switch to "Use column" mode
+  if (selectedIdColumn) {
+    idColumnSelect.value = selectedIdColumn;
+    document.getElementById('useColumnId').checked = true;
+    document.getElementById('autoGenerateId').checked = false;
+    // Trigger change event to update UI
+    const event = new Event('change');
+    document.getElementById('useColumnId').dispatchEvent(event);
+    
+    // Add a small indicator that this was auto-selected
+    const autoSelectIndicator = document.createElement('small');
+    autoSelectIndicator.className = 'text-success ms-2';
+    autoSelectIndicator.innerHTML = '<i class="bi bi-check-circle"></i> Auto-selected';
+    autoSelectIndicator.id = 'idAutoSelectIndicator';
+    
+    // Add it after the select element
+    const selectParent = idColumnSelect.parentElement;
+    const existingIndicator = document.getElementById('idAutoSelectIndicator');
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+    selectParent.appendChild(autoSelectIndicator);
+    
+    // Remove the indicator when user changes selection
+    idColumnSelect.addEventListener('change', function() {
+      const indicator = document.getElementById('idAutoSelectIndicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }, { once: true });
+  }
 
   // Intelligently detect name fields
   const defaultTemplate = detectNameTemplate(headers, firstRow);
   nameTemplateInput.value = defaultTemplate;
 
   // Set default info templates
-  if (headers.length >= 1) info1Template.value = `{${headers[0]}}`;
+  // Use the selected ID column for info1 if we found one, otherwise use first column
+  if (selectedIdColumn) {
+    info1Template.value = `{${selectedIdColumn}}`;
+  } else if (headers.length >= 1) {
+    info1Template.value = `{${headers[0]}}`;
+  }
   // Set info2 to be the same as the display name
   info2Template.value = defaultTemplate;
   // Keep info3 blank by default

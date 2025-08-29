@@ -336,7 +336,7 @@ class TextingService {
     const currentWinners = getCurrentWinners();
     
     if (!currentWinners || currentWinners.length === 0) {
-      UI.showToast('No current winners to send messages to. Please select winners first.', 'warning');
+      UI.showToast('No current winners to send messages to.', 'warning');
       return;
     }
 

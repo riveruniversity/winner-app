@@ -13,7 +13,6 @@ const COLLECTIONS = {
   prizes: 'prizes',
   history: 'history',
   settings: 'settings',
-  sounds: 'sounds',
   backups: 'backups'
 };
 
@@ -41,7 +40,6 @@ function getKeyField(collectionName) {
     prizes: 'prizeId',
     history: 'historyId',
     settings: 'key',
-    sounds: 'soundId',
     backups: 'backupId',
     templates: 'templateId'
   };

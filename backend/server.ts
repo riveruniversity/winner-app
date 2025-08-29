@@ -12,6 +12,28 @@ import { createMPInstance, type MPInstance, type ErrorDetails } from 'mp-js-api'
 // Load environment variables from .env file
 dotenv.config();
 
+// Create singleton MP instance
+let mpInstance: MPInstance | null = null;
+
+function getMPInstance(): MPInstance | null {
+  if (!process.env.MP_USERNAME || !process.env.MP_PASSWORD) {
+    console.warn('MinistryPlatform credentials not configured');
+    return null;
+  }
+  
+  if (!mpInstance) {
+    console.log('Creating new MP instance...');
+    mpInstance = createMPInstance({
+      auth: {
+        username: process.env.MP_USERNAME,
+        password: process.env.MP_PASSWORD
+      }
+    });
+  }
+  
+  return mpInstance;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -62,7 +84,7 @@ interface CollectionItem {
   [key: string]: any;
 }
 
-type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'sounds' | 'backups';
+type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'backups';
 
 interface KeyFields {
   lists: 'listId';
@@ -70,7 +92,6 @@ interface KeyFields {
   prizes: 'prizeId';
   history: 'historyId';
   settings: 'key';
-  sounds: 'soundId';
   backups: 'backupId';
   [key: string]: string;
 }
@@ -81,7 +102,7 @@ async function ensureDataDir(): Promise<void> {
   } catch {
     await fs.mkdir(DATA_DIR, { recursive: true });
     
-    const collections: CollectionName[] = ['lists', 'winners', 'prizes', 'history', 'settings', 'sounds', 'backups'];
+    const collections: CollectionName[] = ['lists', 'winners', 'prizes', 'history', 'settings', 'backups'];
     for (const collection of collections) {
       const filePath = path.join(DATA_DIR, `${collection}.json`);
       await fs.writeFile(filePath, '[]', 'utf8');
@@ -140,7 +161,6 @@ function getKeyField(collection: string): string {
     prizes: 'prizeId',
     history: 'historyId',
     settings: 'key',
-    sounds: 'soundId',
     backups: 'backupId',
     templates: 'templateId'
   };
@@ -372,6 +392,78 @@ apiRouter.get('/reports-proxy/*', async (req: Request, res: Response) => {
   }
 });
 
+// MinistryPlatform API endpoint to get available events
+apiRouter.post('/mp/events', async (req: Request, res: Response) => {
+  try {
+    const { searchTerm, daysPast, daysFuture } = req.body;
+    
+    // Get singleton MP instance
+    const mp = getMPInstance();
+    if (!mp) {
+      return res.status(400).json({ 
+        error: 'MinistryPlatform credentials not configured.' 
+      });
+    }
+    
+    let filter = '';
+    let eventResults: any[] = [];
+    
+    if (searchTerm) {
+      // Search by term
+      filter = `Event_Title LIKE '%${searchTerm}%'`;
+    } else if (daysPast !== undefined || daysFuture !== undefined) {
+      // Search by date range
+      const pastDays = daysPast || 7;
+      const futureDays = daysFuture || 30;
+      
+      const today = new Date();
+      const pastDate = new Date();
+      pastDate.setDate(today.getDate() - pastDays);
+      const futureDate = new Date();
+      futureDate.setDate(today.getDate() + futureDays);
+      
+      const pastDateStr = pastDate.toISOString().split('T')[0];
+      const futureDateStr = futureDate.toISOString().split('T')[0];
+      
+      filter = `Event_Start_Date >= '${pastDateStr}' AND Event_Start_Date <= '${futureDateStr}'`;
+    }
+    
+    if (filter) {
+      const options = {
+        select: 'Event_ID, Event_Title, Event_Start_Date',
+        filter: filter,
+        orderBy: 'Event_Start_Date DESC' // Sort by date, most recent first
+      };
+      
+      const result = await mp.getEvents(options);
+      
+      // Check for error in result (standard mp-js-api pattern)
+      if (result && 'error' in result) {
+        console.error('MP API Error:', result.error);
+        throw new Error(result.error.message || 'Failed to fetch events');
+      }
+      
+      // mp-js-api returns camelCase fields automatically
+      eventResults = Array.isArray(result) ? result : [];
+      
+      // Log to help debug field names
+      if (eventResults && eventResults.length > 0) {
+        console.log('Event fields available:', Object.keys(eventResults[0]));
+      }
+    }
+    
+    res.json({
+      success: true,
+      events: eventResults || [],
+      count: eventResults ? eventResults.length : 0
+    });
+    
+  } catch (error: any) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events: ' + error.message });
+  }
+});
+
 // MinistryPlatform API endpoint
 apiRouter.get('/mp/queries', async (req: Request, res: Response) => {
   try {
@@ -383,7 +475,7 @@ apiRouter.get('/mp/queries', async (req: Request, res: Response) => {
     // Return list of available queries
     res.json({
       success: true,
-      queries: config.queries.map((q: any) => ({
+      queries: config.map((q: any) => ({
         id: q.id,
         name: q.name,
         description: q.description,
@@ -401,39 +493,45 @@ apiRouter.post('/mp/execute', async (req: Request, res: Response) => {
   try {
     const { queryId, params } = req.body;
     
-    // Check for MP credentials
-    if (!process.env.MP_USERNAME || !process.env.MP_PASSWORD) {
-      return res.status(400).json({ 
-        error: 'MinistryPlatform credentials not configured. Please add MP_USERNAME and MP_PASSWORD to .env file.' 
-      });
-    }
-    
     // Read the mp.json file
     const mpConfigPath = path.join(DATA_DIR, 'mp.json');
     const mpConfig = await fs.readFile(mpConfigPath, 'utf-8');
     const config = JSON.parse(mpConfig);
     
     // Find the query
-    const query = config.queries.find((q: any) => q.id === queryId);
+    const query = config.find((q: any) => q.id === queryId);
     if (!query) {
       return res.status(404).json({ error: `Query '${queryId}' not found` });
     }
     
-    // Replace parameters in filter if needed
-    let filter = query.filter || '';
-    if (params && query.params) {
-      for (const [key, value] of Object.entries(params)) {
-        filter = filter.replace(`{{${key}}}`, String(value));
-      }
+    // Get singleton MP instance
+    const mp = getMPInstance();
+    if (!mp) {
+      return res.status(400).json({ 
+        error: 'MinistryPlatform credentials not configured. Please add MP_USERNAME and MP_PASSWORD to .env file.' 
+      });
     }
     
-    // Initialize MP instance
-    const mp: MPInstance = createMPInstance({
-      auth: {
-        username: process.env.MP_USERNAME,
-        password: process.env.MP_PASSWORD
+    // Replace parameters in filter - simple pass-through from frontend
+    let filter = query.filter || '';
+    if (query.params) {
+      for (const [key, paramConfig] of Object.entries(query.params as Record<string, any>)) {
+        // Check if frontend provided a value for this parameter
+        const value = params && params[key] ? params[key] : '';
+        
+        if (value) {
+          // Replace the placeholder with the provided value
+          filter = filter.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
+          console.log(`Replaced {{${key}}} with: ${value}`);
+        } else if (paramConfig.required) {
+          // Required parameter is missing
+          return res.status(400).json({ 
+            error: `Missing required parameter: ${key}`,
+            details: `The query requires ${paramConfig.label || key} to be provided`
+          });
+        }
       }
-    });
+    }
     
     // Build the method name dynamically based on the table
     // Convert table name from underscore to camelCase for the method name
@@ -469,12 +567,7 @@ apiRouter.post('/mp/execute', async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: data,
-      count: data.length,
-      query: {
-        id: query.id,
-        name: query.name,
-        fields: query.metadata?.fields || Object.keys(data[0] || {})
-      }
+      count: data.length
     });
     
   } catch (error: any) {
