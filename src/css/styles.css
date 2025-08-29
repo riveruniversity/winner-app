@@ -403,7 +403,7 @@ body {
   grid-template-rows: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
 }
 
-/* Small winner counts - explicit layouts with appropriate heights */
+/* Small winner counts - explicit layouts with appropriate heights and 80% width */
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) {
   /* 1 winner - single large card, 40% height */
   grid-template-columns: 1fr;
@@ -411,6 +411,8 @@ body {
   height: auto;
   min-height: 40vh;
   max-height: 50vh;
+  width: 80%;
+  margin: 0 auto;
 }
 
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) {
@@ -420,6 +422,8 @@ body {
   height: auto;
   min-height: 40vh;
   max-height: 50vh;
+  width: 80%;
+  margin: 0 auto;
 }
 
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)),
@@ -430,6 +434,8 @@ body {
   height: auto;
   min-height: 50vh;
   max-height: 65vh;
+  width: 80%;
+  margin: 0 auto;
 }
 
 .winners-grid:has(.winner-card:nth-child(5):nth-last-child(1)),
@@ -437,6 +443,8 @@ body {
   /* 5-6 winners - 3 columns, 2 rows, 60% height */
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: repeat(2, minmax(180px, 30vh));
+  width: 80%;
+  margin: 0 auto;
   height: auto;
   min-height: 50vh;
   max-height: 65vh;
@@ -451,6 +459,8 @@ body {
   height: auto;
   min-height: 60vh;
   max-height: 80vh;
+  width: 80%;
+  margin: 0 auto;
 }
 
 .winners-grid:has(.winner-card:nth-child(10):nth-last-child(1)),
@@ -475,25 +485,28 @@ body {
 .winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) {
   /* 26-49 winners - 7 columns */
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(auto-fit, minmax(min(100px, calc((100vh - 240px) / 7)), 1fr));
+  grid-template-rows: repeat(auto-fill, minmax(100px, 120px));
+  grid-auto-rows: minmax(100px, 120px);
 }
 
 .winners-grid:has(.winner-card:nth-child(n+50):nth-child(-n+99)) {
   /* 50-99 winners - 10 columns */
   grid-template-columns: repeat(10, 1fr);
-  grid-template-rows: repeat(auto-fit, minmax(min(80px, calc((100vh - 240px) / 10)), 1fr));
+  grid-template-rows: repeat(auto-fill, minmax(80px, 100px));
+  grid-auto-rows: minmax(80px, 100px);
 }
 
 .winners-grid:has(.winner-card:nth-child(n+100)) {
   /* 100+ winners - 12 columns */
   grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: repeat(auto-fit, minmax(min(70px, calc((100vh - 240px) / 12)), 1fr));
+  grid-template-rows: repeat(auto-fill, minmax(70px, 90px));
+  grid-auto-rows: minmax(70px, 90px);
 }
 
 .winner-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: clamp(8px, 2vw, 15px);
-  padding: clamp(0.3rem, 1.5vw, 1.2rem);
+  padding: clamp(0.5rem, 2vw, 1.0rem);
   /* Strong shadow by default */
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25),
     0 5px 15px rgba(0, 0, 0, 0.15);
@@ -508,9 +521,10 @@ body {
   justify-content: center;
   align-items: center;
 
-  /* Fill the grid cell completely */
-  width: 100%;
+  /* Fill grid cell with slight margins for spacing */
+  width: 95%;
   height: 100%;
+  margin: 0 auto;
 
   /* Initial state - will be animated by JavaScript based on selected effect */
   opacity: 0;
@@ -684,7 +698,7 @@ body {
 }
 
 .winner-info1 {
-  font-size: clamp(0.3rem, 2cqw, 1rem);
+  font-size: clamp(0.25rem, 1.8cqw, 0.9rem);
   font-weight: 500;
   color: #555;
   margin-bottom: clamp(0.05rem, 0.5cqw, 0.2rem);
@@ -695,17 +709,17 @@ body {
 }
 
 .winner-info2 {
-  font-size: clamp(1.2rem, 8cqw, 2.5rem);
+  font-size: clamp(1.2rem, 7.5cqw, 2.5rem);
   font-weight: 700;
   color: #333;
-  margin-bottom: clamp(0.05rem, 0.5cqw, 0.15rem);
-  line-height: 1.1;
+  margin-bottom: clamp(0.08rem, 0.7cqw, 0.25rem);
+  line-height: 1.2;
   word-break: break-word;
   hyphens: auto;
 }
 
 .winner-info3 {
-  font-size: clamp(0.25rem, 1.8cqw, 0.8rem);
+  font-size: clamp(0.2rem, 1.5cqw, 0.7rem);
   font-weight: 400;
   color: #666;
   line-height: 1.2;
@@ -715,33 +729,33 @@ body {
 
 /* Keep only dramatic scaling for very few winners */
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info1 {
-  font-size: clamp(1.5rem, 8cqw, 3rem);
+  font-size: clamp(1.3rem, 7cqw, 2.5rem);
 }
 
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(2.5rem, 15cqw, 5rem);
+  font-size: clamp(2.2rem, 13cqw, 4.5rem);
 }
 
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) .winner-info3 {
-  font-size: clamp(1rem, 6cqw, 2rem);
+  font-size: clamp(0.9rem, 5cqw, 1.8rem);
 }
 
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info1,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info1,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info1 {
-  font-size: clamp(1rem, 6cqw, 2rem);
+  font-size: clamp(0.9rem, 5cqw, 1.7rem);
 }
 
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(1.8rem, 10cqw, 3.2rem);
+  font-size: clamp(1.6rem, 9cqw, 2.8rem);
 }
 
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) .winner-info3,
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)) .winner-info3,
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) .winner-info3 {
-  font-size: clamp(0.8rem, 5cqw, 1.5rem);
+  font-size: clamp(0.7rem, 4cqw, 1.3rem);
 }
 
 /* 5-12 winners */
@@ -753,27 +767,27 @@ body {
 .winners-grid:has(.winner-card:nth-child(10):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(11):nth-last-child(1)) .winner-info2,
 .winners-grid:has(.winner-card:nth-child(12):nth-last-child(1)) .winner-info2 {
-  font-size: clamp(1.4rem, 8cqw, 2.2rem);
+  font-size: clamp(1.2rem, 7cqw, 2rem);
 }
 
 /* 13-25 winners */
 .winners-grid:has(.winner-card:nth-child(n+13):nth-child(-n+25)) .winner-info2 {
-  font-size: clamp(1.2rem, 7cqw, 1.9rem);
+  font-size: clamp(1rem, 6cqw, 1.7rem);
 }
 
 /* 26-49 winners */
 .winners-grid:has(.winner-card:nth-child(n+26):nth-child(-n+49)) .winner-info2 {
-  font-size: clamp(1rem, 6cqw, 1.6rem);
+  font-size: clamp(0.9rem, 5cqw, 1.4rem);
 }
 
 /* 50-99 winners */
 .winners-grid:has(.winner-card:nth-child(n+50):nth-child(-n+99)) .winner-info2 {
-  font-size: clamp(0.9rem, 5cqw, 1.4rem);
+  font-size: clamp(0.8rem, 4.5cqw, 1.2rem);
 }
 
 /* 100+ winners */
 .winners-grid:has(.winner-card:nth-child(n+100)) .winner-info2 {
-  font-size: clamp(0.8rem, 4cqw, 1.2rem);
+  font-size: clamp(0.7rem, 3.5cqw, 1rem);
 }
 
 /* Prize Display */
@@ -915,22 +929,36 @@ body {
 
 /* Theme Toggle Button */
 #themeToggle {
-
-  color: white;
   transition: all 0.3s ease;
 }
 
+/* Light mode - dark icon on light button */
+[data-theme="light"] #themeToggle {
+
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #374151;
+}
+
+[data-theme="light"] #themeToggle:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  color: #111827;
+  transform: scale(1.1);
+}
+
+/* Dark mode - light icon on dark button */
+[data-theme="dark"] #themeToggle,
 #themeToggle.dark {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  color: white;
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fbbf24;
 }
 
-#themeToggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  color: white;
+[data-theme="dark"] #themeToggle:hover,
+#themeToggle.dark:hover {
+  background: rgba(224, 224, 224, 0.05);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fde047;
+  transform: scale(1.1);
 }
 
 /* Card Styles */
@@ -1037,57 +1065,6 @@ body {
   z-index: 9999;
 }
 
-/* SMS Progress Bar - Subtle Bottom Bar */
-.sms-progress-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  z-index: 1050;
-  padding: 10px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.sms-progress-content {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.sms-progress-content span {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  min-width: 140px;
-}
-
-.sms-progress-track {
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.sms-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #28a745, #20c997);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-  width: 0%;
-}
-
-.sms-progress-bar button {
-  opacity: 0.7;
-  transition: opacity 0.2s;
-}
-
-.sms-progress-bar button:hover {
-  opacity: 1;
-}
 
 .progress-content {
   background: white;
@@ -1604,23 +1581,134 @@ body {
   color: var(--primary-color) !important;
 }
 
-.nav-tabs .nav-link {
-  color: var(--primary-color);
-  border-color: transparent;
+/* Modern Tab Styling */
+.nav-tabs {
+  border-bottom: none;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(10px);
+  padding: 0.5rem;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
 }
 
-.nav-tabs .nav-link:hover,
-.nav-tabs .nav-link:focus {
+.nav-tabs .nav-link {
+  color: #6c757d;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  margin: 0 0.25rem;
+  background: transparent;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  overflow: hidden;
+}
+
+.nav-tabs .nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 10px;
+  z-index: -1;
+}
+
+.nav-tabs .nav-link:hover {
   color: var(--primary-color);
-  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  background: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.nav-tabs .nav-link:focus {
+  box-shadow: none;
+  outline: none;
 }
 
 .nav-tabs .nav-link.active {
-  color: var(--primary-color);
-  background-color: var(--bs-body-bg);
-  border-color: var(--primary-color) var(--primary-color) var(--bs-body-bg);
-  border-bottom-color: var(--bs-body-bg);
+  color: white;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), 0.3);
+  transform: scale(1.05);
 }
+
+.nav-tabs .nav-link.active::before {
+  opacity: 1;
+}
+
+.nav-tabs .nav-link i {
+  font-size: 1.1rem;
+  transition: transform 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover i {
+  transform: rotate(5deg) scale(1.1);
+}
+
+.nav-tabs .nav-link.active i {
+  transform: rotate(0) scale(1.15);
+}
+
+/* Tab responsive adjustments */
+@media (max-width: 768px) {
+  .nav-tabs {
+    padding: 0.35rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  
+  .nav-tabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .nav-tabs::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+  }
+  
+  .nav-tabs::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 2px;
+  }
+  
+  .nav-tabs .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  .nav-tabs .nav-link i {
+    font-size: 0.9rem;
+    margin-right: 0.35rem !important;
+  }
+}
+
+/* Pulse animation for active tab */
+@keyframes tabPulse {
+  0% {
+    box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(var(--bs-primary-rgb), 0.5);
+  }
+  100% {
+    box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), 0.3);
+  }
+}
+
+.nav-tabs .nav-link.active {
+  animation: tabPulse 2s infinite;
+}
+
 
 .card-title {
   color: var(--primary-color) !important;
@@ -1636,20 +1724,25 @@ body {
   color: var(--primary-color) !important;
 }
 
-[data-theme="dark"] .nav-tabs .nav-link {
-  color: var(--primary-color);
+/* Dark Theme Tab Styling */
+[data-theme="dark"] .nav-tabs {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="dark"] .nav-tabs .nav-link:hover,
-[data-theme="dark"] .nav-tabs .nav-link:focus {
+[data-theme="dark"] .nav-tabs .nav-link {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link:hover {
   color: var(--primary-color);
-  border-color: var(--primary-color);
+  background: rgba(var(--bs-primary-rgb), 0.15);
 }
 
 [data-theme="dark"] .nav-tabs .nav-link.active {
-  color: var(--primary-color);
-  background-color: var(--bs-body-bg);
-  border-color: var(--primary-color) var(--primary-color) var(--bs-body-bg);
+  color: white;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), 0.4);
 }
 
 [data-theme="dark"] .card-title {

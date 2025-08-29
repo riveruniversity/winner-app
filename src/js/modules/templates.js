@@ -109,7 +109,7 @@ function displayTemplates(templates) {
       <div class="card h-100 ${template.isDefault ? 'border-primary' : ''}">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h6 class="mb-0">${template.name}</h6>
-          ${template.isDefault ? '<span class="badge bg-primary">Default</span>' : ''}
+          ${template.isDefault ? '<span class="badge bg-success"><i class="bi bi-star"></i> Default</span>' : ''}
         </div>
         <div class="card-body">
           <p class="card-text small text-muted">${template.message}</p>
@@ -184,7 +184,7 @@ async function showAddTemplateModal() {
         </div>
         <div class="mb-3">
           <label for="templateMessage" class="form-label">Message Template</label>
-          <textarea class="form-control" id="templateMessage" rows="4" required></textarea>
+          <textarea class="form-control" id="templateMessage" rows="8" required></textarea>
           <div class="form-text">
             <strong>Available placeholders:</strong><br>
             ${placeholderText}
@@ -277,7 +277,7 @@ async function editTemplate(templateId) {
         </div>
         <div class="mb-3">
           <label for="templateMessage" class="form-label">Message Template</label>
-          <textarea class="form-control" id="templateMessage" rows="4" required>${template.message}</textarea>
+          <textarea class="form-control" id="templateMessage" rows="8" required>${template.message}</textarea>
           <div class="form-text">
             <strong>Available placeholders:</strong><br>
             ${placeholderText}

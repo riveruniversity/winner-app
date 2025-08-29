@@ -273,6 +273,30 @@ function setupInterfaceToggles() {
       }
     });
   }
+  
+  // Add keyboard shortcut 'v' to toggle between views
+  document.addEventListener('keydown', function(e) {
+    // Only trigger if not typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    if (e.key === 'v' || e.key === 'V') {
+      const publicInterface = document.getElementById('publicInterface');
+      const managementInterface = document.getElementById('managementInterface');
+      
+      if (publicInterface && managementInterface) {
+        if (managementInterface.classList.contains('active')) {
+          // Switch to public view (same as clicking "Public View" button)
+          if (backToPublicBtn) {
+            backToPublicBtn.click();
+          }
+        } else {
+          // Switch to management view
+          publicInterface.style.display = 'none';
+          managementInterface.classList.add('active');
+        }
+      }
+    }
+  });
 
   if (sendSMSBtn) {
     sendSMSBtn.addEventListener('click', function (e) {

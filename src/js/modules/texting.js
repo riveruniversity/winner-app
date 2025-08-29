@@ -220,14 +220,6 @@ class TextingService {
       results.sent = sent;
       results.pending = recipients.length - sent;
       
-      // Update progress
-      const progress = Math.round((sent / recipients.length) * 100);
-      
-      UI.updateSMSProgress(
-        progress,
-        `Sent ${sent}/${recipients.length} messages`
-      );
-
       // Small delay between requests to avoid overwhelming (10 requests per second max)
       await this.delay(20);
     }
@@ -340,9 +332,6 @@ class TextingService {
       return;
     }
 
-    // Show confirmation modal with template preview
-    // const confirmed = await this.showSMSConfirmationModal(currentWinners.length);
-    // if (!confirmed) return;
 
     // Get templates for prize-specific messages
     const templates = await Templates.loadTemplates();
@@ -354,16 +343,6 @@ class TextingService {
     }
 
     this.sendingInProgress = true;
-    UI.showSMSProgress('Preparing to send messages...');
-    
-    // Setup cancel button handler
-    const cancelBtn = document.getElementById('smsProgressCancel');
-    if (cancelBtn) {
-      cancelBtn.onclick = () => {
-        this.abortSending();
-        UI.showToast('SMS sending cancelled', 'warning');
-      };
-    }
 
     try {
       // Find winners with phone numbers
@@ -439,111 +418,10 @@ class TextingService {
       // Ensure any pending updates are processed
       await this.processSMSUpdateQueue();
       this.sendingInProgress = false;
-      UI.hideSMSProgress();
     }
   }
 
-  /**
-   * Shows SMS confirmation modal with template preview
-   */
-  async showSMSConfirmationModal(winnerCount) {
-    return new Promise(async (resolve) => {
-      const modal = document.getElementById('appModal');
-      const modalTitle = document.getElementById('appModalLabel');
-      const modalBody = document.getElementById('appModalBody');
-      const confirmBtn = document.getElementById('appModalConfirmBtn');
-      
-      modalTitle.textContent = 'Send SMS Messages';
-      
-      const currentWinners = getCurrentWinners();
-      const sampleWinner = currentWinners[0] || { displayName: 'John Doe', prize: 'Sample Prize', winnerId: 'ABC123' };
-      const defaultTemplate = await Templates.getDefaultTemplate();
-      const template = defaultTemplate?.message || 'Congratulations {name}! You won {prize}. Your code: {contactId}';
-      
-      // Create preview message
-      let previewMessage = template
-        .replace('{name}', sampleWinner.displayName || 'John Doe')
-        .replace('{prize}', sampleWinner.prize || 'Sample Prize')
-        .replace('{ticketCode}', sampleWinner.ticketCode || sampleWinner.data?.ticketCode || sampleWinner.winnerId || 'ABC123');
-      
-      modalBody.innerHTML = `
-        <div class="mb-3">
-          <p>Send SMS messages to <strong>${winnerCount} current winner${winnerCount > 1 ? 's' : ''}</strong> with phone numbers?</p>
-        </div>
-        <div class="mb-3">
-          <a href="#" class="text-decoration-none" onclick="event.preventDefault(); const preview = document.getElementById('smsPreviewContent'); const icon = this.querySelector('i'); preview.classList.toggle('d-none'); icon.classList.toggle('bi-chevron-down'); icon.classList.toggle('bi-chevron-right');">
-            <i class="bi bi-chevron-right"></i> <span class="fw-bold">Show Message Preview</span>
-          </a>
-          <div id="smsPreviewContent" class="d-none mt-2">
-            <div class="alert alert-info">
-              <div class="mb-2">${previewMessage}</div>
-              <small class="text-muted">
-                ${this.calculateSMSInfo(previewMessage)}
-              </small>
-            </div>
-          </div>
-        </div>
-        <div class="mb-3">
-          <small class="text-muted">
-            <i class="bi bi-info-circle me-1"></i>
-            You can edit the SMS template in Settings if needed.
-          </small>
-        </div>
-      `;
 
-      // Ensure confirm button is visible and properly configured
-      confirmBtn.style.display = '';
-      confirmBtn.textContent = 'Send Messages';
-      confirmBtn.className = 'btn btn-success';
-      confirmBtn.onclick = () => {
-        window.appModal.hide();
-        resolve(true);
-      };
-
-      // Add cancel functionality
-      const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
-      if (cancelBtn) {
-        cancelBtn.style.display = '';
-        cancelBtn.textContent = 'Cancel';
-        cancelBtn.onclick = () => {
-          window.appModal.hide();
-          resolve(false);
-        };
-      }
-
-      window.appModal.show();
-    });
-  }
-
-  /**
-   * Calculate SMS info (character count and message count)
-   */
-  calculateSMSInfo(message) {
-    const charCount = message.length;
-    let smsCount;
-    if (charCount === 0) {
-      smsCount = 1;
-    } else if (charCount <= 160) {
-      smsCount = 1;
-    } else {
-      smsCount = Math.ceil(charCount / 153);
-    }
-    return `${charCount} characters, ${smsCount} SMS${smsCount > 1 ? ' messages' : ''}`;
-  }
-
-  /**
-   * Create cancel button if it doesn't exist
-   */
-  createCancelButton() {
-    const modalFooter = document.querySelector('#appModal .modal-footer');
-    const cancelBtn = document.createElement('button');
-    cancelBtn.id = 'appModalCancelBtn';
-    cancelBtn.className = 'btn btn-secondary';
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.display = 'none';
-    modalFooter.insertBefore(cancelBtn, modalFooter.firstChild);
-    return cancelBtn;
-  }
 
 
   /**
@@ -802,7 +680,7 @@ class TextingService {
   abortSending() {
     this.sendingInProgress = false;
     this.cancelSending();
-    UI.hideSMSProgress();
+    // Progress bar removed - no longer hiding progress
   }
 
 

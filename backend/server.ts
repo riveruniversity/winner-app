@@ -123,15 +123,34 @@ async function readCollection(collection: string): Promise<CollectionItem[]> {
   try {
     const filePath = path.join(DATA_DIR, `${collection}.json`);
     const data = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(data);
+    
+    // Handle empty files
+    if (!data || data.trim() === '') {
+      console.log(`Collection ${collection} file is empty, returning empty array`);
+      return [];
+    }
+    
+    try {
+      return JSON.parse(data);
+    } catch (parseError) {
+      console.error(`Invalid JSON in ${collection}.json, attempting recovery:`, parseError);
+      
+      // For settings collection, try to recover gracefully
+      if (collection === 'settings') {
+        console.log('Initializing empty settings collection due to corrupted file');
+        return [];
+      }
+      
+      // For other collections, throw error to prevent data loss
+      throw new Error(`Corrupted JSON in ${collection}.json`);
+    }
   } catch (error: any) {
     // If file doesn't exist, return empty array (this is ok for new collections)
     if (error.code === 'ENOENT') {
       console.log(`Collection ${collection} doesn't exist yet, will be created`);
       return [];
     }
-    // For any other error (permissions, corrupted JSON, etc), throw it
-    // This prevents data loss by not proceeding with an empty array
+    // For any other error (permissions, etc), throw it
     console.error(`Error reading ${collection}:`, error);
     throw new Error(`Failed to read collection ${collection}: ${error.message}`);
   }
@@ -140,15 +159,44 @@ async function readCollection(collection: string): Promise<CollectionItem[]> {
 async function writeCollection(collection: string, data: CollectionItem[]): Promise<boolean> {
   try {
     const filePath = path.join(DATA_DIR, `${collection}.json`);
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-    console.log(`Successfully wrote ${data.length} items to ${collection}.json`);
-    return true;
+    
+    // Ensure directory exists before writing
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    
+    // Write to a temporary file in the same directory (for atomic rename to work)
+    const tempPath = path.join(DATA_DIR, `.${collection}.json.tmp`);
+    
+    try {
+      // Write to temp file
+      await fs.writeFile(tempPath, JSON.stringify(data, null, 2), 'utf8');
+      
+      // Atomic rename (works only if temp and target are on same filesystem)
+      await fs.rename(tempPath, filePath);
+      
+      console.log(`Successfully wrote ${data.length} items to ${collection}.json`);
+      return true;
+      
+    } catch (writeError: any) {
+      // If anything fails, try to clean up temp file and use direct write
+      try {
+        await fs.unlink(tempPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+      
+      // Fall back to direct write (not atomic but better than failing)
+      console.log(`Atomic write failed for ${collection}.json, using direct write. Error: ${writeError.message}`);
+      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+      console.log(`Direct write succeeded for ${collection}.json`);
+      return true;
+    }
+    
   } catch (error: any) {
     console.error(`Error writing ${collection}:`, error);
     if (error.code === 'EACCES') {
       console.error(`Permission denied writing to ${collection}.json. Check file/directory permissions.`);
     } else if (error.code === 'ENOENT') {
-      console.error(`Directory doesn't exist for ${collection}.json. Path: ${DATA_DIR}`);
+      console.error(`Failed to create directory or write file for ${collection}.json`);
     }
     return false;
   }
@@ -763,12 +811,17 @@ apiRouter.post('/:collection', async (req: Request, res: Response) => {
     }
     
     if (collection === 'settings') {
+      console.log(`Updating setting: ${newItem[keyField]} = ${JSON.stringify(newItem.value)}`);
+      console.log(`Current settings count before update: ${data.length}`);
+      
       const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
       if (existingIndex >= 0) {
         data[existingIndex] = { ...data[existingIndex], ...newItem };
       } else {
         data.push(newItem);
       }
+      
+      console.log(`Settings count after update: ${data.length}`);
     } else {
       const existingIndex = data.findIndex(d => d[keyField] === newItem[keyField]);
       if (existingIndex >= 0) {
@@ -778,7 +831,11 @@ apiRouter.post('/:collection', async (req: Request, res: Response) => {
       }
     }
     
-    await writeCollection(collection, data);
+    const writeSuccess = await writeCollection(collection, data);
+    if (!writeSuccess) {
+      return res.status(500).json({ error: `Failed to write ${collection} data` });
+    }
+    
     res.json({ success: true, id: newItem[keyField] });
   } catch (error: any) {
     console.error('Error in POST /:collection:', error);

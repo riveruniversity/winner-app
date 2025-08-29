@@ -106,7 +106,7 @@ async function loadWinners(winnersData = null, listsData = null) {
     if (filteredWinners.length === 0) {
       const emptyRow = document.createElement('tr');
       const emptyCell = document.createElement('td');
-      emptyCell.colSpan = 8;
+      emptyCell.colSpan = 9;
       emptyCell.className = 'text-center text-muted';
       emptyCell.textContent = 'No winners match the current filters.';
       emptyRow.appendChild(emptyCell);
@@ -118,36 +118,40 @@ async function loadWinners(winnersData = null, listsData = null) {
     filteredWinners.forEach(winner => {
       const row = document.createElement('tr');
       
-      // Display Order ID from data or use 'N/A'
-      const orderId = winner.data?.orderId || winner.data?.['Order ID'] || 'N/A';
+      // Display with fallback chain: entryId -> idCard -> contactId -> 'N/A'
+      const orderId = winner.orderId ||winner.orderCode || winner.entryId || winner.data?.idCard || winner.data?.contactId || 'N/A';
       
-      // Cell 1: Order ID and QR button
-      const idCell = document.createElement('td');
-      const idBadge = SafeHTML.createElement('span', orderId, { className: 'badge bg-primary winner-id-badge' });
+      // Cell 1: QR Code button
+      const qrCell = document.createElement('td');
       const qrButton = SafeHTML.createButton('', {
-        className: 'btn btn-sm btn-outline-secondary ms-1',
+        className: 'btn btn-sm btn-outline-secondary',
         icon: 'bi bi-qr-code',
         onclick: () => Winners.showQRCode(winner.winnerId),
         dataset: { winnerId: winner.winnerId }
       });
       qrButton.title = 'Show QR Code';
+      qrCell.appendChild(qrButton);
+      row.appendChild(qrCell);
+      
+      // Cell 2: Order ID
+      const idCell = document.createElement('td');
+      const idBadge = SafeHTML.createElement('span', orderId, { className: 'badge bg-primary winner-id-badge' });
       idCell.appendChild(idBadge);
-      idCell.appendChild(qrButton);
       row.appendChild(idCell);
       
-      // Cell 2: Display Name
+      // Cell 3: Display Name
       row.appendChild(SafeHTML.createElement('td', winner.displayName));
       
-      // Cell 3: Prize
+      // Cell 4: Prize
       row.appendChild(SafeHTML.createElement('td', winner.prize));
       
-      // Cell 4: Date
+      // Cell 5: Date
       row.appendChild(SafeHTML.createElement('td', new Date(winner.timestamp).toLocaleDateString()));
       
-      // Cell 5: List Name
+      // Cell 6: List Name
       row.appendChild(SafeHTML.createElement('td', winner.listName || listNameMap[winner.listId] || 'Unknown'));
       
-      // Cell 6: Pickup Status
+      // Cell 7: Pickup Status
       const pickupCell = document.createElement('td');
       const pickupBadge = document.createElement('span');
       pickupBadge.className = winner.pickedUp ? 'badge bg-success' : 'badge bg-warning';
@@ -158,7 +162,7 @@ async function loadWinners(winnersData = null, listsData = null) {
       pickupCell.appendChild(pickupBadge);
       row.appendChild(pickupCell);
       
-      // Cell 7: SMS Status
+      // Cell 8: SMS Status
       const smsCell = document.createElement('td');
       const smsBadge = document.createElement('span');
       
@@ -208,7 +212,7 @@ async function loadWinners(winnersData = null, listsData = null) {
       smsCell.appendChild(smsBadge);
       row.appendChild(smsCell);
       
-      // Cell 8: Actions
+      // Cell 9: Actions
       const actionsCell = document.createElement('td');
       const btnGroup = document.createElement('div');
       btnGroup.className = 'btn-group btn-group-sm';

@@ -43,9 +43,6 @@
         <!-- SMS Button (Hidden initially) -->
         <button class="btn btn-outline-success d-none" id="sendSMSBtn" title="Send SMS to current winners">
           <i class="bi bi-envelope-fill"></i></button>
-        <button class="btn btn-outline-light" id="themeToggle" title="Toggle theme">
-          <i class="bi bi-moon-fill"></i>
-        </button>
         <button class="btn btn-outline-light" id="fullscreenToggle" title="Toggle fullscreen">
           <i class="bi bi-fullscreen"></i>
         </button>
@@ -98,6 +95,9 @@
         <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
           <h3><i class="bi bi-gear me-2"></i>Management</h3>
           <div class="d-flex gap-2">
+            <button class="btn btn-outline-light" id="themeToggle" title="Toggle theme">
+              <i class="bi bi-moon-fill"></i>
+            </button>
             <div class="dropdown">
               <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                 <i class="bi bi-gear"></i>
@@ -143,13 +143,13 @@
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab">
-              <i class="bi bi-trophy me-2"></i>Winners
+            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button" role="tab">
+              <i class="bi bi-chat-text me-2"></i>Templates
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button" role="tab">
-              <i class="bi bi-chat-text me-2"></i>Templates
+            <button class="nav-link" id="winners-tab" data-bs-toggle="tab" data-bs-target="#winners" type="button" role="tab">
+              <i class="bi bi-trophy me-2"></i>Winners
             </button>
           </li>
           <li class="nav-item" role="presentation">
@@ -731,6 +731,7 @@
               <table class="table table-striped">
                 <thead>
                   <tr>
+                    <th>QR Code</th>
                     <th>ID</th>
                     <th>Name</th>
                     <th>Prize</th>
@@ -1010,16 +1011,6 @@
     </div>
   </div>
   
-  <!-- SMS Progress Bar (Subtle Bottom Bar) -->
-  <div id="smsProgressBar" class="sms-progress-bar d-none">
-    <div class="sms-progress-content">
-      <span id="smsProgressText">Sending messages...</span>
-      <div class="sms-progress-track">
-        <div class="sms-progress-fill" id="smsProgressFill"></div>
-      </div>
-      <button id="smsProgressCancel" class="btn btn-sm btn-outline-light">Cancel</button>
-    </div>
-  </div>
   <!-- Countdown Animation Overlay -->
   <div class="countdown-animation d-none" id="countdownOverlay">
     <div class="countdown-number" id="countdownNumber">3</div>

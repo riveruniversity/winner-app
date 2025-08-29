@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     
     // Modal initialization is handled in app.js
     
-    UI.showToast('Application loaded!', 'success');
+    UI.showToast('Application loaded', 'success');
   } catch (error) {
     console.error('Initialization error:', error);
     UI.showToast('Failed to initialize application: ' + error.message, 'error');

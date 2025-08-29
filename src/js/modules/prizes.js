@@ -57,15 +57,12 @@ async function loadPrizes(prizesData = null) {
           const badges = document.createElement('div');
           if (isSelected) {
             const selectedBadge = document.createElement('span');
-            selectedBadge.className = 'badge bg-success me-2';
-            DOMUtils.safeSetHTML(selectedBadge, '<i class="bi bi-check-circle-fill"></i> Selected', true);
+            selectedBadge.className = 'badge bg-success';
+            selectedBadge.style.fontSize = '1rem';
+            selectedBadge.style.padding = '0.4rem 0.6rem';
+            DOMUtils.safeSetHTML(selectedBadge, '<i class="bi bi-check-circle-fill"></i>', true);
             badges.appendChild(selectedBadge);
           }
-          
-          const qtyBadge = document.createElement('span');
-          qtyBadge.className = `badge ${isAvailable ? 'bg-primary' : 'bg-secondary'}`;
-          qtyBadge.textContent = String(prize.quantity);
-          badges.appendChild(qtyBadge);
           
           headerContent.appendChild(title);
           headerContent.appendChild(badges);
@@ -73,11 +70,63 @@ async function loadPrizes(prizesData = null) {
           
           // Create card body
           const body = document.createElement('div');
-          body.className = 'card-body d-flex flex-column';
+          body.className = 'card-body d-flex flex-column position-relative';
+          
+          // Badge container in top right of body
+          const bodyBadges = document.createElement('div');
+          bodyBadges.className = 'position-absolute';
+          bodyBadges.style.cssText = 'right: 0.75rem; top: 0.75rem;';
+          
+          const badgeStack = document.createElement('div');
+          badgeStack.className = 'd-flex flex-column align-items-end gap-1';
+          
+          // Quantity badge (light blue) with box icon - on top
+          const qtyBadge = document.createElement('span');
+          qtyBadge.className = 'badge';
+          qtyBadge.style.cssText = `
+            font-size: 0.875rem;
+            background-color: ${isAvailable ? '#e3f2fd' : '#f5f5f5'};
+            color: ${isAvailable ? '#1976d2' : '#757575'};
+            border: 1px solid ${isAvailable ? '#bbdefb' : '#e0e0e0'};
+          `;
+          
+          const boxIcon = document.createElement('i');
+          boxIcon.className = 'bi bi-box-seam me-1';
+          qtyBadge.appendChild(boxIcon);
+          
+          const qtyText = document.createTextNode(String(prize.quantity));
+          qtyBadge.appendChild(qtyText);
+          
+          badgeStack.appendChild(qtyBadge);
+          
+          // Winners count badge (yellow) with people icon - below quantity
+          if (prize.winnersCount && prize.winnersCount > 0) {
+            const winnersCountBadge = document.createElement('span');
+            winnersCountBadge.className = 'badge';
+            winnersCountBadge.style.cssText = `
+              font-size: 0.875rem;
+              background-color: #fff8e1;
+              color: #f57c00;
+              border: 1px solid #ffe0b2;
+            `;
+            
+            const peopleIcon = document.createElement('i');
+            peopleIcon.className = 'bi bi-people me-1';
+            winnersCountBadge.appendChild(peopleIcon);
+            
+            const winnersText = document.createTextNode(String(prize.winnersCount));
+            winnersCountBadge.appendChild(winnersText);
+            
+            badgeStack.appendChild(winnersCountBadge);
+          }
+          
+          bodyBadges.appendChild(badgeStack);
+          body.appendChild(bodyBadges);
           
           const desc = document.createElement('p');
           desc.className = 'card-text text-muted small';
           desc.textContent = prize.description || 'No description';
+          desc.style.paddingRight = '3rem'; // Make room for badges
           body.appendChild(desc);
           
           // Create buttons container
@@ -507,7 +556,7 @@ async function loadPrizes(prizesData = null) {
 
 // Track last toast time to prevent duplicates
 let lastToastTime = 0;
-const TOAST_DEBOUNCE_MS = 500; // Half second debounce
+const TOAST_DEBOUNCE_MS = 200; // Half second debounce
 
 // Initialize event delegation once at startup
 function initPrizeEventDelegation() {
@@ -548,6 +597,9 @@ async function selectPrize(prizeId) {
     
     // If prize has a default winners count, update that setting too
     if (selectedPrize.winnersCount && selectedPrize.winnersCount > 0) {
+      // Small delay to prevent race condition with rapid settings saves
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       await Settings.saveSingleSetting('winnersCount', selectedPrize.winnersCount);
       
       // Update the winners count input if it exists
@@ -585,7 +637,7 @@ async function selectPrize(prizeId) {
     // Show success message only once with debounce to prevent duplicates
     const now = Date.now();
     if (now - lastToastTime > TOAST_DEBOUNCE_MS) {
-      UI.showToast(`Prize "${selectedPrize.name}" selected (${selectedPrize.quantity} available)`, 'success');
+      UI.showToast(`Prize "${selectedPrize.name}" selected (${selectedPrize.quantity})`, 'success');
       lastToastTime = now;
     }
     

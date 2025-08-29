@@ -1280,7 +1280,7 @@ function setupQuickSetupAutoSave() {
     const field = document.getElementById(fieldId);
     if (field) {
       // Create field-specific handlers that pass the field ID
-      const fieldSpecificDebouncedSave = debounce(() => autoSaveQuickSetup(fieldId), 300);
+      const fieldSpecificDebouncedSave = debounce(() => autoSaveQuickSetup(fieldId), 500);
       const fieldSpecificImmediateSave = () => autoSaveQuickSetup(fieldId);
       
       if (field.type === 'number' || field.type === 'text') {

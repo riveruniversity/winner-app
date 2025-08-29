@@ -57,37 +57,6 @@ function hideProgress() {
   document.getElementById('progressOverlay').classList.add('d-none');
 }
 
-// SMS-specific progress functions
-function showSMSProgress(text = 'Sending messages...') {
-  const progressBar = document.getElementById('smsProgressBar');
-  const progressText = document.getElementById('smsProgressText');
-  const progressFill = document.getElementById('smsProgressFill');
-  
-  if (progressBar) {
-    progressText.textContent = text;
-    progressFill.style.width = '0%';
-    progressBar.classList.remove('d-none');
-  }
-}
-
-function updateSMSProgress(percentage, text) {
-  const progressFill = document.getElementById('smsProgressFill');
-  const progressText = document.getElementById('smsProgressText');
-  
-  if (progressFill) {
-    progressFill.style.width = percentage + '%';
-  }
-  if (text && progressText) {
-    progressText.textContent = text;
-  }
-}
-
-function hideSMSProgress() {
-  const progressBar = document.getElementById('smsProgressBar');
-  if (progressBar) {
-    progressBar.classList.add('d-none');
-  }
-}
 
 function showConfirmationModal(title, message, onConfirm) {
   const modalTitle = document.getElementById('appModalLabel');
@@ -227,7 +196,7 @@ async function populateQuickSelects(lists = null, prizes = null) {
       availablePrizes.forEach(prize => {
         const option = document.createElement('option');
         option.value = prize.prizeId;
-        option.textContent = `${prize.name} (${prize.quantity} available)`;
+        option.textContent = `${prize.name} (${prize.quantity})`;
         quickPrizeSelect.appendChild(option);
       });
       
@@ -377,17 +346,35 @@ async function updateSelectionInfo() {
     displayText += ` (${excludedCount} excluded)`;
     console.log('Updating display with exclusions:', displayText);
   }
-  // Fix: The actual element ID in the HTML is 'totalSelectedEntries', not 'totalEntriesDisplay'
-  const totalEntriesElement = document.getElementById('totalSelectedEntries');
-  if (totalEntriesElement) {
-    totalEntriesElement.textContent = displayText;
+  
+  // Update both elements - one in setup tab, one in public view
+  const totalSelectedEntries = document.getElementById('totalSelectedEntries');
+  if (totalSelectedEntries) {
+    totalSelectedEntries.textContent = displayText;
+  }
+  
+  const totalEntriesDisplay = document.getElementById('totalEntriesDisplay');
+  if (totalEntriesDisplay) {
+    totalEntriesDisplay.textContent = displayText;
   }
 
   // Check if winners count exceeds available entries and add warning
   const winnersCount = parseInt(quickWinnersCount.value) || 0;
   const winnersCountDisplay = document.getElementById('winnersCountDisplay');
   
-  if (winnersCount > eligibleEntryCount && eligibleEntryCount > 0) {
+  // Show warning when winners exceed available entries (including when entries are 0)
+  const showWarning = winnersCount > 0 && winnersCount > eligibleEntryCount && selectedCheckboxes.length > 0;
+  
+  // Debug logging
+  console.log('Warning check:', {
+    winnersCount,
+    eligibleEntryCount,
+    totalEntryCount,
+    selectedLists: selectedCheckboxes.length,
+    showWarning
+  });
+  
+  if (showWarning) {
     // Add red styling when winners exceed entries
     quickWinnersCount.classList.add('border-danger', 'text-danger');
     quickWinnersCount.style.borderWidth = '2px';
@@ -403,10 +390,14 @@ async function updateSelectionInfo() {
     if (!warningElement) {
       warningElement = document.createElement('small');
       warningElement.className = 'text-danger d-block mt-1 winners-warning';
-      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Exceeds available entries (${eligibleEntryCount})`;
       quickWinnersCount.parentElement.appendChild(warningElement);
+    }
+    
+    // Update warning message based on the situation
+    if (eligibleEntryCount === 0) {
+      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> No entries available`;
     } else {
-      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Exceeds available entries (${eligibleEntryCount})`;
+      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Listed Participants (${eligibleEntryCount})`;
     }
   } else {
     // Remove red styling when count is valid
@@ -551,9 +542,6 @@ export const UI = {
   showProgress,
   updateProgress,
   hideProgress,
-  showSMSProgress,
-  updateSMSProgress,
-  hideSMSProgress,
   showConfirmationModal: enhancedShowConfirmationModal,
   readFileAsText,
   populateQuickSelects,

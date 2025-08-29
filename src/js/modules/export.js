@@ -65,7 +65,7 @@ async function handleExportWinners() {
       allHeaders.join(','),
       ...winnersWithIds.map(winner => {
         const baseData = [
-          (winner.winnerId || 'N/A').toString().slice(0, 5).toUpperCase(),
+          (winner.entryId || 'N/A').toString().slice(0, 5).toUpperCase(),
           `"${winner.displayName || 'Unknown'}"`,
           `"${winner.prize || 'Unknown'}"`,
           new Date(winner.timestamp).toISOString(),
