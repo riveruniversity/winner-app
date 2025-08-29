@@ -1,0 +1,191 @@
+{
+  "name": "ministry-platform-agent",
+  "version": "2.0.0",
+  "description": "Specialized agent for Ministry Platform API integrations using mp-js-api library",
+  "triggers": [
+    "Ministry Platform", "MP API", "mp-js-api", "Event query", "Participant list",
+    "Event_Participants", "mp.json", "getEvents", "getContacts", "createContact"
+  ],
+  
+  "authentication": {
+    "method": "Client Credentials",
+    "pattern": "createMPInstance({ auth: { username: env.MP_USERNAME, password: env.MP_PASSWORD } })",
+    "credentials": {
+      "MP_USERNAME": "Ministry Platform client username (environment variable)",
+      "MP_PASSWORD": "Ministry Platform client password (environment variable)"
+    },
+    "library": "mp-js-api",
+    "note": "Authentication handled internally by mp-js-api library"
+  },
+
+  "fieldNaming": {
+    "database": {
+      "format": "underscore_case",
+      "examples": ["Contact_ID", "First_Name", "Event_ID", "Participant_ID", "Group_ID"]
+    },
+    "apiResponses": {
+      "format": "camelCase",
+      "examples": ["contactID", "firstName", "eventID", "participantID", "groupID"]
+    },
+    "conversion": "Automatic by mp-js-api",
+    "specialCases": {
+      "bracketed": "[State/Region] for fields with special characters",
+      "prefixed": "dp_ prefix for special platform fields like dp_fileUniqueId"
+    }
+  },
+
+  "tableConventions": {
+    "lookupPattern": {
+      "syntax": "{ForeignKeyFieldName}_Table",
+      "purpose": "Access related table data in SELECT statements",
+      "example": "Household_ID_Table.* to get household data when querying contacts",
+      "usage": "Only use _Table suffix when joining data, not for direct table queries"
+    },
+    "commonTables": [
+      "Contacts", "Participants", "Events", "Event_Participants", "Groups",
+      "Group_Participants", "Households", "Addresses", "Form_Responses",
+      "Form_Response_Answers", "Contact_Attributes", "Contact_Email_Addresses"
+    ],
+    "junctionTables": {
+      "Event_Participants": "Links Participants to Events",
+      "Group_Participants": "Links Participants to Groups"
+    }
+  },
+
+  "errorHandling": {
+    "pattern": "if (result && 'error' in result)",
+    "example": "const result = await mp.getEvents(options);\nif (result && 'error' in result) {\n  console.error('MP API Error:', result.error);\n  return { error: result.error };\n}",
+    "bestPractice": "Always check for error before processing results"
+  },
+
+  "commonOperations": {
+    "searchEvents": {
+      "byTitle": {
+        "filter": "Event_Title LIKE '%{searchTerm}%'",
+        "select": "Event_ID, Event_Title, Event_Start_Date"
+      },
+      "byDateRange": {
+        "filter": "Event_Start_Date >= '{startDate}' AND Event_Start_Date <= '{endDate}'",
+        "select": "Event_ID, Event_Title, Event_Start_Date"
+      },
+      "byIds": {
+        "filter": "Event_ID IN ({eventIds})",
+        "select": "Event_ID, Event_Title, Event_Start_Date"
+      }
+    },
+    
+    "getEventParticipants": {
+      "filter": "Event_ID_Table.Event_ID IN ({eventIds}) AND Participation_Status_ID = 2",
+      "select": "Participant_ID, Event_ID_Table.Event_Title, Contact_ID_Table.Display_Name, Contact_ID_Table.Email_Address",
+      "table": "Event_Participants"
+    },
+    
+    "findContact": {
+      "byId": "Contact_ID={contactId}",
+      "byIdCard": "ID_Card='{idCard}'",
+      "byEmail": "Email_Address='{email}'",
+      "combined": "ID_Card='{id}' OR Contact_ID={id}"
+    },
+    
+    "createOperations": {
+      "contact": {
+        "method": "mp.createContact",
+        "requiredFields": ["firstName", "lastName", "displayName"],
+        "optionalFields": ["nickname", "emailAddress", "mobilePhone", "dateOfBirth", "genderID", "householdID"]
+      },
+      "eventParticipant": {
+        "method": "mp.createEventParticipant",
+        "requiredFields": ["eventID", "participantID", "participationStatusID"],
+        "optionalFields": ["groupID", "groupRoleID", "notes"]
+      },
+      "groupParticipant": {
+        "method": "mp.createGroupParticipant",
+        "requiredFields": ["groupID", "participantID", "startDate"],
+        "optionalFields": ["groupRoleID", "endDate"]
+      }
+    },
+    
+    "updateOperations": {
+      "contacts": {
+        "method": "mp.updateContacts",
+        "pattern": "mp.updateContacts([{ contactID: id, ...updateData }])",
+        "batchCapable": true
+      },
+      "groupParticipants": {
+        "method": "mp.updateGroupParticipants",
+        "pattern": "mp.updateGroupParticipants([{ groupParticipantID: id, ...updateData }])"
+      }
+    }
+  },
+
+  "queryPatterns": {
+    "basicFilter": {
+      "equality": "Field_Name = {value}",
+      "in": "Field_Name IN ({value1}, {value2})",
+      "like": "Field_Name LIKE '%{searchTerm}%'",
+      "null": "Field_Name IS NULL",
+      "notNull": "Field_Name IS NOT NULL",
+      "date": "Date_Field >= '{startDate}' AND Date_Field <= '{endDate}'"
+    },
+    "complexFilter": {
+      "multiple": "Field1 = {value1} AND Field2 = {value2}",
+      "or": "Field1 = {value1} OR Field2 = {value2}",
+      "nested": "(Field1 = {value1} OR Field1 = {value2}) AND Field3 IS NOT NULL"
+    },
+    "collation": {
+      "caseInsensitive": "COLLATE Latin1_general_CI_AI",
+      "usage": "Field_Name COLLATE Latin1_general_CI_AI LIKE '%{term}%'"
+    }
+  },
+
+  "commonConstants": {
+    "participationStatus": {
+      "2": "Registered",
+      "3": "Attended",
+      "4": "No Show"
+    },
+    "genderID": {
+      "1": "Male",
+      "2": "Female"
+    },
+    "householdPosition": {
+      "1": "Head of Household",
+      "2": "Child",
+      "3": "Other"
+    },
+    "participantType": {
+      "4": "Guest",
+      "11": "Child"
+    }
+  },
+
+  "bestPractices": [
+    "Always check for 'error' in result before processing data",
+    "Use database field names (underscore_case) in filter strings",
+    "Access response data with camelCase field names",
+    "Use _Table suffix only for joined queries, not direct table access",
+    "Store structured data in notes fields as JSON with proper formatting",
+    "Clean and validate phone numbers before comparison/storage",
+    "Prevent duplicates by checking email, phone, and date of birth",
+    "Batch operations when possible for better performance",
+    "Use NULL checks in filters for date fields (e.g., End_Date IS NULL)",
+    "Format dates as ISO strings: YYYY-MM-DDTHH:MM:SS"
+  ],
+
+  "codeExamples": {
+    "initialization": "import { createMPInstance } from 'mp-js-api';\n\nconst mp = createMPInstance({\n  auth: {\n    username: process.env.MP_USERNAME,\n    password: process.env.MP_PASSWORD\n  }\n});",
+    
+    "getEvents": "const events = await mp.getEvents({\n  filter: `Event_Start_Date >= '2025-01-01' AND Event_Start_Date <= '2025-12-31'`,\n  select: 'Event_ID, Event_Title, Event_Start_Date'\n});\n\nif (events && 'error' in events) {\n  console.error('Error:', events.error);\n  return;\n}\n\n// Access with camelCase\nevents.forEach(event => {\n  console.log(event.eventID, event.eventTitle);\n});",
+    
+    "getEventParticipants": "const participants = await mp.getEventParticipants({\n  filter: `Event_ID_Table.Event_ID IN (123, 456) AND Participation_Status_ID = 2`,\n  select: 'Participant_ID, Contact_ID_Table.Display_Name, Contact_ID_Table.Email_Address'\n});\n\nif (participants && 'error' in participants) {\n  return { error: participants.error };\n}\n\n// Process participants\nconst participantList = participants.map(p => ({\n  id: p.participantID,\n  name: p.contact_ID_Table_DisplayName,\n  email: p.contact_ID_Table_EmailAddress\n}));",
+    
+    "createContact": "const contact = await mp.createContact({\n  firstName: 'John',\n  lastName: 'Doe',\n  nickname: 'Johnny',\n  displayName: 'Doe, Johnny',\n  emailAddress: 'john@example.com',\n  mobilePhone: '555-1234',\n  dateOfBirth: '1990-01-01T00:00:00',\n  genderID: 1,\n  householdID: 12345\n});\n\nif (contact && 'error' in contact) {\n  console.error('Failed to create contact:', contact.error);\n  return;\n}\n\nconsole.log('Created contact:', contact.contactID);"
+  },
+
+  "dataPath": "/srv/dev/winner/data/mp.json",
+  "endpoints": {
+    "queries": "/api/mp/queries",
+    "execute": "/api/mp/execute", 
+    "events": "/api/mp/events"
+  }
+}

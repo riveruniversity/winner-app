@@ -30,7 +30,10 @@
       "Bash(curl -s http://localhost:3000/api/prizes)",
       "Bash(curl -s http://localhost:3001)",
       "Bash(npm install)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run build:backend:*)",
+      "WebFetch(domain:help.acst.com)",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": [],
     "additionalDirectories": [
