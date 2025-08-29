@@ -114,17 +114,19 @@ function displayTemplates(templates) {
         <div class="card-body">
           <p class="card-text small text-muted">${template.message}</p>
           <div class="d-flex justify-content-between mt-3">
-            <button class="btn btn-sm btn-outline-primary" data-template-id="${template.templateId}" data-action="edit">
-              <i class="bi bi-pencil"></i> Edit
-            </button>
             ${!template.isDefault ? `
               <button class="btn btn-sm btn-outline-info" data-template-id="${template.templateId}" data-action="set-default">
                 <i class="bi bi-star"></i> Set Default
               </button>
-            ` : ''}
-            <button class="btn btn-sm btn-outline-danger" data-template-id="${template.templateId}" data-action="delete">
-              <i class="bi bi-trash"></i> Delete
-            </button>
+            ` : '<div></div>'}
+            <div>
+              <button class="btn btn-sm btn-outline-primary" data-template-id="${template.templateId}" data-action="edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" data-template-id="${template.templateId}" data-action="delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -241,7 +243,7 @@ async function showAddTemplateModal() {
 
       await Database.saveToStore('templates', newTemplate);
       await loadTemplates();
-      UI.showToast('Template added successfully', 'success');
+      UI.showToast('Template added', 'success');
       window.appModal.hide();
     } catch (error) {
       console.error('Error saving template:', error);
@@ -331,7 +333,7 @@ async function editTemplate(templateId) {
 
       await Database.saveToStore('templates', template);
       await loadTemplates();
-      UI.showToast('Template updated successfully', 'success');
+      UI.showToast('Template updated', 'success');
       window.appModal.hide();
     } catch (error) {
       console.error('Error updating template:', error);
@@ -351,7 +353,7 @@ async function deleteTemplate(templateId) {
   try {
     await Database.deleteFromStore('templates', templateId);
     await loadTemplates();
-    UI.showToast('Template deleted successfully', 'success');
+    UI.showToast('Template deleted', 'success');
   } catch (error) {
     console.error('Error deleting template:', error);
     UI.showToast('Failed to delete template', 'error');

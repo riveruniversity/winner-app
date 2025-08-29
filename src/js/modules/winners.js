@@ -380,7 +380,7 @@ async function deleteWinnerConfirm(winnerId) {
         }
       }
       
-      UI.showToast('Winner deleted successfully', 'success');
+      UI.showToast('Winner deleted', 'success');
       // Clear cache to force reload
       winnersCache = null;
       listsCache = null;
@@ -440,7 +440,7 @@ async function clearAllWinners() {
         
         UI.updateProgress(90, 'Finalizing...');
         UI.hideProgress();
-        UI.showToast(`Successfully deleted ${winnersToDelete.length} winner records`, 'success');
+        UI.showToast(`Deleted ${winnersToDelete.length} winner records`, 'success');
         
         // Clear currentWinners array
         const { clearCurrentWinners } = await import('../app.js');
@@ -597,7 +597,7 @@ async function undoLastSelection() {
         await performUndoBackgroundSync(currentLastAction);
         
         // Then update the UI
-        UI.showToast('Selection undone successfully', 'success');
+        UI.showToast('Selection undone', 'success');
         await resetToSelectionMode();
         setLastAction(null); // Clear lastAction in app.js
         

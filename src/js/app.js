@@ -81,8 +81,6 @@ async function loadDataInBackground() {
     const winners = batchResults.winners || [];
     const history = batchResults.history || [];
     
-    console.log('Initial data load - Prizes:', prizes.map(p => ({ id: p.prizeId, name: p.name, qty: p.quantity })));
-    
     // Update UI components with the loaded data (pass data to avoid refetching)
     await Lists.loadLists(lists); // Pass loaded data
     await Prizes.loadPrizes(prizes); // Pass loaded data
@@ -161,6 +159,18 @@ function setupEventListeners() {
   setupWinnerFilters();
   setupDisplayMode();
   setupTabListeners();
+  setupHistoryDelegation();
+}
+
+function setupHistoryDelegation() {
+  // Setup event delegation for history delete buttons (only once)
+  const tbody = document.getElementById('historyTableBody');
+  if (tbody) {
+    eventManager.delegate(tbody, '[data-history-id]', 'click', function(e) {
+      const historyId = this.getAttribute('data-history-id');
+      deleteHistoryConfirm(historyId);
+    });
+  }
 }
 
 function setupTabListeners() {
@@ -547,12 +557,6 @@ function loadHistoryUI(history) {
     });
     
     tbody.appendChild(fragment);
-    
-    // Setup event delegation for delete buttons
-    eventManager.delegate(tbody, '[data-history-id]', 'click', function(e) {
-      const historyId = this.getAttribute('data-history-id');
-      deleteHistoryConfirm(historyId);
-    });
   } catch (error) {
     console.error('Error loading history:', error);
   }
@@ -622,7 +626,7 @@ export async function deleteHistoryConfirm(historyId) {
   UI.showConfirmationModal('Delete History Entry', 'Are you sure you want to delete this history entry?', async () => {
     try {
       await Database.deleteFromStore('history', historyId);
-      UI.showToast('History entry deleted successfully', 'success');
+      UI.showToast('History entry deleted', 'success');
       await loadHistory();
       await updateHistoryStats();
     } catch (error) {

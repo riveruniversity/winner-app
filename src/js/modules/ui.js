@@ -105,7 +105,8 @@ function showConfirmationModal(title, message, onConfirm) {
   const newConfirmBtn = confirmBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
-  newConfirmBtn.addEventListener('click', async () => {
+  // Handler for confirmation
+  const handleConfirm = async () => {
     try {
       await onConfirm();
     } catch (error) {
@@ -113,7 +114,30 @@ function showConfirmationModal(title, message, onConfirm) {
       showToast(`Operation failed: ${error.message}`, 'error');
     } finally {
       window.appModal.hide();
+      document.removeEventListener('keydown', keyHandler);
     }
+  };
+
+  // Keyboard event handler
+  const keyHandler = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleConfirm();
+    } else if (e.key === 'Escape') {
+      window.appModal.hide();
+      document.removeEventListener('keydown', keyHandler);
+    }
+  };
+
+  newConfirmBtn.addEventListener('click', handleConfirm, { once: true });
+
+  // Add keyboard listener when modal is shown
+  document.addEventListener('keydown', keyHandler);
+
+  // Remove keyboard listener when modal is hidden
+  const modal = document.getElementById('appModal');
+  modal.addEventListener('hidden.bs.modal', () => {
+    document.removeEventListener('keydown', keyHandler);
   }, { once: true });
 
   window.appModal.show();
@@ -198,9 +222,7 @@ async function populateQuickSelects(lists = null, prizes = null) {
 
     if (quickPrizeSelect) {
       quickPrizeSelect.innerHTML = '<option value="">Select Prize...</option>';
-      console.log('All prizes before filter:', prizesData.map(p => ({ id: p.prizeId, name: p.name, qty: p.quantity })));
       const availablePrizes = prizesData.filter(prize => prize.quantity > 0);
-      console.log('Available prizes after filter (qty > 0):', availablePrizes.map(p => ({ id: p.prizeId, name: p.name, qty: p.quantity })));
       
       availablePrizes.forEach(prize => {
         const option = document.createElement('option');
@@ -210,11 +232,9 @@ async function populateQuickSelects(lists = null, prizes = null) {
       });
       
       if (settings.selectedPrizeId) {
-        console.log('Trying to restore prize:', settings.selectedPrizeId);
         const prizeOption = quickPrizeSelect.querySelector(`option[value="${settings.selectedPrizeId}"]`);
         if (prizeOption) {
           quickPrizeSelect.value = settings.selectedPrizeId;
-          console.log('Restored prize selection:', settings.selectedPrizeId);
         } else {
           console.log('Saved prize selection not found in dropdown, clearing setting:', settings.selectedPrizeId);
           console.log('Options in dropdown:', Array.from(quickPrizeSelect.options).map(o => o.value));
@@ -363,6 +383,48 @@ async function updateSelectionInfo() {
     totalEntriesElement.textContent = displayText;
   }
 
+  // Check if winners count exceeds available entries and add warning
+  const winnersCount = parseInt(quickWinnersCount.value) || 0;
+  const winnersCountDisplay = document.getElementById('winnersCountDisplay');
+  
+  if (winnersCount > eligibleEntryCount && eligibleEntryCount > 0) {
+    // Add red styling when winners exceed entries
+    quickWinnersCount.classList.add('border-danger', 'text-danger');
+    quickWinnersCount.style.borderWidth = '2px';
+    
+    // Also update the display card if it exists
+    if (winnersCountDisplay) {
+      winnersCountDisplay.classList.add('text-danger', 'fw-bold');
+      winnersCountDisplay.textContent = `${winnersCount} ⚠️`;
+    }
+    
+    // Add a warning message if not already present
+    let warningElement = quickWinnersCount.parentElement.querySelector('.winners-warning');
+    if (!warningElement) {
+      warningElement = document.createElement('small');
+      warningElement.className = 'text-danger d-block mt-1 winners-warning';
+      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Exceeds available entries (${eligibleEntryCount})`;
+      quickWinnersCount.parentElement.appendChild(warningElement);
+    } else {
+      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Exceeds available entries (${eligibleEntryCount})`;
+    }
+  } else {
+    // Remove red styling when count is valid
+    quickWinnersCount.classList.remove('border-danger', 'text-danger');
+    quickWinnersCount.style.borderWidth = '';
+    
+    if (winnersCountDisplay) {
+      winnersCountDisplay.classList.remove('text-danger', 'fw-bold');
+      winnersCountDisplay.textContent = winnersCount;
+    }
+    
+    // Remove warning message
+    const warningElement = quickWinnersCount.parentElement.querySelector('.winners-warning');
+    if (warningElement) {
+      warningElement.remove();
+    }
+  }
+  
   // Enable play button only if at least one list and a prize are selected
   const bigPlayButton = document.getElementById('bigPlayButton');
   if (bigPlayButton) {
@@ -397,15 +459,41 @@ function showConfirmationPromise(title, message) {
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
 
-    newConfirmBtn.onclick = () => {
+    // Handler for confirmation
+    const handleConfirm = () => {
       if (window.appModal) window.appModal.hide();
+      document.removeEventListener('keydown', keyHandler);
       resolve(true);
     };
 
-    newCancelBtn.onclick = () => {
+    // Handler for cancellation
+    const handleCancel = () => {
       if (window.appModal) window.appModal.hide();
+      document.removeEventListener('keydown', keyHandler);
       resolve(false);
     };
+
+    // Keyboard event handler
+    const keyHandler = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleConfirm();
+      } else if (e.key === 'Escape') {
+        handleCancel();
+      }
+    };
+
+    newConfirmBtn.onclick = handleConfirm;
+    newCancelBtn.onclick = handleCancel;
+
+    // Add keyboard listener when modal is shown
+    document.addEventListener('keydown', keyHandler);
+
+    // Remove keyboard listener when modal is hidden
+    const modal = document.getElementById('appModal');
+    modal.addEventListener('hidden.bs.modal', () => {
+      document.removeEventListener('keydown', keyHandler);
+    }, { once: true });
 
     if (window.appModal) window.appModal.show();
   });

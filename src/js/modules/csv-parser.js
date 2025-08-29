@@ -497,14 +497,13 @@ function showNameConfiguration(headers, firstRow) {
       return firstRow[key] || '';
     });
 
-    info1Preview.textContent = info1Text || 'Info 1 preview';
-    info2Preview.textContent = info2Text || 'Info 2 preview';
-    info3Preview.textContent = info3Text || 'Info 3 preview';
+    // Update preview text - show placeholder if empty, matching actual winner card behavior
+    info1Preview.textContent = info1Text || '';
+    info2Preview.textContent = info2Text || '';
+    info3Preview.textContent = info3Text || '';
 
-    // Hide empty previews
-    info1Preview.style.display = info1Text ? 'block' : 'none';
-    info2Preview.style.display = info2Text ? 'block' : 'none';
-    info3Preview.style.display = info3Text ? 'block' : 'none';
+    // Don't hide the divs - actual winner cards always show all divs even if empty
+    // This matches the createWinnerCard function in selection.js
   }
 
   // Setup ID source radio button listeners
@@ -674,12 +673,12 @@ async function handleConfirmUpload() {
 
     const skippedText = skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : '';
 
-    UI.showToast(`List "${finalListName}" processed successfully with ${entriesText}${skippedText}! 📦 Syncing to cloud...`, 'success');
+    UI.showToast(`List "${finalListName}" imported with ${entriesText}${skippedText}!`, 'success');
 
-    // Clear form and hide preview
+    // Clear form and hide preview (don't show cancel toast after success)
     document.getElementById('listName').value = '';
     document.getElementById('csvFile').value = '';
-    handleCancelUpload();
+    handleCancelUpload(false);
 
     pendingCSVData = null;
 
@@ -789,11 +788,13 @@ function generateEntryId(row, index, idConfig) {
   }
 }
 
-function handleCancelUpload() {
+function handleCancelUpload(showToast = true) {
   document.getElementById('dataPreviewCard').style.display = 'none';
   document.getElementById('nameConfigCard').style.display = 'none';
   pendingCSVData = null;
-  UI.showToast('Upload cancelled', 'info');
+  if (showToast) {
+    UI.showToast('Upload cancelled', 'info');
+  }
 }
 
 export const CSVParser = {

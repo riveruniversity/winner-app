@@ -7,6 +7,9 @@ import { DOMUtils } from './dom-utils.js';
 import eventManager from './event-manager.js';
 import { UI } from './ui.js';
 
+// LocalStorage cache key
+const SETTINGS_CACHE_KEY = 'settings';
+
 // Application settings with defaults (internal - access via Settings.data)
 let settings = {
   preventDuplicates: false,
@@ -39,15 +42,25 @@ let settings = {
 };
 
 async function saveSettings() {
-  // Use batch save for all settings at once
+  // Save to localStorage immediately for instant access
+  try {
+    localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.warn('Error saving to localStorage:', error);
+  }
+  
+  // Then sync to database in background (fire and forget)
   const operations = Object.entries(settings).map(([key, value]) => ({
     collection: 'settings',
     data: { key, value }
   }));
   
   if (operations.length > 0) {
-    await Database.batchSave(operations);
-    debugLog(`Batch saved ${operations.length} settings`);
+    Database.batchSave(operations).then(() => {
+      debugLog(`Batch saved ${operations.length} settings to API`);
+    }).catch(error => {
+      console.error('Error syncing settings to API:', error);
+    });
   }
 }
 
@@ -57,11 +70,21 @@ async function saveSingleSetting(key, value) {
     // Update local settings object
     settings[key] = value;
     
-    // Save only this single setting to database
-    const settingToSave = { key, value };
-    await Database.saveToStore('settings', settingToSave);
+    // Save to localStorage immediately
+    try {
+      localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('Error saving to localStorage:', error);
+    }
     
-    debugLog(`Single setting saved: ${key} = ${JSON.stringify(value)}`);
+    // Save to database in background (fire and forget)
+    const settingToSave = { key, value };
+    Database.saveToStore('settings', settingToSave).then(() => {
+      debugLog(`Single setting synced to API: ${key} = ${JSON.stringify(value)}`);
+    }).catch(error => {
+      console.error(`Error syncing setting ${key} to API:`, error);
+    });
+    
   } catch (error) {
     console.error(`Error saving single setting ${key}:`, error);
     // Don't throw error for settings save - just log it
@@ -74,7 +97,14 @@ async function saveMultipleSettings(settingsToSave) {
     // Update local settings object
     Object.assign(settings, settingsToSave);
     
-    // Save only the changed settings using batch operation
+    // Save to localStorage immediately
+    try {
+      localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('Error saving to localStorage:', error);
+    }
+    
+    // Save to database in background (fire and forget)
     const operations = [];
     for (const [key, value] of Object.entries(settingsToSave)) {
       operations.push({
@@ -83,9 +113,13 @@ async function saveMultipleSettings(settingsToSave) {
       });
     }
     
-    // Save all settings in a single batch request
-    await Database.batchSave(operations);
-    debugLog(`Batch settings saved:`, settingsToSave);
+    // Save all settings in a single batch request (don't await)
+    Database.batchSave(operations).then(() => {
+      debugLog(`Batch settings synced to API:`, settingsToSave);
+    }).catch(error => {
+      console.error('Error syncing multiple settings to API:', error);
+    });
+    
   } catch (error) {
     console.error('Error saving multiple settings:', error);
     throw error;
@@ -93,15 +127,45 @@ async function saveMultipleSettings(settingsToSave) {
 }
 
 async function loadSettings() {
+  // First, load from localStorage for instant access
+  try {
+    const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
+    if (cached) {
+      const cachedSettings = JSON.parse(cached);
+      Object.assign(settings, cachedSettings);
+      debugLog('Settings loaded from localStorage cache');
+    }
+  } catch (error) {
+    console.warn('Error loading settings from localStorage:', error);
+  }
+  
+  // Then fetch from API to get latest updates (in background)
   try {
     const savedSettings = await Database.getFromStore('settings');
+    let hasUpdates = false;
+    
     for (const setting of savedSettings) {
       if (settings.hasOwnProperty(setting.key)) {
+        // Check if value changed from cached version
+        if (JSON.stringify(settings[setting.key]) !== JSON.stringify(setting.value)) {
+          hasUpdates = true;
+        }
         settings[setting.key] = setting.value;
       }
     }
+    
+    // If API had newer data, update localStorage cache
+    if (hasUpdates) {
+      try {
+        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+        debugLog('Settings cache updated from API');
+      } catch (error) {
+        console.warn('Error updating localStorage cache:', error);
+      }
+    }
   } catch (error) {
-    console.warn('Could not load settings:', error);
+    console.warn('Could not load settings from API:', error);
+    // Continue with cached settings if API fails
   }
 }
 
@@ -141,7 +205,7 @@ async function handleSaveSettings() {
     // Don't refresh quick selects on settings save - it's unnecessary and can cause timing issues
     UI.applyVisibilitySettings();
 
-    UI.showToast('Settings saved successfully', 'success');
+    UI.showToast('Settings saved', 'success');
   } catch (error) {
     console.error('Error saving settings:', error);
     UI.showToast('Error saving settings: ' + error.message, 'error');

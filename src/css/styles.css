@@ -384,12 +384,12 @@ body {
   display: grid;
   gap: clamp(0.25rem, 0.5vw, 0.75rem);
   width: 100%;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 200px); /* Default height for many winners */
   padding: clamp(0.5rem, 1vw, 1rem);
   box-sizing: border-box;
 
-  /* Fill available space completely */
-  place-content: stretch;
+  /* Center content vertically for small winner counts */
+  place-content: center;
   place-items: stretch;
 
   /* Allow number badges to overflow */
@@ -403,47 +403,65 @@ body {
   grid-template-rows: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
 }
 
-/* Small winner counts - explicit layouts for better space usage */
+/* Small winner counts - explicit layouts with appropriate heights */
 .winners-grid:has(.winner-card:nth-child(1):nth-last-child(1)) {
-  /* 1 winner - single large card */
+  /* 1 winner - single large card, 40% height */
   grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(250px, 40vh);
+  height: auto;
+  min-height: 40vh;
+  max-height: 50vh;
 }
 
 .winners-grid:has(.winner-card:nth-child(2):nth-last-child(1)) {
-  /* 2 winners - 2 columns, 1 row */
+  /* 2 winners - 2 columns, 1 row, 40% height */
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(250px, 40vh);
+  height: auto;
+  min-height: 40vh;
+  max-height: 50vh;
 }
 
 .winners-grid:has(.winner-card:nth-child(3):nth-last-child(1)),
 .winners-grid:has(.winner-card:nth-child(4):nth-last-child(1)) {
-  /* 3-4 winners - 2 columns, 2 rows */
+  /* 3-4 winners - 2 columns, 2 rows, 60% height */
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: repeat(2, minmax(200px, 30vh));
+  height: auto;
+  min-height: 50vh;
+  max-height: 65vh;
 }
 
 .winners-grid:has(.winner-card:nth-child(5):nth-last-child(1)),
 .winners-grid:has(.winner-card:nth-child(6):nth-last-child(1)) {
-  /* 5-6 winners - 3 columns, 2 rows */
+  /* 5-6 winners - 3 columns, 2 rows, 60% height */
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: repeat(2, minmax(180px, 30vh));
+  height: auto;
+  min-height: 50vh;
+  max-height: 65vh;
 }
 
 .winners-grid:has(.winner-card:nth-child(7):nth-last-child(1)),
 .winners-grid:has(.winner-card:nth-child(8):nth-last-child(1)),
 .winners-grid:has(.winner-card:nth-child(9):nth-last-child(1)) {
-  /* 7-9 winners - 3 columns, 3 rows */
+  /* 7-9 winners - 3 columns, 3 rows, 75% height */
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-rows: repeat(3, minmax(150px, 25vh));
+  height: auto;
+  min-height: 60vh;
+  max-height: 80vh;
 }
 
 .winners-grid:has(.winner-card:nth-child(10):nth-last-child(1)),
 .winners-grid:has(.winner-card:nth-child(11):nth-last-child(1)),
 .winners-grid:has(.winner-card:nth-child(12):nth-last-child(1)) {
-  /* 10-12 winners - 4 columns, 3 rows */
+  /* 10-12 winners - 4 columns, 3 rows, 80% height */
   grid-template-columns: 1fr 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-rows: repeat(3, minmax(140px, 26vh));
+  height: auto;
+  min-height: 65vh;
+  max-height: 85vh;
 }
 
 /* Medium winner counts - calculated grid */

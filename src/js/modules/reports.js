@@ -169,7 +169,7 @@ async function handleReportImport() {
     // Show the CSV preview and configuration dialog
     CSVParser.showCSVPreview(data, listName);
     
-    UI.showToast(`Successfully fetched ${data.length} entries. Please configure how to display the data.`, 'success');
+    UI.showToast(`Fetched ${data.length} entries. Please configure how to display the data.`, 'success');
     
   } catch (error) {
     console.error('Error importing report:', error);

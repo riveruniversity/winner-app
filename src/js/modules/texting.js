@@ -234,7 +234,7 @@ class TextingService {
 
     // Update final stats
     results.sent = sent;
-    UI.showToast(`SMS messages sent: ${sent} messages dispatched`, 'success');
+    UI.showToast(`SMS messages dispatched: ${sent}`, 'success');
     
     return results;
   }
@@ -370,10 +370,11 @@ class TextingService {
       const winnersWithPhone = currentWinners.filter(winner => {
         // Check if winner has phone data in the standard data object
         if (winner.data) {
-          // Check standard field name first, then common variations
+          // Check standard field name first, then common variations (including mobilePhone)
           return !!(winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
-                    winner.data.cellPhone || winner.data.cell || winner.data.telephone ||
-                    winner.data.Phone || winner.data.Mobile || winner.data.CellPhone);
+                    winner.data.mobilePhone || winner.data.cellPhone || winner.data.cell || 
+                    winner.data.telephone || winner.data.Phone || winner.data.Mobile || 
+                    winner.data.MobilePhone || winner.data.CellPhone);
         }
         return false;
       });
@@ -392,8 +393,9 @@ class TextingService {
           // Get phone number from the standard data object (phoneNumber is preferred)
           const phone = winner.data && (
             winner.data.phoneNumber || winner.data.phone || winner.data.mobile || 
-            winner.data.cellPhone || winner.data.cell || winner.data.telephone ||
-            winner.data.Phone || winner.data.Mobile || winner.data.CellPhone
+            winner.data.mobilePhone || winner.data.cellPhone || winner.data.cell || 
+            winner.data.telephone || winner.data.Phone || winner.data.Mobile || 
+            winner.data.MobilePhone || winner.data.CellPhone
           );
           
           // Find the prize and its template

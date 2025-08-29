@@ -71,10 +71,10 @@ async function loadLists(listsData = null) {
                 </button>
                 <div>
                   <button class="btn btn-sm btn-outline-primary me-2" onclick="event.stopPropagation(); Lists.viewList('${listId}')">
-                    <i class="bi bi-eye"></i> View
+                    <i class="bi bi-eye"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); Lists.deleteListConfirm('${listId}')">
-                    <i class="bi bi-trash"></i> Delete
+                    <i class="bi bi-trash"></i>
                   </button>
                 </div>
               </div>
@@ -256,7 +256,7 @@ function deleteListConfirm(listId) {
       try {
         // Wait for delete to complete
         await Database.deleteFromStore('lists', listId);
-        UI.showToast('List deleted successfully', 'success');
+        UI.showToast('List deleted', 'success');
         
         // Wait for UI updates to complete
         await Promise.all([
@@ -328,7 +328,7 @@ async function deleteListEntry(listId, entryId) {
           // Save the updated list
           await Database.saveToStore('lists', list);
           
-          UI.showToast(`Entry "${entryName}" deleted successfully`, 'success');
+          UI.showToast(`Entry "${entryName}" deleted`, 'success');
           
           // Refresh the modal view
           viewList(listId);

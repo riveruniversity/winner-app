@@ -104,13 +104,13 @@ async function loadPrizes(prizesData = null) {
           const editBtn = document.createElement('button');
           editBtn.className = 'btn btn-sm btn-outline-primary me-2';
           editBtn.dataset.prizeId = prizeId;
-          DOMUtils.safeSetHTML(editBtn, '<i class="bi bi-pencil"></i> Edit', true);
+          DOMUtils.safeSetHTML(editBtn, '<i class="bi bi-pencil"></i>', true);
           
           // Delete button  
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'btn btn-sm btn-outline-danger';
           deleteBtn.dataset.prizeId = prizeId;
-          DOMUtils.safeSetHTML(deleteBtn, '<i class="bi bi-trash"></i> Delete', true);
+          DOMUtils.safeSetHTML(deleteBtn, '<i class="bi bi-trash"></i>', true);
           
           actionBtns.appendChild(editBtn);
           actionBtns.appendChild(deleteBtn);
@@ -176,7 +176,7 @@ async function loadPrizes(prizesData = null) {
 
       await Database.saveToStore('prizes', prize);
 
-      UI.showToast(`Prize "${name}" added successfully`, 'success');
+      UI.showToast(`Prize "${name}" added`, 'success');
 
       // Clear form
       prizeNameInput.value = '';
@@ -251,6 +251,31 @@ async function loadPrizes(prizesData = null) {
     qtyDiv.appendChild(qtyLabel);
     qtyDiv.appendChild(qtyInput);
     
+    // Default Winners Count field
+    const winnersDiv = document.createElement('div');
+    winnersDiv.className = 'mb-3';
+    
+    const winnersLabel = document.createElement('label');
+    winnersLabel.htmlFor = 'modalPrizeWinnersCount';
+    winnersLabel.className = 'form-label';
+    winnersLabel.textContent = 'Default Winners Count';
+    const winnersHelp = document.createElement('small');
+    winnersHelp.className = 'd-block text-muted';
+    winnersHelp.textContent = 'Number of winners to select when this prize is chosen';
+    
+    const winnersInput = document.createElement('input');
+    winnersInput.type = 'number';
+    winnersInput.className = 'form-control';
+    winnersInput.id = 'modalPrizeWinnersCount';
+    winnersInput.value = '1';
+    winnersInput.min = '1';
+    winnersInput.max = '100';
+    winnersInput.required = true;
+    
+    winnersDiv.appendChild(winnersLabel);
+    winnersDiv.appendChild(winnersHelp);
+    winnersDiv.appendChild(winnersInput);
+    
     // Description field
     const descDiv = document.createElement('div');
     descDiv.className = 'mb-3';
@@ -308,6 +333,7 @@ async function loadPrizes(prizesData = null) {
     
     modalBody.appendChild(nameDiv);
     modalBody.appendChild(qtyDiv);
+    modalBody.appendChild(winnersDiv);
     modalBody.appendChild(descDiv);
     modalBody.appendChild(templateDiv);
     
@@ -322,6 +348,7 @@ async function loadPrizes(prizesData = null) {
     newConfirmBtn.addEventListener('click', async () => {
       const name = document.getElementById('modalPrizeName').value.trim();
       const quantity = parseInt(document.getElementById('modalPrizeQuantity').value);
+      const winnersCount = parseInt(document.getElementById('modalPrizeWinnersCount').value) || 1;
       const description = document.getElementById('modalPrizeDescription').value.trim();
       const templateId = document.getElementById('modalPrizeTemplate').value;
 
@@ -335,19 +362,25 @@ async function loadPrizes(prizesData = null) {
         return;
       }
 
+      if (winnersCount < 1 || winnersCount > 100) {
+        UI.showToast('Winners count must be between 1 and 100', 'warning');
+        return;
+      }
+
       try {
         const prizeId = UI.generateId();
         const prize = {
           prizeId: prizeId,
           name: name,
           quantity: quantity,
+          winnersCount: winnersCount,
           description: description,
           templateId: templateId || null,
           timestamp: Date.now()
         };
 
         await Database.saveToStore('prizes', prize);
-        UI.showToast(`Prize "${name}" added successfully`, 'success');
+        UI.showToast(`Prize "${name}" added`, 'success');
         
         await loadPrizes();
         await UI.populateQuickSelects();
@@ -402,6 +435,11 @@ async function loadPrizes(prizesData = null) {
         <input type="number" class="form-control" id="modalPrizeQuantity" value="${prize.quantity}" min="0" required>
       </div>
       <div class="mb-3">
+        <label for="modalPrizeWinnersCount" class="form-label">Default Winners Count</label>
+        <small class="d-block text-muted">Number of winners to select when this prize is chosen</small>
+        <input type="number" class="form-control" id="modalPrizeWinnersCount" value="${prize.winnersCount || 1}" min="1" max="100" required>
+      </div>
+      <div class="mb-3">
         <label for="modalPrizeDescription" class="form-label">Description (Optional)</label>
         <textarea class="form-control" id="modalPrizeDescription" rows="3">${prize.description || ''}</textarea>
       </div>
@@ -423,17 +461,19 @@ async function loadPrizes(prizesData = null) {
     newConfirmBtn.addEventListener('click', async () => {
       const newName = document.getElementById('modalPrizeName').value.trim();
       const newQuantity = parseInt(document.getElementById('modalPrizeQuantity').value);
+      const newWinnersCount = parseInt(document.getElementById('modalPrizeWinnersCount').value) || 1;
       const newDescription = document.getElementById('modalPrizeDescription').value.trim();
       const newTemplateId = document.getElementById('modalPrizeTemplate').value;
 
       if (newName && newQuantity >= 0) {
         prize.name = newName;
         prize.quantity = newQuantity;
+        prize.winnersCount = newWinnersCount;
         prize.description = newDescription;
         prize.templateId = newTemplateId || null;
         await Database.saveToStore('prizes', prize);
 
-        UI.showToast('Prize updated successfully', 'success');
+        UI.showToast('Prize updated', 'success');
         await loadPrizes();
         await UI.populateQuickSelects();
         window.appModal.hide();
@@ -459,7 +499,7 @@ async function loadPrizes(prizesData = null) {
   async function deletePrizeConfirm(prizeId) {
     UI.showConfirmationModal('Delete Prize', 'Are you sure you want to delete this prize?', async () => {
       await Database.deleteFromStore('prizes', prizeId);
-      UI.showToast('Prize deleted successfully', 'success');
+      UI.showToast('Prize deleted', 'success');
       await loadPrizes();
       await UI.populateQuickSelects();
     });
@@ -503,8 +543,19 @@ async function selectPrize(prizeId) {
       return;
     }
     
-    // Save only the selected prize setting
+    // Save the selected prize setting
     await Settings.saveSingleSetting('selectedPrizeId', prizeId);
+    
+    // If prize has a default winners count, update that setting too
+    if (selectedPrize.winnersCount && selectedPrize.winnersCount > 0) {
+      await Settings.saveSingleSetting('winnersCount', selectedPrize.winnersCount);
+      
+      // Update the winners count input if it exists
+      const winnersCountInput = document.getElementById('quickWinnersCount');
+      if (winnersCountInput) {
+        winnersCountInput.value = selectedPrize.winnersCount;
+      }
+    }
     
     // Update the quick select dropdown if it exists
     const quickPrizeSelect = document.getElementById('quickPrizeSelect');

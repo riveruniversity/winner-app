@@ -30,34 +30,10 @@ async function initSounds() {
 
 // Load custom sounds from database
 async function loadCustomSounds() {
-  try {
-    const customSounds = await Database.getFromStore('sounds');
-    if (customSounds && Array.isArray(customSounds)) {
-      customSounds.forEach(sound => {
-        if (sound.soundId && sound.name && sound.filename) {
-          if (sound.type === 'uploaded') {
-            // Uploaded sounds (look for file in public/sounds)
-            availableSounds[sound.soundId] = {
-              name: sound.name,
-              filename: sound.filename,
-              type: 'uploaded'
-            };
-          } else {
-            // Legacy custom sounds with base64 data
-            availableSounds[sound.soundId] = {
-              name: sound.name,
-              filename: sound.filename,
-              type: 'custom',
-              data: sound.data
-            };
-          }
-        }
-      });
-    }
-    Settings.debugLog('Loaded custom sounds:', Object.keys(availableSounds).filter(id => availableSounds[id].type === 'custom' || availableSounds[id].type === 'uploaded'));
-  } catch (error) {
-    console.error('Error loading custom sounds:', error);
-  }
+  // Sounds are now stored in public/sounds directory, not in database
+  // No need to fetch from database anymore
+  // Custom uploaded sounds would be managed differently if needed
+  Settings.debugLog('Sound files loaded from public/sounds directory');
 }
 
 // Update the sound files list in the UI

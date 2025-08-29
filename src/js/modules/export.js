@@ -133,7 +133,7 @@ async function handleBackupData() {
     URL.revokeObjectURL(url);
 
     UI.hideProgress();
-    UI.showToast('Backup created successfully', 'success');
+    UI.showToast('Backup created', 'success');
 
   } catch (error) {
     UI.hideProgress();
@@ -164,7 +164,7 @@ async function processRestoreFile(event) {
     await restoreBackupData(backupData);
 
     UI.hideProgress();
-    UI.showToast('Data restored successfully', 'success');
+    UI.showToast('Data restored', 'success');
 
   } catch (error) {
     UI.hideProgress();
@@ -256,7 +256,7 @@ window.deleteBackup = async function(backupId) {
       }, 300);
     }
     
-    UI.showToast('Backup deleted successfully', 'success');
+    UI.showToast('Backup deleted', 'success');
   } catch (error) {
     console.error('Error deleting backup:', error);
     UI.showToast('Error deleting backup: ' + error.message, 'error');
@@ -315,7 +315,7 @@ async function handleBackupOnline() {
       UI.hideProgress();
       
       // Show success message
-      UI.showToast(`Backup "${backupName}" created successfully!`, 'success');
+      UI.showToast(`Backup "${backupName}" created!`, 'success');
     });
 
   } catch (error) {
@@ -405,7 +405,7 @@ async function performOnlineRestore(backupId) {
     await restoreBackupData(backupData);
 
     UI.hideProgress();
-    UI.showToast('Online backup restored successfully!', 'success');
+    UI.showToast('Online backup restored!', 'success');
 
   } catch (error) {
     UI.hideProgress();
