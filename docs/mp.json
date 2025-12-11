@@ -1,0 +1,182 @@
+[
+  {
+    "id": "main-event-sun-am",
+    "name": "Main | Sun AM",
+    "description": "Get participants",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550)",
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Event ID(s)",
+        "required": true,
+        "value": "71495"
+      }
+    },
+    "metadata": {
+      "category": "Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+
+  {
+    "id": "mens-conf-firearm",
+    "name": "Men's Conf | Firearm",
+    "description": "Get participants eligible for firearms",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Event ID(s)",
+        "required": true,
+        "value": "71619"
+      }
+    },
+    "metadata": {
+      "category": "Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+
+  {
+    "id": "mens-conf-pre-registered",
+    "name": "Men's Conf | Pre-Registered",
+    "description": "Get participants for specific events",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Event ID(s)",
+        "required": true,
+        "value": "71141"
+      }
+    },
+    "metadata": {
+      "category": "Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+  {
+    "id": "manual-event-male",
+    "name": "By Event ID",
+    "description": "Get participants for specific event(s)",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Event ID(s)",
+        "required": true
+      }
+    },
+    "metadata": {
+      "category": "Search Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+  {
+    "id": "event-search",
+    "name": "By Name",
+    "description": "Find events using search term",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "text",
+        "label": "Event Name",
+        "required": true
+      }
+    },
+    "metadata": {
+      "category": "Search Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+  {
+    "id": "unshakable-search",
+    "name": "By Name (UNSHAKABLE)",
+    "description": "Find all events where title contains 'UNSHAKABLE' ",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "text",
+        "label": "Event Name",
+        "required": true,
+        "searchTerm": "UNSHAKABLE"
+      }
+    },
+    "metadata": {
+      "category": "Search Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+  {
+    "id": "upcoming-events-range",
+    "name": "By Date Range (2 days)",
+    "description": "Get participants from events in the previous and next 2 days",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Days",
+        "required": true,
+        "daysPast": 2,
+        "daysFuture": 2
+      }
+    },
+    "metadata": {
+      "category": "Search Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+    {
+    "id": "events-date-range",
+    "name": "By Date Range",
+    "description": "Get participants from events in the next 30 days",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (550) AND Participant_ID_Table_Contact_ID_Table_Gender_ID_Table.[Gender] = 'Male'",
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Days",
+        "required": true
+      }
+    },
+    "metadata": {
+      "category": "Search Events",
+      "previewFields": ["idCard", "firstName", "lastName", "timeIn"]
+    }
+  },
+
+  {
+    "id": "group-participants",
+    "name": "Group Participants",
+    "description": "Get all participants in a group",
+    "table": "Group_Participants",
+    "select": "Group_Participant_ID, Group_ID, Participant_ID, Group_Role_ID, Start_Date, End_Date",
+    "filter": "Group_ID IN ({{groupId}}) AND (End_Date IS NULL OR End_Date > GETDATE())",
+    "params": {
+      "groupId": {
+        "type": "number",
+        "label": "Group ID(s)",
+        "required": true
+      }
+    },
+    "metadata": {
+      "category": "Groups",
+      "previewFields": ["groupParticipantID", "firstName", "lastName", "startDate"]
+    }
+  }
+]
