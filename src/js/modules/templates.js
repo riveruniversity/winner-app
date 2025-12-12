@@ -167,179 +167,32 @@ function setupTemplateEventDelegation() {
   }
 }
 
+// Open Add Template modal via Alpine formModal
 async function showAddTemplateModal() {
-  const placeholders = await getAvailablePlaceholders();
-  const placeholderText = placeholders.map(p => `{${p}}`).join(', ');
-  
-  const modalHTML = `
-    <div class="modal-header">
-      <h5 class="modal-title">Add SMS Template</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-      <form id="templateForm">
-        <div class="mb-3">
-          <label for="templateName" class="form-label">Template Name</label>
-          <input type="text" class="form-control" id="templateName" required>
-        </div>
-        <div class="mb-3">
-          <label for="templateMessage" class="form-label">Message Template</label>
-          <textarea class="form-control" id="templateMessage" rows="8" required></textarea>
-          <div class="form-text">
-            <strong>Available placeholders:</strong><br>
-            ${placeholderText}
-          </div>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="templateIsDefault">
-          <label class="form-check-label" for="templateIsDefault">
-            Set as default template
-          </label>
-        </div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-      <button type="button" class="btn btn-primary" id="saveTemplateBtn">Save Template</button>
-    </div>
-  `;
-
-  const modalBody = document.querySelector('#appModal .modal-content');
-  modalBody.innerHTML = modalHTML;
-
-  // Show modal
-  window.appModal.show();
-
-  // Handle save
-  document.getElementById('saveTemplateBtn').addEventListener('click', async () => {
-    const name = document.getElementById('templateName').value.trim();
-    const message = document.getElementById('templateMessage').value.trim();
-    const isDefault = document.getElementById('templateIsDefault').checked;
-
-    if (!name || !message) {
-      UI.showToast('Please fill in all fields', 'warning');
-      return;
-    }
-
-    const newTemplate = {
-      templateId: `tmpl_${Date.now()}`,
-      name,
-      message,
-      isDefault,
-      createdAt: new Date().toISOString()
-    };
-
-    try {
-      // If setting as default, unset other defaults
-      if (isDefault) {
-        const templates = await Database.getFromStore('templates');
-        for (const tmpl of templates) {
-          if (tmpl.isDefault) {
-            tmpl.isDefault = false;
-            await Database.saveToStore('templates', tmpl);
-          }
-        }
-      }
-
-      await Database.saveToStore('templates', newTemplate);
-      await loadTemplates();
-      UI.showToast('Template added', 'success');
-      window.appModal.hide();
-    } catch (error) {
-      console.error('Error saving template:', error);
-      UI.showToast('Failed to save template', 'error');
-    }
-  });
+  if (window.alpineFormModal) {
+    await window.alpineFormModal.openTemplateForm();
+  } else {
+    console.error('Alpine formModal not initialized');
+    UI.showToast('Error: Form modal not properly initialized', 'error');
+  }
 }
 
+// Open Edit Template modal via Alpine formModal
 async function editTemplate(templateId) {
   const templates = await Database.getFromStore('templates');
   const template = templates.find(t => t.templateId === templateId);
-  
+
   if (!template) {
     UI.showToast('Template not found', 'error');
     return;
   }
 
-  const placeholders = await getAvailablePlaceholders();
-  const placeholderText = placeholders.map(p => `{${p}}`).join(', ');
-
-  const modalHTML = `
-    <div class="modal-header">
-      <h5 class="modal-title">Edit SMS Template</h5>
-      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-      <form id="templateForm">
-        <div class="mb-3">
-          <label for="templateName" class="form-label">Template Name</label>
-          <input type="text" class="form-control" id="templateName" value="${template.name}" required>
-        </div>
-        <div class="mb-3">
-          <label for="templateMessage" class="form-label">Message Template</label>
-          <textarea class="form-control" id="templateMessage" rows="8" required>${template.message}</textarea>
-          <div class="form-text">
-            <strong>Available placeholders:</strong><br>
-            ${placeholderText}
-          </div>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="templateIsDefault" ${template.isDefault ? 'checked' : ''}>
-          <label class="form-check-label" for="templateIsDefault">
-            Set as default template
-          </label>
-        </div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-      <button type="button" class="btn btn-primary" id="saveTemplateBtn">Save Changes</button>
-    </div>
-  `;
-
-  const modalBody = document.querySelector('#appModal .modal-content');
-  modalBody.innerHTML = modalHTML;
-
-  // Show modal
-  window.appModal.show();
-
-  // Handle save
-  document.getElementById('saveTemplateBtn').addEventListener('click', async () => {
-    const name = document.getElementById('templateName').value.trim();
-    const message = document.getElementById('templateMessage').value.trim();
-    const isDefault = document.getElementById('templateIsDefault').checked;
-
-    if (!name || !message) {
-      UI.showToast('Please fill in all fields', 'warning');
-      return;
-    }
-
-    template.name = name;
-    template.message = message;
-    template.isDefault = isDefault;
-    template.updatedAt = new Date().toISOString();
-
-    try {
-      // If setting as default, unset other defaults
-      if (isDefault) {
-        const templates = await Database.getFromStore('templates');
-        for (const tmpl of templates) {
-          if (tmpl.templateId !== templateId && tmpl.isDefault) {
-            tmpl.isDefault = false;
-            await Database.saveToStore('templates', tmpl);
-          }
-        }
-      }
-
-      await Database.saveToStore('templates', template);
-      await loadTemplates();
-      UI.showToast('Template updated', 'success');
-      window.appModal.hide();
-    } catch (error) {
-      console.error('Error updating template:', error);
-      UI.showToast('Failed to update template', 'error');
-    }
-  });
+  if (window.alpineFormModal) {
+    await window.alpineFormModal.openTemplateForm(template);
+  } else {
+    console.error('Alpine formModal not initialized');
+    UI.showToast('Error: Form modal not properly initialized', 'error');
+  }
 }
 
 async function deleteTemplate(templateId) {

@@ -682,10 +682,8 @@ async function handleConfirmUpload() {
 
     pendingCSVData = null;
 
-    // Refresh displays
+    // Refresh Alpine store (updates UI reactively)
     await Lists.loadLists();
-    await UI.populateQuickSelects();
-
   } catch (error) {
     UI.hideProgress();
     console.error('Error confirming upload:', error);

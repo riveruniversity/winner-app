@@ -20,6 +20,7 @@ let settings = {
   fontFamily: 'Open Sans',
   primaryColor: '#6366f1',
   secondaryColor: '#8b5cf6',
+  selectionColor: '#10b981',
   backgroundType: 'gradient',
   customBackgroundImage: null,
   selectedListIds: [], // Multiple list selection
@@ -251,6 +252,7 @@ function applyTheme() {
   const root = document.documentElement;
   root.style.setProperty('--primary-color', settings.primaryColor);
   root.style.setProperty('--secondary-color', settings.secondaryColor);
+  root.style.setProperty('--selection-color', settings.selectionColor || '#10b981');
   root.style.setProperty('--font-family', settings.fontFamily);
   
   // Convert hex to rgba for shadow
@@ -318,7 +320,7 @@ function loadSettingsToForm() {
     }
   }
 
-  // Note: quickListSelect is now handled in UI.populateQuickSelects for checkboxes
+  // Note: quickListSelect is now handled by Alpine x-for in index.html
   const quickPrizeSelect = document.getElementById('quickPrizeSelect');
   const quickWinnersCount = document.getElementById('quickWinnersCount');
   if (quickPrizeSelect && settings.selectedPrizeId) {
@@ -549,12 +551,12 @@ function handleThemePreset(event) {
   const theme = event.currentTarget.getAttribute('data-theme');
   
   const themeConfigs = {
-    default: { primaryColor: '#6366f1', secondaryColor: '#8b5cf6', fontFamily: 'Inter' },
-    emerald: { primaryColor: '#10b981', secondaryColor: '#06d6a0', fontFamily: 'Inter' },
-    ruby: { primaryColor: '#ef4444', secondaryColor: '#f87171', fontFamily: 'Poppins' },
-    gold: { primaryColor: '#f59e0b', secondaryColor: '#fbbf24', fontFamily: 'Poppins' },
-    ocean: { primaryColor: '#0ea5e9', secondaryColor: '#06b6d4', fontFamily: 'Open Sans' },
-    corporate: { primaryColor: '#374151', secondaryColor: '#6b7280', fontFamily: 'Roboto' }
+    default: { primaryColor: '#6366f1', secondaryColor: '#8b5cf6', selectionColor: '#10b981', fontFamily: 'Inter' },
+    emerald: { primaryColor: '#10b981', secondaryColor: '#06d6a0', selectionColor: '#14b8a6', fontFamily: 'Inter' },
+    ruby: { primaryColor: '#ef4444', secondaryColor: '#f87171', selectionColor: '#f43f5e', fontFamily: 'Poppins' },
+    gold: { primaryColor: '#f59e0b', secondaryColor: '#fbbf24', selectionColor: '#f97316', fontFamily: 'Poppins' },
+    ocean: { primaryColor: '#0ea5e9', secondaryColor: '#06b6d4', selectionColor: '#0891b2', fontFamily: 'Open Sans' },
+    corporate: { primaryColor: '#374151', secondaryColor: '#6b7280', selectionColor: '#475569', fontFamily: 'Roboto' }
   };
 
   const config = themeConfigs[theme];
@@ -562,6 +564,7 @@ function handleThemePreset(event) {
 
   settings.primaryColor = config.primaryColor;
   settings.secondaryColor = config.secondaryColor;
+  settings.selectionColor = config.selectionColor;
   settings.fontFamily = config.fontFamily;
 
   applyTheme();
@@ -988,6 +991,7 @@ async function autoSaveIndividualSetting(fieldId) {
       'fontFamily': 'fontFamily',
       'primaryColor': 'primaryColor',
       'secondaryColor': 'secondaryColor',
+      'selectionColor': 'selectionColor',
       'backgroundType': 'backgroundType',
       'enableWebhook': 'enableWebhook',
       'webhookUrl': 'webhookUrl',
@@ -999,7 +1003,7 @@ async function autoSaveIndividualSetting(fieldId) {
       await saveSingleSetting(settingKey, newValue);
       
       // Apply theme changes immediately for UI settings
-      if (['primaryColor', 'secondaryColor', 'fontFamily'].includes(settingKey)) {
+      if (['primaryColor', 'secondaryColor', 'selectionColor', 'fontFamily'].includes(settingKey)) {
         applyTheme();
       }
       

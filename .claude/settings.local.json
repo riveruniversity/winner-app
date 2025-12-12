@@ -32,9 +32,12 @@
       "Bash(npm run build:backend:*)",
       "WebFetch(domain:help.acst.com)",
       "WebFetch(domain:www.npmjs.com)",
-      "WebSearch",
       "WebFetch(domain:alpinejs.dev)",
-      "Bash(curl:*)"
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(curl:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "additionalDirectories": []

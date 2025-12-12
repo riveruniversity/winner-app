@@ -68,40 +68,24 @@ export function clearCurrentWinners() {
 // Load data in background without blocking UI
 async function loadDataInBackground() {
   try {
-    // Batch fetch all collections in a single request
-    const batchResults = await Database.batchFetch([
-      { collection: 'lists' },
-      { collection: 'prizes' },
-      { collection: 'winners' },
-      { collection: 'history' }
-    ]);
-
-    const lists = batchResults.lists || [];
-    const prizes = batchResults.prizes || [];
-    const winners = batchResults.winners || [];
-    const history = batchResults.history || [];
-
-    // Populate Alpine stores with loaded data (if Alpine is available)
+    // Use centralized data store to load all collections
     if (window.Alpine) {
-      const listsStore = Alpine.store('lists');
-      const prizesStore = Alpine.store('prizes');
-      const winnersStore = Alpine.store('winners');
-      if (listsStore) listsStore.setItems(lists);
-      if (prizesStore) prizesStore.setItems(prizes);
-      if (winnersStore) winnersStore.setItems(winners);
+      const dataStore = Alpine.store('data');
+      if (dataStore) {
+        await dataStore.loadAll();
+      }
     }
 
-    // Update UI components with the loaded data (pass data to avoid refetching)
-    await Lists.loadLists(lists); // Pass loaded data
-    await Prizes.loadPrizes(prizes); // Pass loaded data
-    await Winners.loadWinners(winners, lists); // Pass loaded data
+    // Get data from centralized store for vanilla JS modules that still need it
+    const lists = window.Alpine?.store('data')?.lists || [];
+    const prizes = window.Alpine?.store('data')?.prizes || [];
+    const winners = window.Alpine?.store('data')?.winners || [];
 
-    // Load history UI with already loaded data
-    loadHistoryUI(history);
-    updateHistoryStatsUI(history, winners);
-
-    // Populate quick selects with already loaded data
-    UI.populateQuickSelects(lists, prizes);
+    // Update any remaining vanilla JS UI components
+    await Lists.loadLists(lists);
+    await Prizes.loadPrizes(prizes);
+    await Winners.loadWinners(winners, lists);
+    // Alpine stores populated above handle quick select dropdowns via x-for
   } catch (error) {
     console.error('Error loading data:', error);
   }
@@ -130,27 +114,35 @@ export async function initializeApp() {
     
     // Initialize keyboard shortcuts for public view
     KeyboardShortcuts.init();
-    
-    // Initialize prize event delegation (once)
-    Prizes.initPrizeEventDelegation();
-    
+
     // Initialize templates functionality
     Templates.initTemplates();
     
     // Initialize MinistryPlatform import functionality
     MinistryPlatform.init();
 
-    // Initialize modal after everything else is ready
-    // Note: Alpine confirmModal component handles #appModal now
-    // Use getOrCreateInstance to get the existing instance from Alpine
+    // Initialize modals after everything else is ready
+    // Alpine handles confirmModal and formModal components
+    // viewModal is vanilla Bootstrap (read-only displays)
     setTimeout(() => {
-      const modalElement = document.getElementById('appModal');
-      if (modalElement) {
-        appModal = bootstrap.Modal.getOrCreateInstance(modalElement);
-        window.appModal = appModal; // Make available globally
-      } else {
-        console.error('Modal element #appModal not found');
+      // View modal (for read-only displays) - only non-Alpine modal
+      const viewModalElement = document.getElementById('viewModal');
+      if (viewModalElement) {
+        window.viewModal = bootstrap.Modal.getOrCreateInstance(viewModalElement);
       }
+
+      // Handle stacked modal backdrops - ensure confirmModal backdrop is above other modals
+      const confirmModalElement = document.getElementById('confirmModal');
+      confirmModalElement?.addEventListener('show.bs.modal', () => {
+        // Delay to let Bootstrap create the backdrop
+        setTimeout(() => {
+          const backdrops = document.querySelectorAll('.modal-backdrop');
+          if (backdrops.length > 1) {
+            // Set the newest backdrop (for confirmModal) to higher z-index
+            backdrops[backdrops.length - 1].style.zIndex = '1065';
+          }
+        }, 10);
+      });
     }, 100);
 
     setupEventListeners();
@@ -215,12 +207,12 @@ function setupTabListeners() {
           await Winners.loadWinners();
           break;
         case 'history':
-          await loadHistory();
-          await updateHistoryStats();
+          await loadHistory(); // Alpine store update triggers reactive stats
           break;
         case 'setup':
-          // Refresh quick selects to get latest lists/prizes
-          await UI.populateQuickSelects();
+          // Refresh Alpine stores with latest data
+          await Lists.loadLists();
+          await Prizes.loadPrizes();
           break;
       }
     });
@@ -248,15 +240,12 @@ function setupInterfaceToggles() {
         Settings.applyTheme();
         Settings.loadSettingsToForm();
         
-        // Reload lists and prizes
-        const lists = await Database.getFromStore('lists');
-        const prizes = await Database.getFromStore('prizes');
-        
-        // Update all UI components
-        await UI.populateQuickSelects(lists, prizes);
-        UI.updateSelectionInfo();
+        // Reload lists and prizes into Alpine stores
+        await Lists.loadLists();
+        await Prizes.loadPrizes();
+
+        // Update remaining vanilla UI components
         UI.applyVisibilitySettings();
-        UI.updateListSelectionCount();
         
         // Reload winners
         await Winners.loadWinners();
@@ -482,11 +471,13 @@ function setupManagementListeners() {
       const { Texting } = await import('./modules/texting.js');
       checkSMSStatusBtn.disabled = true;
       DOMUtils.safeSetHTML(checkSMSStatusBtn, '<i class="bi bi-arrow-clockwise spinner-border spinner-border-sm me-2"></i>Checking...', true);
-      
+
       try {
         const count = await Texting.checkAllPendingStatuses();
         if (count > 0) {
           UI.showToast(`Checked status for ${count} pending message${count > 1 ? 's' : ''}`, 'success');
+          // Reload winners to update Alpine store with new SMS statuses
+          await Winners.loadWinners();
         } else {
           UI.showToast('No pending SMS messages to check', 'info');
         }
@@ -505,17 +496,7 @@ function setupManagementListeners() {
   if (restoreOnline) eventManager.on(restoreOnline, 'click', Export.handleRestoreOnline);
   if (undoLastSelection) eventManager.on(undoLastSelection, 'click', Winners.undoLastSelection);
 
-  // Clear filters button
-  const clearFiltersBtn = document.getElementById('clearFiltersBtn');
-  if (clearFiltersBtn) {
-    clearFiltersBtn.addEventListener('click', () => {
-      document.getElementById('filterPrize').value = '';
-      document.getElementById('filterList').value = '';
-      document.getElementById('filterSelection').value = '';
-      document.getElementById('filterDate').value = '';
-      Winners.loadWinners();
-    });
-  }
+  // Clear filters button - now handled by Alpine @click in HTML
 }
 
 function setupWinnerFilters() {
@@ -542,119 +523,18 @@ function setupDisplayMode() {
   // No need to toggle visibility based on selection mode
 }
 
-// History Management (simplified for now)
-// New function that only updates UI without reloading data
-function loadHistoryUI(history) {
-  try {
-    const tbody = document.getElementById('historyTableBody');
-
-    if (!tbody) return;
-
-    if (history.length === 0) {
-      DOMUtils.safeSetHTML(tbody, '<tr><td colspan="6" class="text-center text-muted">No selection history yet.</td></tr>', true);
-      return;
-    }
-
-    // Sort by timestamp descending
-    history.sort((a, b) => b.timestamp - a.timestamp);
-
-    // Clear existing content
-    tbody.textContent = '';
-    
-    // Create rows safely
-    const fragment = DOMUtils.createFragment(history, (entry) => {
-      const row = document.createElement('tr');
-      
-      // Create cells with sanitized content
-      const cells = [
-        new Date(entry.timestamp).toLocaleDateString(),
-        entry.listName || 'Unknown',
-        entry.prize,
-        String(entry.winners.length),
-        entry.winners.map(w => w.displayName).join(', ')
-      ];
-      
-      cells.forEach(content => {
-        const td = document.createElement('td');
-        td.textContent = DOMUtils.sanitizeHTML(String(content));
-        row.appendChild(td);
-      });
-      
-      // Add action cell
-      const actionCell = document.createElement('td');
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'btn btn-sm btn-outline-danger';
-      deleteBtn.setAttribute('data-history-id', entry.historyId);
-      DOMUtils.safeSetHTML(deleteBtn, '<i class="bi bi-trash"></i>', true);
-      actionCell.appendChild(deleteBtn);
-      row.appendChild(actionCell);
-      
-      return row;
-    });
-    
-    tbody.appendChild(fragment);
-  } catch (error) {
-    console.error('Error loading history:', error);
-  }
-}
-
-// Old function kept for external calls
+// History Management - Alpine handles rendering, this just updates the store
 export async function loadHistory() {
   try {
     const history = await Database.getFromStore('history');
-    loadHistoryUI(history);
+    // Update Alpine store - Alpine x-for handles rendering
+    if (window.Alpine) {
+      const historyStore = Alpine.store('history');
+      if (historyStore) historyStore.setItems(history);
+    }
   } catch (error) {
     console.error('Error loading history:', error);
     UI.showToast('Error loading history: ' + error.message, 'error');
-  }
-}
-
-// New function that only updates UI without reloading data
-function updateHistoryStatsUI(history, winners) {
-  try {
-
-    const totalSelections = history.length;
-    const totalWinners = winners.length;
-    const averageWinners = totalSelections > 0 ? Math.round(totalWinners / totalSelections * 10) / 10 : 0;
-
-    // Find most used prize
-    const prizeCount = {};
-    history.forEach(entry => {
-      prizeCount[entry.prize] = (prizeCount[entry.prize] || 0) + 1;
-    });
-
-    const mostUsedPrize = Object.keys(prizeCount).reduce((a, b) =>
-      prizeCount[a] > prizeCount[b] ? a : b, '-'
-    );
-
-    // Update displays
-    const statsElements = {
-      'totalSelections': totalSelections,
-      'totalWinners': totalWinners,
-      'averageWinners': averageWinners,
-      'mostUsedPrize': mostUsedPrize
-    };
-
-    for (const [id, value] of Object.entries(statsElements)) {
-      const element = document.getElementById(id);
-      if (element) {
-        element.textContent = value;
-      }
-    }
-
-  } catch (error) {
-    console.error('Error updating history stats:', error);
-  }
-}
-
-// Old function kept for external calls
-export async function updateHistoryStats() {
-  try {
-    const history = await Database.getFromStore('history');
-    const winners = await Winners.getAllWinners();
-    updateHistoryStatsUI(history, winners);
-  } catch (error) {
-    console.error('Error updating history stats:', error);
   }
 }
 
@@ -663,8 +543,7 @@ export async function deleteHistoryConfirm(historyId) {
     try {
       await Database.deleteFromStore('history', historyId);
       UI.showToast('History entry deleted', 'success');
-      await loadHistory();
-      await updateHistoryStats();
+      await loadHistory(); // Updates Alpine store, which triggers reactive UI update
     } catch (error) {
       console.error('Error deleting history entry:', error);
       UI.showToast('Error deleting history entry: ' + error.message, 'error');

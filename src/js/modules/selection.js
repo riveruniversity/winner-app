@@ -12,7 +12,7 @@ import { Validation } from './validation.js';
 import { settings, Settings } from './settings.js'; // Import settings and Settings module
 import { Animations } from './animations.js';
 import { setCurrentWinners } from '../app.js';
-import { getCurrentList, setCurrentList, getLastAction, setLastAction, loadHistory, updateHistoryStats } from '../app.js'; // Import central state and history functions
+import { getCurrentList, setCurrentList, getLastAction, setLastAction, loadHistory } from '../app.js'; // Import central state and history functions
 
 function createRandomWorker() {
   const workerCode = `
@@ -496,17 +496,12 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
   UI.updateProgress(100, 'Winners selected!');
   UI.hideProgress();
   
-  // Update the UI to reflect the new entry counts after removing winners
+  // Update Alpine store to reflect new entry counts after removing winners
   if (settings.preventDuplicates) {
-    // Reload the lists to get updated counts from database
-    const lists = await Database.getFromStore('lists');
-    // Refresh the quick selects with updated data
-    await UI.populateQuickSelects(lists);
-    // Update the display counts
-    UI.updateSelectionInfo();
-    UI.updateListSelectionCount();
+    const { Lists } = await import('./lists.js');
+    await Lists.loadLists();
   }
-  
+
   Settings.debugLog('Background winner selection completed');
   return winners;
 }
@@ -693,16 +688,11 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     }
 
     UI.updateProgress(100, 'Winners selected!');
-    
-    // Update the UI to reflect the new entry counts after removing winners
+
+    // Update Alpine store to reflect new entry counts after removing winners
     if (settings.preventDuplicates) {
-      // Reload the lists to get updated counts from database
-      const lists = await Database.getFromStore('lists');
-      // Refresh the quick selects with updated data
-      await UI.populateQuickSelects(lists);
-      // Update the display counts
-      UI.updateSelectionInfo();
-      UI.updateListSelectionCount();
+      const { Lists } = await import('./lists.js');
+      await Lists.loadLists();
     }
 
     setTimeout(async () => {

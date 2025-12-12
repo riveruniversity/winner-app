@@ -64,8 +64,8 @@
             <div class="info-value" id="currentListDisplay" x-text="$store.setup.listDisplayText">Not Selected</div>
           </div>
           <div class="info-card" id="totalEntriesCard" x-show="!$store.settings.hideEntryCounts">
-            <div class="info-label">Total Entries</div>
-            <div class="info-value" id="totalEntriesDisplay" x-text="$store.setup.totalEntries">0</div>
+            <div class="info-label">Eligible Entries</div>
+            <div class="info-value" id="totalEntriesDisplay" x-text="$store.setup.eligibleEntries.toLocaleString() + ($store.setup.excludedCount > 0 ? ' (' + $store.setup.excludedCount + ' excluded)' : '')">0</div>
           </div>
           <div class="info-card">
             <div class="info-label">Winners to Select</div>
@@ -191,6 +191,7 @@
                             <input class="form-check-input list-checkbox" type="checkbox"
                                    :id="'list-' + list.listId"
                                    :value="list.listId"
+                                   :data-entry-count="list.entries.length"
                                    :checked="$store.setup.selectedListIds.includes(list.listId)"
                                    @change="$store.setup.toggleList(list.listId)">
                             <label class="form-check-label" :for="'list-' + list.listId">
@@ -202,8 +203,7 @@
                         <p x-show="$store.lists.items.length === 0" class="text-muted mb-0">No lists uploaded yet</p>
                       </div>
                       <div class="mt-2">
-                        <small class="text-muted">Total entries: <span x-text="$store.setup.totalEntries">0</span></small>
-                        <small class="text-muted ms-2" id="duplicatesRemoved"></small>
+                        <small class="text-muted">Eligible entries: <span x-text="$store.setup.eligibleEntries.toLocaleString() + ($store.setup.excludedCount > 0 ? ' (' + $store.setup.excludedCount + ' excluded)' : '')">0</span></small>
                       </div>
                     </div>
                   </div>
@@ -220,7 +220,11 @@
                   <div class="col-md-2">
                     <label class="form-label fw-semibold">Number of Winners</label>
                     <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" max="9999" placeholder="Count"
-                           x-model.number="$store.setup.winnersCount">
+                           x-model.number="$store.setup.winnersCount"
+                           :class="{ 'border-danger text-danger': $store.setup.winnersCount > $store.setup.eligibleEntries && $store.setup.selectedListIds.length > 0 }">
+                    <small class="text-danger d-block mt-1"
+                           x-show="$store.setup.winnersCount > $store.setup.eligibleEntries && $store.setup.selectedListIds.length > 0"
+                           x-text="$store.setup.eligibleEntries === 0 ? 'No entries available' : 'Only ' + $store.setup.eligibleEntries + ' entries available' + ($store.setup.excludedCount > 0 ? ' (' + $store.setup.excludedCount + ' excluded)' : '')"></small>
                   </div>
                 </div>
               </div>
@@ -440,67 +444,69 @@
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <h5 class="card-title mb-0">List Management</h5>
-              <div class="dropdown">
-                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                  <i class="bi bi-plus-circle me-2"></i>Add
+              <!-- Sort Controls -->
+              <div class="btn-group btn-group-sm" role="group" x-show="$store.lists.items.length > 0">
+                <button type="button" class="btn"
+                        :class="$store.lists.sortField === 'name' ? 'btn-primary' : 'btn-outline-secondary'"
+                        @click="$store.lists.sortField = 'name'; $store.lists.sortDir = $store.lists.sortDir === 'asc' ? 'desc' : 'asc'">
+                  Name <i class="bi" :class="$store.lists.sortField === 'name' ? ($store.lists.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : ''"></i>
                 </button>
-                <ul class="dropdown-menu">
-                  <li>
-                    <a class="dropdown-item" href="#" id="uploadListModalBtn">
-                      <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV File
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="#" id="addFromReportBtn">
-                      <i class="bi bi-ticket-perforated me-2"></i>Pretix Report
-                    </a>
-                  </li>
-                  <li>
-                    <a class="dropdown-item" href="#" id="addFromMPBtn">
-                      <i class="bi bi-database me-2"></i>Ministry Platform
-                    </a>
-                  </li>
-                </ul>
+                <button type="button" class="btn"
+                        :class="$store.lists.sortField === 'entries' ? 'btn-primary' : 'btn-outline-secondary'"
+                        @click="$store.lists.sortField = 'entries'; $store.lists.sortDir = $store.lists.sortDir === 'asc' ? 'desc' : 'asc'">
+                  Entries <i class="bi" :class="$store.lists.sortField === 'entries' ? ($store.lists.sortDir === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up') : ''"></i>
+                </button>
+                <button type="button" class="btn"
+                        :class="$store.lists.sortField === 'date' ? 'btn-primary' : 'btn-outline-secondary'"
+                        @click="$store.lists.sortField = 'date'; $store.lists.sortDir = $store.lists.sortDir === 'asc' ? 'desc' : 'asc'">
+                  Date <i class="bi" :class="$store.lists.sortField === 'date' ? ($store.lists.sortDir === 'asc' ? 'bi-sort-down' : 'bi-sort-up') : ''"></i>
+                </button>
               </div>
-            </div>
-
-            <!-- Multi-select controls -->
-            <div class="alert alert-info mb-3" x-show="$store.lists.items.length > 0">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <i class="bi bi-info-circle me-2"></i>
-                  <span>Select multiple lists to use for giveaways</span>
-                </div>
-                <div class="btn-group btn-group-sm">
-                  <button type="button" class="btn btn-outline-primary" id="selectAllListsTab">
+              <div class="d-flex align-items-center gap-2">
+                <div class="btn-group btn-group-sm" x-show="$store.lists.items.length > 0">
+                  <button type="button" class="btn btn-outline-secondary" id="selectAllListsTab">
                     <i class="bi bi-check-square me-1"></i>Select All
                   </button>
                   <button type="button" class="btn btn-outline-secondary" id="clearAllListsTab">
                     <i class="bi bi-square me-1"></i>Clear All
                   </button>
                 </div>
-              </div>
-              <div class="mt-2">
-                <small class="text-muted">
-                  <span x-text="$store.setup.selectedListIds.length + ' lists selected'">0 lists selected</span> |
-                  <span x-text="$store.setup.totalEntries + ' total entries'">0 total entries</span>
-                </small>
+                <div class="dropdown">
+                  <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-plus-circle me-2"></i>Add
+                  </button>
+                  <ul class="dropdown-menu">
+                    <li>
+                      <a class="dropdown-item" href="#" id="uploadListModalBtn">
+                        <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV File
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="#" id="addFromReportBtn">
+                        <i class="bi bi-ticket-perforated me-2"></i>Pretix Report
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="#" id="addFromMPBtn">
+                        <i class="bi bi-database me-2"></i>Ministry Platform
+                      </a>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
             <!-- Lists Grid -->
-            <div class="row g-4" id="listsGrid">
-              <template x-for="list in $store.lists.items" :key="list.listId">
+            <div class="row g-4 mt-2" id="listsGrid">
+              <template x-for="list in $store.lists.sorted" :key="list.listId">
                 <div class="col-md-6 col-lg-4">
                   <div class="card h-100 list-card-selectable"
-                       :class="{ 'border-success': $store.setup.selectedListIds.includes(list.listId) }"
-                       @click="$store.setup.toggleList(list.listId)"
-                       style="cursor: pointer;">
+                       :class="{ 'border-selected': $store.setup.selectedListIds.includes(list.listId) }">
                     <div class="card-header">
                       <div class="d-flex justify-content-between align-items-center">
                         <h6 class="card-title mb-0 text-truncate" x-text="list.metadata.name" style="max-width: 180px;"></h6>
                         <div>
-                          <span class="badge bg-success me-1" x-show="$store.setup.selectedListIds.includes(list.listId)">
+                          <span class="badge badge-selection me-1" x-show="$store.setup.selectedListIds.includes(list.listId)">
                             <i class="bi bi-check-circle-fill"></i>
                           </span>
                           <span class="badge bg-secondary" x-text="list.entries.length"></span>
@@ -514,7 +520,7 @@
                       <div class="mt-auto pt-2">
                         <div class="d-flex justify-content-between align-items-center">
                           <button class="btn btn-sm"
-                                  :class="$store.setup.selectedListIds.includes(list.listId) ? 'btn-success' : 'btn-outline-success'"
+                                  :class="$store.setup.selectedListIds.includes(list.listId) ? 'btn-selection' : 'btn-outline-selection'"
                                   @click.stop="$store.setup.toggleList(list.listId)">
                             <i :class="$store.setup.selectedListIds.includes(list.listId) ? 'bi bi-check-circle-fill' : 'bi bi-check-circle'"></i>
                             <span x-text="$store.setup.selectedListIds.includes(list.listId) ? 'Selected' : 'Select'"></span>
@@ -710,20 +716,43 @@
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <h5 class="card-title mb-0">Prize Management</h5>
+              <!-- Sort Controls -->
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn"
+                        :class="$store.prizes.sortField === 'name' ? 'btn-primary' : 'btn-outline-secondary'"
+                        @click="$store.prizes.sortField = 'name'; $store.prizes.sortDir = $store.prizes.sortDir === 'asc' ? 'desc' : 'asc'">
+                  Name <i class="bi" :class="$store.prizes.sortField === 'name' ? ($store.prizes.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : ''"></i>
+                </button>
+                <button type="button" class="btn"
+                        :class="$store.prizes.sortField === 'quantity' ? 'btn-primary' : 'btn-outline-secondary'"
+                        @click="$store.prizes.sortField = 'quantity'; $store.prizes.sortDir = $store.prizes.sortDir === 'asc' ? 'desc' : 'asc'">
+                  Quantity <i class="bi" :class="$store.prizes.sortField === 'quantity' ? ($store.prizes.sortDir === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up') : ''"></i>
+                </button>
+                <button type="button" class="btn"
+                        :class="$store.prizes.sortField === 'date' ? 'btn-primary' : 'btn-outline-secondary'"
+                        @click="$store.prizes.sortField = 'date'; $store.prizes.sortDir = $store.prizes.sortDir === 'asc' ? 'desc' : 'asc'">
+                  Date <i class="bi" :class="$store.prizes.sortField === 'date' ? ($store.prizes.sortDir === 'asc' ? 'bi-sort-down' : 'bi-sort-up') : ''"></i>
+                </button>
+              </div>
               <button class="btn btn-primary" id="addPrizeModalBtn">
                 <i class="bi bi-plus-circle me-2"></i>Add
               </button>
             </div>
             <!-- Prizes Grid -->
-            <div class="row g-4" id="prizesGrid">
-              <template x-for="prize in $store.prizes.items" :key="prize.prizeId">
+            <div class="row g-4 mt-2" id="prizesGrid">
+              <template x-for="prize in $store.prizes.sorted" :key="prize.prizeId">
                 <div class="col-md-6 col-lg-4">
                   <div class="card h-100 prize-card"
-                       :class="{ 'border-primary': $store.setup.selectedPrizeId === prize.prizeId }">
+                       :class="{ 'border-selected': $store.setup.selectedPrizeId === prize.prizeId }">
                     <div class="card-header">
                       <div class="d-flex justify-content-between align-items-center">
                         <h6 class="card-title mb-0 text-truncate" x-text="prize.name" style="max-width: 180px;"></h6>
-                        <span class="badge" :class="prize.quantity > 0 ? 'bg-success' : 'bg-secondary'" x-text="prize.quantity + ' available'"></span>
+                        <div>
+                          <span class="badge badge-selection me-1" x-show="$store.setup.selectedPrizeId === prize.prizeId">
+                            <i class="bi bi-check-circle-fill"></i>
+                          </span>
+                          <span class="badge bg-secondary" x-text="prize.quantity"></span>
+                        </div>
                       </div>
                     </div>
                     <div class="card-body d-flex flex-column">
@@ -731,13 +760,13 @@
                       <div class="mt-auto pt-2">
                         <div class="d-flex justify-content-between align-items-center">
                           <button class="btn btn-sm"
-                                  :class="$store.setup.selectedPrizeId === prize.prizeId ? 'btn-primary' : 'btn-outline-primary'"
+                                  :class="$store.setup.selectedPrizeId === prize.prizeId ? 'btn-selection' : 'btn-outline-selection'"
                                   @click="$store.setup.selectedPrizeId = prize.prizeId">
                             <i :class="$store.setup.selectedPrizeId === prize.prizeId ? 'bi bi-check-circle-fill' : 'bi bi-check-circle'"></i>
                             <span x-text="$store.setup.selectedPrizeId === prize.prizeId ? 'Selected' : 'Select'"></span>
                           </button>
                           <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-secondary" @click="Prizes.editPrize(prize.prizeId)" title="Edit prize">
+                            <button class="btn btn-outline-secondary" @click="Prizes.editPrizeModal(prize.prizeId)" title="Edit prize">
                               <i class="bi bi-pencil"></i>
                             </button>
                             <button class="btn btn-outline-danger" @click="Prizes.deletePrizeConfirm(prize.prizeId)" title="Delete prize">
@@ -773,20 +802,37 @@
               </button>
             </div>
             
+            <div id="templatesGrid" class="row g-3 mb-4">
+              <!-- Templates will be loaded here -->
+            </div>
+
             <div class="alert alert-info" id="templatePlaceholders">
               <i class="bi bi-info-circle me-2"></i>
               <strong>Available placeholders:</strong>
               <span id="placeholdersList">Loading...</span>
             </div>
-            
-            <div id="templatesGrid" class="row g-3">
-              <!-- Templates will be loaded here -->
-            </div>
           </div>
         </div>
       </div>
       <!-- Winners Tab -->
-      <div class="tab-pane fade" id="winners" role="tabpanel">
+      <div class="tab-pane fade" id="winners" role="tabpanel" x-data="{
+        getSmsStatus(winner) {
+          if (!winner.sms || !winner.sms.status) return { class: 'badge bg-secondary', icon: 'bi-dash-circle', text: 'Not Sent' };
+          const status = winner.sms.status.toLowerCase();
+          const statusMap = {
+            'delivered': { class: 'badge bg-success', icon: 'bi-check-circle-fill', text: 'Delivered' },
+            'bounced': { class: 'badge bg-danger', icon: 'bi-x-circle-fill', text: 'Bounced' },
+            'failed': { class: 'badge bg-danger', icon: 'bi-x-circle-fill', text: 'Failed' },
+            'queued': { class: 'badge bg-info', icon: 'bi-clock-fill', text: 'Queued' },
+            'sending': { class: 'badge bg-warning', icon: 'bi-arrow-up-circle-fill', text: 'Sending' },
+            'sent': { class: 'badge bg-primary', icon: 'bi-send-fill', text: 'Sent' }
+          };
+          return statusMap[status] || { class: 'badge bg-secondary', icon: 'bi-dash-circle', text: 'Not Sent' };
+        },
+        getOrderId(winner) {
+          return winner.orderId || winner.orderCode || winner.entryId || winner.data?.idCard || winner.data?.contactId || 'N/A';
+        }
+      }">
         <div class="card">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -810,32 +856,46 @@
             </div>
             <div class="row mb-3">
               <div class="col-md">
-                <select id="filterPrize" class="form-select form-select-sm">
+                <select id="filterPrize" class="form-select form-select-sm"
+                        x-model="$store.winners.filterPrize">
                   <option value="">All Prizes</option>
+                  <template x-for="prize in $store.winners.uniquePrizes" :key="prize">
+                    <option :value="prize" x-text="prize" :selected="prize === $store.winners.filterPrize"></option>
+                  </template>
                 </select>
               </div>
               <div class="col-md">
-                <select id="filterList" class="form-select form-select-sm">
+                <select id="filterList" class="form-select form-select-sm"
+                        x-model="$store.winners.filterList">
                   <option value="">All Lists</option>
+                  <template x-for="list in $store.winners.uniqueLists" :key="list">
+                    <option :value="list" x-text="list" :selected="list === $store.winners.filterList"></option>
+                  </template>
                 </select>
               </div>
               <div class="col-md">
-                <select id="filterSelection" class="form-select form-select-sm">
+                <select id="filterSelection" class="form-select form-select-sm"
+                        x-model="$store.winners.filterBatch">
                   <option value="">All Batches</option>
+                  <template x-for="batch in $store.winners.uniqueBatches" :key="batch.id">
+                    <option :value="batch.id" x-text="batch.label" :selected="batch.id === $store.winners.filterBatch"></option>
+                  </template>
                 </select>
               </div>
               <div class="col-md">
-                <input type="date" id="filterDate" class="form-control form-control-sm" placeholder="Filter by date">
+                <input type="date" id="filterDate" class="form-control form-control-sm"
+                       x-model="$store.winners.filterDate">
               </div>
               <div class="col-md-auto">
-                <button class="btn btn-sm btn-outline-secondary" id="clearFiltersBtn">
+                <button class="btn btn-sm btn-outline-secondary"
+                        @click="$store.winners.clearFilters()">
                   <i class="bi bi-x-circle me-1"></i>Clear All
                 </button>
               </div>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
               <div class="text-muted">
-                <small id="winnersCount">Showing 0 winners</small>
+                <small id="winnersCount" x-text="'Showing ' + $store.winners.filtered.length + ' of ' + $store.winners.items.length + ' winners'">Showing 0 winners</small>
               </div>
               <div class="text-muted">
                 <small>
@@ -847,18 +907,72 @@
               <table class="table table-striped">
                 <thead>
                   <tr>
-                    <th>QR Code</th>
                     <th>ID</th>
-                    <th>Name</th>
-                    <th>Prize</th>
-                    <th>Date</th>
-                    <th>List</th>
-                    <th>Pickup</th>
-                    <th>SMS</th>
+                    <th style="cursor: pointer;" @click="$store.winners.toggleSort('name')">
+                      Name
+                      <i class="bi" :class="$store.winners.sortField === 'name' ? ($store.winners.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.winners.toggleSort('prize')">
+                      Prize
+                      <i class="bi" :class="$store.winners.sortField === 'prize' ? ($store.winners.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.winners.toggleSort('date')">
+                      Date
+                      <i class="bi" :class="$store.winners.sortField === 'date' ? ($store.winners.sortDir === 'asc' ? 'bi-sort-down' : 'bi-sort-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.winners.toggleSort('list')">
+                      List
+                      <i class="bi" :class="$store.winners.sortField === 'list' ? ($store.winners.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.winners.toggleSort('pickup')">
+                      Pickup
+                      <i class="bi" :class="$store.winners.sortField === 'pickup' ? ($store.winners.sortDir === 'asc' ? 'bi-sort-down' : 'bi-sort-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.winners.toggleSort('sms')">
+                      SMS
+                      <i class="bi" :class="$store.winners.sortField === 'sms' ? ($store.winners.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-chevron-expand'"></i>
+                    </th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="winnersTableBody">
+                  <template x-for="winner in $store.winners.filtered" :key="winner.winnerId">
+                    <tr>
+                      <td><span class="badge bg-primary winner-id-badge" x-text="getOrderId(winner)"></span></td>
+                      <td x-text="winner.displayName"></td>
+                      <td x-text="winner.prize"></td>
+                      <td x-text="new Date(winner.timestamp).toLocaleDateString()"></td>
+                      <td x-text="winner.listName || 'Unknown'"></td>
+                      <td>
+                        <span :class="winner.pickedUp ? 'badge bg-success' : 'badge bg-warning'">
+                          <i :class="winner.pickedUp ? 'bi bi-check-circle-fill' : 'bi bi-clock'"></i>
+                          <span x-text="winner.pickedUp ? ' Picked up' : ' Pending'"></span>
+                        </span>
+                      </td>
+                      <td>
+                        <span :class="getSmsStatus(winner).class">
+                          <i :class="getSmsStatus(winner).icon"></i>
+                          <span x-text="' ' + getSmsStatus(winner).text"></span>
+                        </span>
+                      </td>
+                      <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button class="btn btn-outline-info" title="Return to List"
+                                  @click="Winners.returnToList(winner.winnerId)">
+                            <i class="bi bi-arrow-return-left"></i>
+                          </button>
+                          <button class="btn btn-outline-danger" title="Delete"
+                                  @click="Winners.deleteWinnerConfirm(winner.winnerId)">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <!-- Empty state -->
+                  <tr x-show="$store.winners.filtered.length === 0">
+                    <td colspan="9" class="text-center text-muted">No winners match the current filters.</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -866,47 +980,107 @@
         </div>
       </div>
       <!-- History Tab -->
-      <div class="tab-pane fade" id="history" role="tabpanel">
+      <div class="tab-pane fade" id="history" role="tabpanel" x-data>
         <div class="card">
           <div class="card-body">
             <h5 class="card-title">Selection History & Statistics</h5>
             <div class="history-stats" id="historyStats">
               <div class="stat-card">
-                <div class="stat-number" id="totalSelections">0</div>
+                <div class="stat-number" id="totalSelections" x-text="$store.history.stats.totalSelections">0</div>
                 <div class="stat-label">Total Selections</div>
               </div>
               <div class="stat-card">
-                <div class="stat-number" id="totalWinners">0</div>
+                <div class="stat-number" id="totalWinners" x-text="$store.winners.items.length">0</div>
                 <div class="stat-label">Total Winners</div>
               </div>
               <div class="stat-card">
-                <div class="stat-number" id="averageWinners">0</div>
+                <div class="stat-number" id="averageWinners" x-text="$store.history.items.length > 0 ? Math.round($store.winners.items.length / $store.history.items.length * 10) / 10 : 0">0</div>
                 <div class="stat-label">Avg Winners/Selection</div>
               </div>
               <div class="stat-card">
-                <div class="stat-number" id="mostUsedPrize">-</div>
+                <div class="stat-number" id="mostUsedPrize" x-text="$store.history.stats.mostUsedPrize">-</div>
                 <div class="stat-label">Most Used Prize</div>
               </div>
             </div>
-            <div class="mb-3">
-              <label class="form-label">Filter by List</label>
-              <select class="form-select" id="historyListFilter">
-                <option value="">All Lists</option>
-              </select>
+            <!-- History Filters Row -->
+            <div class="row mb-3 g-2">
+              <div class="col-md">
+                <label class="form-label">Filter by List</label>
+                <select class="form-select" id="historyListFilter"
+                        x-model="$store.history.filterList">
+                  <option value="">All Lists</option>
+                  <template x-for="list in $store.history.uniqueLists" :key="list">
+                    <option :value="list" x-text="list" :selected="list === $store.history.filterList"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="col-md">
+                <label class="form-label">Filter by Prize</label>
+                <select class="form-select" id="historyPrizeFilter"
+                        x-model="$store.history.filterPrize">
+                  <option value="">All Prizes</option>
+                  <template x-for="prize in $store.history.uniquePrizes" :key="prize">
+                    <option :value="prize" x-text="prize" :selected="prize === $store.history.filterPrize"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="col-md">
+                <label class="form-label">Filter by Date</label>
+                <input type="date" class="form-control" id="historyDateFilter"
+                       x-model="$store.history.filterDate">
+              </div>
+              <div class="col-md-auto d-flex align-items-end">
+                <button class="btn btn-outline-secondary"
+                        @click="$store.history.clearFilters()"
+                        :disabled="!$store.history.filterList && !$store.history.filterPrize && !$store.history.filterDate">
+                  <i class="bi bi-x-circle"></i> Clear All
+                </button>
+              </div>
             </div>
             <div class="table-responsive">
               <table class="table table-striped">
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>List</th>
-                    <th>Prize</th>
-                    <th>Winners Count</th>
+                    <th style="cursor: pointer;" @click="$store.history.toggleSort('date')">
+                      Date
+                      <i class="bi" :class="$store.history.sortField === 'date' ? ($store.history.sortDir === 'asc' ? 'bi-sort-down' : 'bi-sort-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.history.toggleSort('list')">
+                      List
+                      <i class="bi" :class="$store.history.sortField === 'list' ? ($store.history.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.history.toggleSort('prize')">
+                      Prize
+                      <i class="bi" :class="$store.history.sortField === 'prize' ? ($store.history.sortDir === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up') : 'bi-chevron-expand'"></i>
+                    </th>
+                    <th style="cursor: pointer;" @click="$store.history.toggleSort('count')">
+                      Winners Count
+                      <i class="bi" :class="$store.history.sortField === 'count' ? ($store.history.sortDir === 'asc' ? 'bi-sort-numeric-down' : 'bi-sort-numeric-up') : 'bi-chevron-expand'"></i>
+                    </th>
                     <th>Winners</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="historyTableBody">
+                  <template x-for="entry in $store.history.sorted" :key="entry.historyId">
+                    <tr>
+                      <td x-text="new Date(entry.timestamp).toLocaleDateString()"></td>
+                      <td x-text="entry.listName || 'Unknown'"></td>
+                      <td x-text="entry.prize"></td>
+                      <td x-text="entry.winners.length"></td>
+                      <td x-text="entry.winners.map(w => w.displayName).join(', ')"></td>
+                      <td>
+                        <button class="btn btn-sm btn-outline-danger"
+                                @click="deleteHistoryConfirm(entry.historyId)">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                  <!-- Empty state -->
+                  <tr x-show="$store.history.items.length === 0">
+                    <td colspan="6" class="text-center text-muted">No selection history yet.</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -1027,7 +1201,7 @@
                   </label>
                   <select class="form-select" id="fontFamily"
                           x-model="$store.settings.fontFamily"
-                          @change="$store.settings.save('fontFamily')">
+                          @change="$store.settings.applyTheme(); $store.settings.save('fontFamily')">
                     <option value="Open Sans">Open Sans</option>
                     <option value="Roboto">Roboto</option>
                     <option value="Inter">Inter</option>
@@ -1038,19 +1212,26 @@
                 <div class="mb-3">
                   <label class="form-label">Theme Colors</label>
                   <div class="row">
-                    <div class="col-6">
-                      <label class="form-label">Primary Color</label>
+                    <div class="col-4">
+                      <label class="form-label small">Primary</label>
                       <input type="color" class="form-control color-input" id="primaryColor" value="#6366f1"
                              x-model="$store.settings.primaryColor"
                              @input="$store.settings.applyTheme()"
                              @change="$store.settings.save('primaryColor')">
                     </div>
-                    <div class="col-6">
-                      <label class="form-label">Secondary Color</label>
+                    <div class="col-4">
+                      <label class="form-label small">Secondary</label>
                       <input type="color" class="form-control color-input" id="secondaryColor" value="#8b5cf6"
                              x-model="$store.settings.secondaryColor"
                              @input="$store.settings.applyTheme()"
                              @change="$store.settings.save('secondaryColor')">
+                    </div>
+                    <div class="col-4">
+                      <label class="form-label small">Selection</label>
+                      <input type="color" class="form-control color-input" id="selectionColor" value="#10b981"
+                             x-model="$store.settings.selectionColor"
+                             @input="$store.settings.applyTheme()"
+                             @change="$store.settings.save('selectionColor')">
                     </div>
                   </div>
                 </div>
@@ -1189,21 +1370,110 @@
   </div>
   <!-- Hidden file input for restore -->
   <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
-  <!-- Generic Modal -->
-  <div class="modal fade" id="appModal" tabindex="-1" aria-labelledby="appModalLabel" x-data="confirmModal">
+  <!-- Confirm Modal (Alpine - for yes/no confirmations) -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" x-data="confirmModal">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="appModalLabel" x-text="title">Modal title</h5>
+          <h5 class="modal-title" id="confirmModalLabel" x-text="title">Confirm</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body" id="appModalBody">
+        <div class="modal-body" id="confirmModalBody">
           <p x-text="message"></p>
           <div x-html="customContent" x-show="customContent"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn" :class="confirmClass" id="appModalConfirmBtn" @click="confirm()" x-text="confirmText">Confirm</button>
+          <button type="button" class="btn" :class="confirmClass" id="confirmModalConfirmBtn" @click="confirm()" x-text="confirmText">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Modal (Alpine - for Add/Edit operations) -->
+  <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" x-data="formModal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="formModalLabel" x-text="title">Form</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="formModalBody">
+          <!-- Prize Form -->
+          <template x-if="formType === 'prize'">
+            <form @submit.prevent="save">
+              <div class="mb-3">
+                <label for="prizeName" class="form-label">Prize Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="prizeName" x-model="formData.name" placeholder="Enter prize name" required>
+              </div>
+              <div class="mb-3">
+                <label for="prizeQuantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="prizeQuantity" x-model.number="formData.quantity" min="0" required>
+              </div>
+              <div class="mb-3">
+                <label for="prizeWinnersCount" class="form-label">Default Winners Count</label>
+                <small class="d-block text-muted">Number of winners to select when this prize is chosen</small>
+                <input type="number" class="form-control" id="prizeWinnersCount" x-model.number="formData.winnersCount" min="1" max="100" required>
+              </div>
+              <div class="mb-3">
+                <label for="prizeDescription" class="form-label">Description (Optional)</label>
+                <textarea class="form-control" id="prizeDescription" x-model="formData.description" rows="3" placeholder="Enter prize description"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="prizeTemplate" class="form-label">SMS Template</label>
+                <select class="form-select" id="prizeTemplate" x-model="formData.templateId">
+                  <option value="">Use default template</option>
+                  <template x-for="template in templates" :key="template.templateId">
+                    <option :value="template.templateId" x-text="template.name + (template.isDefault ? ' (Default)' : '')"></option>
+                  </template>
+                </select>
+              </div>
+            </form>
+          </template>
+
+          <!-- Template Form -->
+          <template x-if="formType === 'template'">
+            <form @submit.prevent="save">
+              <div class="mb-3">
+                <label for="templateName" class="form-label">Template Name</label>
+                <input type="text" class="form-control" id="templateName" x-model="formData.name" required>
+              </div>
+              <div class="mb-3">
+                <label for="templateMessage" class="form-label">Message Template</label>
+                <textarea class="form-control" id="templateMessage" x-model="formData.message" rows="8" required></textarea>
+                <div class="form-text">
+                  <strong>Available placeholders:</strong><br>
+                  <span x-text="placeholders.map(p => `{${p}}`).join(', ')"></span>
+                </div>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="templateIsDefault" x-model="formData.isDefault">
+                <label class="form-check-label" for="templateIsDefault">
+                  Set as default template
+                </label>
+              </div>
+            </form>
+          </template>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" @click="save" x-text="saveButtonText">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Modal (for read-only displays like tables, QR codes) -->
+  <div class="modal fade" id="viewModal" tabindex="-1" aria-labelledby="viewModalLabel">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewModalLabel">View</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="viewModalBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
@@ -1373,6 +1643,7 @@
         fontFamily: Alpine.$persist('Open Sans').as('settings_fontFamily'),
         primaryColor: Alpine.$persist('#6366f1').as('settings_primaryColor'),
         secondaryColor: Alpine.$persist('#8b5cf6').as('settings_secondaryColor'),
+        selectionColor: Alpine.$persist('#10b981').as('settings_selectionColor'),
         backgroundType: Alpine.$persist('gradient').as('settings_backgroundType'),
         customBackgroundImage: Alpine.$persist(null).as('settings_customBackgroundImage'),
 
@@ -1417,6 +1688,9 @@
           document.documentElement.style.setProperty('--bs-primary', this.primaryColor);
           document.documentElement.style.setProperty('--color-primary', this.primaryColor);
           document.documentElement.style.setProperty('--color-secondary', this.secondaryColor);
+          document.documentElement.style.setProperty('--selection-color', this.selectionColor);
+          document.documentElement.style.setProperty('--font-family', this.fontFamily);
+          document.body.style.fontFamily = `'${this.fontFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
         }
       });
 
@@ -1425,36 +1699,91 @@
         selectedListIds: Alpine.$persist([]).as('setup_selectedListIds'),
         selectedPrizeId: Alpine.$persist('').as('setup_selectedPrizeId'),
         winnersCount: Alpine.$persist(1).as('setup_winnersCount'),
+        eligibleEntries: 0,  // Computed by effect
+        excludedCount: 0,    // How many excluded due to same prize
+
+        init() {
+          // Use Alpine.effect() to compute eligibleEntries reactively
+          // This properly tracks dependencies across stores
+          Alpine.effect(() => {
+            const dataStore = Alpine.store('data');
+            const settingsStore = Alpine.store('settings');
+
+            // Guard: stores may not be ready yet
+            if (!dataStore || !settingsStore) {
+              this.eligibleEntries = 0;
+              this.excludedCount = 0;
+              return;
+            }
+
+            // Calculate total entries from selected lists
+            let total = this.selectedListIds.reduce((sum, listId) => {
+              const list = dataStore.lists?.find(l => l.listId === listId);
+              return sum + (list?.entries?.length || 0);
+            }, 0);
+
+            let excluded = 0;
+
+            // If preventSamePrize is enabled and a prize is selected, calculate exclusions
+            if (settingsStore.preventSamePrize && this.selectedPrizeId) {
+              const prize = dataStore.prizes?.find(p => p.prizeId === this.selectedPrizeId);
+              const prizeName = prize?.name;
+
+              if (prizeName && dataStore.winners) {
+                // Find entry IDs that already won this prize
+                const samePrizeWinnerEntryIds = new Set(
+                  dataStore.winners
+                    .filter(w => w.prize === prizeName)
+                    .map(w => w.entryId)
+                    .filter(Boolean)
+                );
+
+                if (samePrizeWinnerEntryIds.size > 0) {
+                  // Recount entries excluding same-prize winners
+                  let eligible = 0;
+                  for (const listId of this.selectedListIds) {
+                    const list = dataStore.lists?.find(l => l.listId === listId);
+                    if (list?.entries) {
+                      for (const entry of list.entries) {
+                        const entryId = entry.id || entry.data?.['Ticket Code'] || entry.data?.ticketCode;
+                        if (!entryId || !samePrizeWinnerEntryIds.has(entryId)) {
+                          eligible++;
+                        } else {
+                          excluded++;
+                        }
+                      }
+                    }
+                  }
+                  total = eligible;
+                }
+              }
+            }
+
+            this.eligibleEntries = total;
+            this.excludedCount = excluded;
+          });
+        },
 
         get canStart() {
           return this.selectedListIds.length > 0 && this.selectedPrizeId;
         },
 
-        get totalEntries() {
-          const listsStore = Alpine.store('lists');
-          if (!listsStore || !listsStore.items) return 0;
-          return this.selectedListIds.reduce((total, listId) => {
-            const list = listsStore.items.find(l => l.listId === listId);
-            return total + (list ? list.entries.length : 0);
-          }, 0);
-        },
-
         get listDisplayText() {
-          const listsStore = Alpine.store('lists');
-          if (!listsStore || !listsStore.items) return 'Not Selected';
+          const dataStore = Alpine.store('data');
+          if (!dataStore || !dataStore.lists) return 'Not Selected';
           if (this.selectedListIds.length === 0) return 'Not Selected';
           if (this.selectedListIds.length === 1) {
-            const list = listsStore.items.find(l => l.listId === this.selectedListIds[0]);
+            const list = dataStore.lists.find(l => l.listId === this.selectedListIds[0]);
             return list?.metadata?.name || 'Unknown';
           }
           return `${this.selectedListIds.length} Lists Selected`;
         },
 
         get prizeDisplayText() {
-          const prizesStore = Alpine.store('prizes');
-          if (!prizesStore || !prizesStore.items) return 'Not Selected';
+          const dataStore = Alpine.store('data');
+          if (!dataStore || !dataStore.prizes) return 'Not Selected';
           if (!this.selectedPrizeId) return 'Not Selected';
-          const prize = prizesStore.items.find(p => p.prizeId === this.selectedPrizeId);
+          const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
           return prize?.name || 'Not Selected';
         },
 
@@ -1485,61 +1814,428 @@
         }
       });
 
-      // Data stores
-      Alpine.store('lists', {
-        items: [],
-        loading: false,
+      // ================================
+      // CENTRALIZED DATA STORE
+      // Single source of truth for all data operations
+      // ================================
+      Alpine.store('data', {
+        lists: [],
+        prizes: [],
+        winners: [],
+        history: [],
+        loading: { lists: false, prizes: false, winners: false, history: false },
 
-        async load() {
-          // Will be connected to Database.getFromStore('lists')
+        // ID field mapping for each collection
+        _idFields: {
+          lists: 'listId',
+          prizes: 'prizeId',
+          winners: 'winnerId',
+          history: 'historyId'
         },
 
-        setItems(items) {
-          this.items = items || [];
+        // Generic CRUD Operations
+        async load(collection) {
+          if (!window.Database) return;
+          this.loading[collection] = true;
+          try {
+            const data = await window.Database.getFromStore(collection);
+            this[collection] = data || [];
+          } catch (error) {
+            console.error(`Error loading ${collection}:`, error);
+          } finally {
+            this.loading[collection] = false;
+          }
+        },
+
+        async loadAll() {
+          await Promise.all([
+            this.load('lists'),
+            this.load('prizes'),
+            this.load('winners'),
+            this.load('history')
+          ]);
+        },
+
+        async save(collection, item) {
+          if (!window.Database) return;
+          await window.Database.saveToStore(collection, item);
+          await this.load(collection);
+        },
+
+        async delete(collection, id) {
+          if (!window.Database) return;
+          await window.Database.deleteFromStore(collection, id);
+          await this.load(collection);
+        },
+
+        getById(collection, id) {
+          const idField = this._idFields[collection];
+          return this[collection].find(item => item[idField] === id);
+        }
+      });
+
+      // Domain-specific stores (filtering, sorting, computed properties)
+      // Reference $store.data for raw items, provide sorting/filtering logic
+      Alpine.store('lists', {
+        sortField: 'name',
+        sortDir: 'asc',
+
+        // Reference centralized data
+        get items() { return Alpine.store('data').lists; },
+        get loading() { return Alpine.store('data').loading.lists; },
+
+        toggleSort(field) {
+          if (this.sortField === field) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortField = field;
+            this.sortDir = 'asc';
+          }
+        },
+
+        get sorted() {
+          return [...this.items].sort((a, b) => {
+            let valA, valB;
+            switch (this.sortField) {
+              case 'name':
+                valA = a.metadata?.name?.toLowerCase() || '';
+                valB = b.metadata?.name?.toLowerCase() || '';
+                break;
+              case 'entries':
+                valA = a.entries?.length || 0;
+                valB = b.entries?.length || 0;
+                break;
+              case 'date':
+                valA = a.metadata?.timestamp || 0;
+                valB = b.metadata?.timestamp || 0;
+                break;
+              default:
+                return 0;
+            }
+            if (valA < valB) return this.sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return this.sortDir === 'asc' ? 1 : -1;
+            return 0;
+          });
         }
       });
 
       Alpine.store('prizes', {
-        items: [],
-        loading: false,
+        sortField: 'name',
+        sortDir: 'asc',
+        _sortTrigger: 0,
 
-        async load() {
-          // Will be connected to Database.getFromStore('prizes')
+        // Reference centralized data
+        get items() { return Alpine.store('data').prizes; },
+        get loading() { return Alpine.store('data').loading.prizes; },
+
+        // Domain-specific operation
+        async decrementQuantity(prizeId, amount = 1) {
+          const prize = Alpine.store('data').getById('prizes', prizeId);
+          if (prize && prize.quantity >= amount) {
+            prize.quantity -= amount;
+            await Alpine.store('data').save('prizes', prize);
+          }
         },
 
-        setItems(items) {
-          this.items = items || [];
+        toggleSort(field) {
+          if (this.sortField === field) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortField = field;
+            this.sortDir = 'asc';
+          }
+          this._sortTrigger++;
+        },
+
+        get sorted() {
+          const trigger = this._sortTrigger;
+          const field = this.sortField;
+          const dir = this.sortDir;
+          return [...this.items].sort((a, b) => {
+            let valA, valB;
+            switch (field) {
+              case 'name':
+                valA = a.name?.toLowerCase() || '';
+                valB = b.name?.toLowerCase() || '';
+                break;
+              case 'quantity':
+                valA = a.quantity || 0;
+                valB = b.quantity || 0;
+                break;
+              case 'date':
+                valA = a.timestamp || 0;
+                valB = b.timestamp || 0;
+                break;
+              default:
+                return 0;
+            }
+            if (valA < valB) return dir === 'asc' ? -1 : 1;
+            if (valA > valB) return dir === 'asc' ? 1 : -1;
+            return 0;
+          });
         },
 
         get available() {
-          // Prizes with quantity > 0
           return this.items.filter(p => p.quantity > 0);
         }
       });
 
       Alpine.store('winners', {
-        items: [],
-        filters: {
-          prize: '',
-          list: '',
-          batch: '',
-          date: ''
+        filterPrize: '',
+        filterList: '',
+        filterBatch: '',
+        filterDate: '',
+        sortField: 'date',
+        sortDir: 'desc',
+
+        // Reference centralized data
+        get items() { return Alpine.store('data').winners; },
+
+        init() {
+          // Restore filters from localStorage
+          this.filterPrize = localStorage.getItem('winners_filter_prize') || '';
+          this.filterList = localStorage.getItem('winners_filter_list') || '';
+          this.filterBatch = localStorage.getItem('winners_filter_batch') || '';
+          this.filterDate = localStorage.getItem('winners_filter_date') || '';
+
+          // Watch for changes and persist
+          Alpine.effect(() => {
+            localStorage.setItem('winners_filter_prize', this.filterPrize);
+            localStorage.setItem('winners_filter_list', this.filterList);
+            localStorage.setItem('winners_filter_batch', this.filterBatch);
+            localStorage.setItem('winners_filter_date', this.filterDate);
+          });
+        },
+
+        // Domain-specific operations
+        async togglePickup(winnerId) {
+          const winner = Alpine.store('data').getById('winners', winnerId);
+          if (winner) {
+            winner.pickedUp = !winner.pickedUp;
+            await Alpine.store('data').save('winners', winner);
+          }
+        },
+
+        async updateSmsStatus(winnerId, status, messageId = null) {
+          const winner = Alpine.store('data').getById('winners', winnerId);
+          if (winner) {
+            winner.sms = { status, messageId, timestamp: Date.now() };
+            await Alpine.store('data').save('winners', winner);
+          }
+        },
+
+        toggleSort(field) {
+          if (this.sortField === field) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortField = field;
+            this.sortDir = field === 'date' ? 'desc' : 'asc';
+          }
         },
 
         get filtered() {
+          const filtered = this.items.filter(w => {
+            if (this.filterPrize && w.prize !== this.filterPrize) return false;
+            if (this.filterList && w.listName !== this.filterList) return false;
+            if (this.filterBatch && w.historyId !== this.filterBatch) return false;
+            if (this.filterDate) {
+              const winnerDate = new Date(w.timestamp).toISOString().split('T')[0];
+              if (winnerDate !== this.filterDate) return false;
+            }
+            return true;
+          });
+          return filtered.sort((a, b) => {
+            let valA, valB;
+            switch (this.sortField) {
+              case 'name': valA = a.displayName?.toLowerCase() || ''; valB = b.displayName?.toLowerCase() || ''; break;
+              case 'prize': valA = a.prize?.toLowerCase() || ''; valB = b.prize?.toLowerCase() || ''; break;
+              case 'date': valA = a.timestamp || 0; valB = b.timestamp || 0; break;
+              case 'list': valA = a.listName?.toLowerCase() || ''; valB = b.listName?.toLowerCase() || ''; break;
+              case 'pickup': valA = a.pickedUp ? 1 : 0; valB = b.pickedUp ? 1 : 0; break;
+              case 'sms': valA = a.sms?.status?.toLowerCase() || ''; valB = b.sms?.status?.toLowerCase() || ''; break;
+              default: valA = a.timestamp || 0; valB = b.timestamp || 0;
+            }
+            if (valA < valB) return this.sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return this.sortDir === 'asc' ? 1 : -1;
+            return 0;
+          });
+        },
+
+        // Get items filtered by all OTHER filters (for cascading dropdowns)
+        getItemsExcludingFilter(excludeFilter) {
           return this.items.filter(w => {
-            if (this.filters.prize && w.prizeId !== this.filters.prize) return false;
-            if (this.filters.list && w.listId !== this.filters.list) return false;
+            if (excludeFilter !== 'prize' && this.filterPrize && w.prize !== this.filterPrize) return false;
+            if (excludeFilter !== 'list' && this.filterList && w.listName !== this.filterList) return false;
+            if (excludeFilter !== 'batch' && this.filterBatch && w.historyId !== this.filterBatch) return false;
+            if (excludeFilter !== 'date' && this.filterDate) {
+              const winnerDate = new Date(w.timestamp).toISOString().split('T')[0];
+              if (winnerDate !== this.filterDate) return false;
+            }
             return true;
           });
         },
 
-        setItems(items) {
-          this.items = items || [];
+        // Computed: unique prize names (cascading - based on other active filters)
+        get uniquePrizes() {
+          const items = this.getItemsExcludingFilter('prize');
+          const prizes = [...new Set(items.map(w => w.prize))].sort();
+          // Always include currently selected value if it exists
+          if (this.filterPrize && !prizes.includes(this.filterPrize)) {
+            prizes.unshift(this.filterPrize);
+          }
+          return prizes;
+        },
+
+        // Computed: unique list names (cascading - based on other active filters)
+        get uniqueLists() {
+          const items = this.getItemsExcludingFilter('list');
+          const lists = [...new Set(items.map(w => w.listName || 'Unknown'))].sort();
+          // Always include currently selected value if it exists
+          if (this.filterList && !lists.includes(this.filterList)) {
+            lists.unshift(this.filterList);
+          }
+          return lists;
+        },
+
+        // Computed: unique batches (cascading - based on other active filters)
+        get uniqueBatches() {
+          const items = this.getItemsExcludingFilter('batch');
+          const batches = {};
+          items.forEach(w => {
+            if (w.historyId && !batches[w.historyId]) {
+              batches[w.historyId] = {
+                id: w.historyId,
+                timestamp: w.timestamp,
+                prize: w.prize
+              };
+            }
+          });
+          const result = Object.values(batches)
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .map(b => ({
+              id: b.id,
+              label: `${new Date(b.timestamp).toLocaleDateString()} - ${b.prize}`
+            }));
+          // Always include currently selected batch if it exists
+          if (this.filterBatch && !result.some(b => b.id === this.filterBatch)) {
+            // Find it in all items
+            const selectedBatch = this.items.find(w => w.historyId === this.filterBatch);
+            if (selectedBatch) {
+              result.unshift({
+                id: this.filterBatch,
+                label: `${new Date(selectedBatch.timestamp).toLocaleDateString()} - ${selectedBatch.prize}`
+              });
+            }
+          }
+          return result;
         },
 
         clearFilters() {
-          this.filters = { prize: '', list: '', batch: '', date: '' };
+          this.filterPrize = '';
+          this.filterList = '';
+          this.filterBatch = '';
+          this.filterDate = '';
+        }
+      });
+
+      // History store
+      // IMPORTANT: Alpine reactivity doesn't track getter-to-getter dependencies.
+      // All filter properties must be accessed DIRECTLY in the getter used by templates,
+      // not through intermediate getters. See 'sorted' getter below.
+      Alpine.store('history', {
+        filterList: '',
+        filterPrize: '',
+        filterDate: '',
+        sortField: 'date',
+        sortDir: 'desc',
+
+        // Reference centralized data
+        get items() { return Alpine.store('data').history; },
+
+        init() {
+          // Restore filters from localStorage
+          this.filterList = localStorage.getItem('history_filter_list') || '';
+          this.filterPrize = localStorage.getItem('history_filter_prize') || '';
+          this.filterDate = localStorage.getItem('history_filter_date') || '';
+
+          // Persist filters to localStorage on change
+          Alpine.effect(() => {
+            localStorage.setItem('history_filter_list', this.filterList);
+            localStorage.setItem('history_filter_prize', this.filterPrize);
+            localStorage.setItem('history_filter_date', this.filterDate);
+          });
+        },
+
+        toggleSort(field) {
+          if (this.sortField === field) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortField = field;
+            this.sortDir = field === 'date' ? 'desc' : 'asc';
+          }
+        },
+
+        get sorted() {
+          // IMPORTANT: Access ALL filter properties DIRECTLY here for proper Alpine reactivity.
+          // Do NOT call another getter (like 'filtered') - Alpine won't track those dependencies.
+          const filtered = this.items.filter(entry => {
+            if (this.filterList && entry.listName !== this.filterList) return false;
+            if (this.filterPrize && entry.prize !== this.filterPrize) return false;
+            if (this.filterDate) {
+              const entryDate = new Date(entry.timestamp).toISOString().split('T')[0];
+              if (entryDate !== this.filterDate) return false;
+            }
+            return true;
+          });
+
+          // Then sort
+          return filtered.sort((a, b) => {
+            let valA, valB;
+            switch (this.sortField) {
+              case 'date': valA = a.timestamp || 0; valB = b.timestamp || 0; break;
+              case 'list': valA = a.listName?.toLowerCase() || ''; valB = b.listName?.toLowerCase() || ''; break;
+              case 'prize': valA = a.prize?.toLowerCase() || ''; valB = b.prize?.toLowerCase() || ''; break;
+              case 'count': valA = a.winners?.length || 0; valB = b.winners?.length || 0; break;
+              default: valA = a.timestamp || 0; valB = b.timestamp || 0;
+            }
+            if (valA < valB) return this.sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return this.sortDir === 'asc' ? 1 : -1;
+            return 0;
+          });
+        },
+
+        get uniqueLists() {
+          const lists = new Set();
+          this.items.forEach(entry => {
+            if (entry.listName) lists.add(entry.listName);
+          });
+          return Array.from(lists).sort();
+        },
+
+        get uniquePrizes() {
+          const prizes = new Set();
+          this.items.forEach(entry => {
+            if (entry.prize) prizes.add(entry.prize);
+          });
+          return Array.from(prizes).sort();
+        },
+
+        get stats() {
+          const totalSelections = this.items.length;
+          const prizeCount = {};
+          this.items.forEach(entry => {
+            prizeCount[entry.prize] = (prizeCount[entry.prize] || 0) + 1;
+          });
+          const mostUsedPrize = Object.keys(prizeCount).reduce((a, b) =>
+            prizeCount[a] > prizeCount[b] ? a : b, '-'
+          );
+          return { totalSelections, mostUsedPrize };
+        },
+
+        clearFilters() {
+          this.filterList = '';
+          this.filterPrize = '';
+          this.filterDate = '';
         }
       });
 
@@ -1601,7 +2297,7 @@
         }
       });
 
-      // Reusable component: Confirmation Modal
+      // Reusable component: Confirmation Modal (pure Alpine - no legacy DOM hacks)
       Alpine.data('confirmModal', () => ({
         title: '',
         message: '',
@@ -1612,12 +2308,21 @@
         bsModal: null,
 
         init() {
-          // Use getOrCreateInstance to avoid duplicate modal instances
           this.bsModal = bootstrap.Modal.getOrCreateInstance(this.$el);
-          // Make this component globally accessible for UI.showConfirmationModal bridge
+          // Make accessible for UI.showConfirmationModal bridge
           window.alpineConfirmModal = this;
-          // Also set window.appModal for legacy code that uses it directly
+          // Legacy alias (confirmModal is now the primary modal for confirmations)
           window.appModal = this.bsModal;
+
+          // Blur focused element before hiding to prevent aria-hidden warning
+          this.$el.addEventListener('hide.bs.modal', () => {
+            document.activeElement?.blur();
+          });
+
+          // Reset Alpine state when modal is hidden
+          this.$el.addEventListener('hidden.bs.modal', () => {
+            this.reset();
+          });
         },
 
         show(options) {
@@ -1633,12 +2338,10 @@
         confirm() {
           if (this.onConfirm) this.onConfirm();
           this.bsModal.hide();
-          this.reset();
         },
 
         close() {
           this.bsModal.hide();
-          this.reset();
         },
 
         reset() {
@@ -1648,6 +2351,212 @@
           this.confirmText = 'Confirm';
           this.confirmClass = 'btn-danger';
           this.onConfirm = null;
+        }
+      }));
+
+      // Reusable component: Form Modal (pure Alpine - for Add/Edit operations)
+      Alpine.data('formModal', () => ({
+        title: '',
+        formType: '', // 'prize' or 'template'
+        formData: {},
+        templates: [], // For prize form's template dropdown
+        placeholders: [], // For template form's placeholder list
+        isEditing: false,
+        editingId: null,
+        bsModal: null,
+
+        init() {
+          this.bsModal = bootstrap.Modal.getOrCreateInstance(this.$el);
+          window.alpineFormModal = this;
+          window.formModal = this.bsModal;
+
+          // Blur focused element before hiding to prevent aria-hidden warning
+          this.$el.addEventListener('hide.bs.modal', () => {
+            document.activeElement?.blur();
+          });
+
+          this.$el.addEventListener('hidden.bs.modal', () => {
+            this.reset();
+          });
+        },
+
+        get saveButtonText() {
+          if (this.formType === 'prize') {
+            return this.isEditing ? 'Save Changes' : 'Add Prize';
+          } else if (this.formType === 'template') {
+            return this.isEditing ? 'Save Changes' : 'Save Template';
+          }
+          return 'Save';
+        },
+
+        // Open prize form
+        async openPrizeForm(prize = null) {
+          this.formType = 'prize';
+          this.isEditing = !!prize;
+          this.editingId = prize?.prizeId || null;
+          this.title = prize ? 'Edit Prize' : 'Add New Prize';
+
+          // Load templates for dropdown
+          const { Database } = await import('./src/js/modules/database.js');
+          this.templates = await Database.getFromStore('templates') || [];
+
+          // Set form data
+          this.formData = {
+            name: prize?.name || '',
+            quantity: prize?.quantity ?? 1,
+            winnersCount: prize?.winnersCount || 1,
+            description: prize?.description || '',
+            templateId: prize?.templateId || ''
+          };
+
+          this.bsModal.show();
+        },
+
+        // Open template form
+        async openTemplateForm(template = null) {
+          this.formType = 'template';
+          this.isEditing = !!template;
+          this.editingId = template?.templateId || null;
+          this.title = template ? 'Edit SMS Template' : 'Add SMS Template';
+
+          // Load placeholders
+          this.placeholders = await this.getAvailablePlaceholders();
+
+          // Set form data
+          this.formData = {
+            name: template?.name || '',
+            message: template?.message || '',
+            isDefault: template?.isDefault || false
+          };
+
+          this.bsModal.show();
+        },
+
+        async getAvailablePlaceholders() {
+          const fieldSet = new Set(['name', 'prize', 'ticketCode', 'eventName']);
+          try {
+            const { Database } = await import('./src/js/modules/database.js');
+            const { settings } = await import('./src/js/modules/settings.js');
+            const lists = await Database.getFromStore('lists');
+
+            const selectedLists = settings?.selectedListIds?.length > 0
+              ? lists.filter(list => settings.selectedListIds.includes(list.listId))
+              : lists;
+
+            selectedLists.forEach(list => {
+              if (list.entries?.[0]?.data) {
+                Object.keys(list.entries[0].data).forEach(key => fieldSet.add(key));
+              }
+            });
+          } catch (e) {
+            console.error('Error loading placeholders:', e);
+          }
+          return Array.from(fieldSet).sort();
+        },
+
+        async save() {
+          if (this.formType === 'prize') {
+            await this.savePrize();
+          } else if (this.formType === 'template') {
+            await this.saveTemplate();
+          }
+        },
+
+        async savePrize() {
+          const { Database } = await import('./src/js/modules/database.js');
+          const { UI } = await import('./src/js/modules/ui.js');
+          const { Prizes } = await import('./src/js/modules/prizes.js');
+
+          const { name, quantity, winnersCount, description, templateId } = this.formData;
+
+          if (!name?.trim()) {
+            UI.showToast('Please enter a prize name', 'warning');
+            return;
+          }
+
+          if (quantity < 0) {
+            UI.showToast('Please enter a valid quantity', 'warning');
+            return;
+          }
+
+          if (winnersCount < 1 || winnersCount > 100) {
+            UI.showToast('Winners count must be between 1 and 100', 'warning');
+            return;
+          }
+
+          try {
+            const prize = {
+              prizeId: this.editingId || UI.generateId(),
+              name: name.trim(),
+              quantity: quantity,
+              winnersCount: winnersCount,
+              description: description?.trim() || '',
+              templateId: templateId || null,
+              timestamp: Date.now()
+            };
+
+            await Database.saveToStore('prizes', prize);
+            UI.showToast(this.isEditing ? 'Prize updated' : `Prize "${name}" added`, 'success');
+
+            await Prizes.loadPrizes();
+            await UI.populateQuickSelects();
+            this.bsModal.hide();
+          } catch (error) {
+            console.error('Error saving prize:', error);
+            UI.showToast('Error saving prize: ' + error.message, 'error');
+          }
+        },
+
+        async saveTemplate() {
+          const { Database } = await import('./src/js/modules/database.js');
+          const { UI } = await import('./src/js/modules/ui.js');
+          const { Templates } = await import('./src/js/modules/templates.js');
+
+          const { name, message, isDefault } = this.formData;
+
+          if (!name?.trim() || !message?.trim()) {
+            UI.showToast('Please fill in all fields', 'warning');
+            return;
+          }
+
+          try {
+            // If setting as default, unset other defaults
+            if (isDefault) {
+              const templates = await Database.getFromStore('templates');
+              for (const tmpl of templates) {
+                if (tmpl.templateId !== this.editingId && tmpl.isDefault) {
+                  tmpl.isDefault = false;
+                  await Database.saveToStore('templates', tmpl);
+                }
+              }
+            }
+
+            const template = {
+              templateId: this.editingId || `tmpl_${Date.now()}`,
+              name: name.trim(),
+              message: message.trim(),
+              isDefault: isDefault,
+              ...(this.isEditing ? { updatedAt: new Date().toISOString() } : { createdAt: new Date().toISOString() })
+            };
+
+            await Database.saveToStore('templates', template);
+            await Templates.loadTemplates();
+            UI.showToast(this.isEditing ? 'Template updated' : 'Template added', 'success');
+            this.bsModal.hide();
+          } catch (error) {
+            console.error('Error saving template:', error);
+            UI.showToast('Failed to save template', 'error');
+          }
+        },
+
+        reset() {
+          this.title = '';
+          this.formType = '';
+          this.formData = {};
+          this.templates = [];
+          this.placeholders = [];
+          this.isEditing = false;
+          this.editingId = null;
         }
       }));
     });

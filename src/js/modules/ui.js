@@ -81,10 +81,10 @@ function showConfirmationModal(title, message, onConfirm, options = {}) {
   }
 
   // Fallback to legacy DOM manipulation if Alpine not available
-  const modalTitle = document.getElementById('appModalLabel');
-  const modalBody = document.getElementById('appModalBody');
-  const confirmBtn = document.getElementById('appModalConfirmBtn');
-  const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+  const modalTitle = document.getElementById('confirmModalLabel');
+  const modalBody = document.getElementById('confirmModalBody');
+  const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+  const cancelBtn = document.querySelector('#confirmModal .modal-footer .btn-secondary');
 
   modalTitle.textContent = title;
   modalBody.innerHTML = `<p>${message}</p>`;
@@ -126,7 +126,7 @@ function showConfirmationModal(title, message, onConfirm, options = {}) {
   document.addEventListener('keydown', keyHandler);
 
   // Remove keyboard listener when modal is hidden
-  const modal = document.getElementById('appModal');
+  const modal = document.getElementById('confirmModal');
   modal.addEventListener('hidden.bs.modal', () => {
     document.removeEventListener('keydown', keyHandler);
   }, { once: true });
@@ -143,120 +143,7 @@ function readFileAsText(file) {
   });
 }
 
-async function populateQuickSelects(lists = null, prizes = null) {
-  try {
-    // Use passed data if available, otherwise fetch from database
-    let listsData = lists;
-    let prizesData = prizes;
-    
-    if (!listsData || !prizesData) {
-      console.log('PopulateQuickSelects: Fetching data - lists provided:', !!lists, 'prizes provided:', !!prizes);
-      // Use batch fetch for efficiency and consistency
-      const batchResults = await Database.batchFetch([
-        { collection: 'lists' },
-        { collection: 'prizes' }
-      ]);
-      listsData = listsData || batchResults.lists || [];
-      prizesData = prizesData || batchResults.prizes || [];
-      console.log('PopulateQuickSelects: After fetch - prizes:', prizesData.map(p => ({ id: p.prizeId, name: p.name, qty: p.quantity })));
-    }
-
-    const quickListSelect = document.getElementById('quickListSelect');
-    const quickPrizeSelect = document.getElementById('quickPrizeSelect');
-    const quickWinnersCount = document.getElementById('quickWinnersCount');
-    
-    let settingsChanged = false;
-
-    if (quickListSelect) {
-      quickListSelect.innerHTML = '';
-      // Sort lists by timestamp (most recent first)
-      const sortedLists = [...listsData].sort((a, b) => {
-        const dateA = a.metadata?.timestamp || 0;
-        const dateB = b.metadata?.timestamp || 0;
-        return dateB - dateA;
-      });
-      
-      if (sortedLists.length === 0) {
-        quickListSelect.innerHTML = '<div class="text-muted p-2">No lists available</div>';
-      } else {
-        sortedLists.forEach(list => {
-          const listId = list.listId;
-          // Use entries.length if entries exist (even if 0), otherwise use metadata
-          const entryCount = list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0);
-          
-          const checkboxDiv = document.createElement('div');
-          checkboxDiv.className = 'form-check';
-          checkboxDiv.innerHTML = `
-            <input class="form-check-input list-checkbox" type="checkbox" value="${listId}" id="list-${listId}" data-entry-count="${entryCount}">
-            <label class="form-check-label" for="list-${listId}">
-              ${list.metadata.name} <span class="text-muted">(${entryCount})</span>
-            </label>
-          `;
-          quickListSelect.appendChild(checkboxDiv);
-        });
-      }
-      
-      // Restore selected lists from settings (now supports multiple)
-      if (settings.selectedListIds && Array.isArray(settings.selectedListIds)) {
-        settings.selectedListIds.forEach(listId => {
-          const checkbox = quickListSelect.querySelector(`input[value="${listId}"]`);
-          if (checkbox) {
-            checkbox.checked = true;
-          }
-        });
-        updateListSelectionCount();
-        await updateSelectionInfo(); // Update display after restoring selections
-      } else {
-        console.log('No saved list selection to restore');
-      }
-    }
-
-    if (quickPrizeSelect) {
-      quickPrizeSelect.innerHTML = '<option value="">Select Prize...</option>';
-      const availablePrizes = prizesData.filter(prize => prize.quantity > 0);
-      
-      availablePrizes.forEach(prize => {
-        const option = document.createElement('option');
-        option.value = prize.prizeId;
-        option.textContent = `${prize.name} (${prize.quantity})`;
-        quickPrizeSelect.appendChild(option);
-      });
-      
-      if (settings.selectedPrizeId) {
-        const prizeOption = quickPrizeSelect.querySelector(`option[value="${settings.selectedPrizeId}"]`);
-        if (prizeOption) {
-          quickPrizeSelect.value = settings.selectedPrizeId;
-        } else {
-          console.log('Saved prize selection not found in dropdown, clearing setting:', settings.selectedPrizeId);
-          console.log('Options in dropdown:', Array.from(quickPrizeSelect.options).map(o => o.value));
-          settings.selectedPrizeId = '';
-          settingsChanged = true;
-        }
-      } else {
-        console.log('No saved prize selection to restore');
-      }
-    }
-
-    if (quickWinnersCount && settings.winnersCount) {
-      quickWinnersCount.value = settings.winnersCount;
-    }
-
-    await updateSelectionInfo();
-    
-    // Re-setup auto-save listeners for quick select dropdowns after updating them
-    if (Settings && Settings.setupQuickSetupAutoSave) {
-      Settings.setupQuickSetupAutoSave();
-    }
-    
-    // Save settings if any selections were cleared due to missing options
-    if (settingsChanged && Settings && Settings.saveSettings) {
-      Settings.saveSettings();
-    }
-  } catch (error) {
-    console.error('Error populating quick selects:', error);
-    showToast('Error loading selection options: ' + error.message, 'error');
-  }
-}
+// populateQuickSelects removed - Alpine x-for handles list/prize dropdowns reactively
 
 function applyVisibilitySettings() {
   const totalEntriesCard = document.getElementById('totalEntriesCard');
@@ -265,11 +152,10 @@ function applyVisibilitySettings() {
   }
 }
 
-async function syncUI(lists = null, prizes = null) {
+async function syncUI() {
   try {
-    await populateQuickSelects(lists, prizes);
+    // Alpine stores handle list/prize data reactively
     applyVisibilitySettings();
-    await updateSelectionInfo();
   } catch (error) {
     console.error('Error syncing UI:', error);
     showToast('Failed to refresh the application interface.', 'error');
@@ -396,46 +282,11 @@ async function updateSelectionInfo() {
     showWarning
   });
   
-  if (showWarning) {
-    // Add red styling when winners exceed entries
-    quickWinnersCount.classList.add('border-danger', 'text-danger');
-    quickWinnersCount.style.borderWidth = '2px';
-    
-    // Also update the display card if it exists
-    if (winnersCountDisplay) {
-      winnersCountDisplay.classList.add('text-danger', 'fw-bold');
-      winnersCountDisplay.textContent = `${winnersCount} ⚠️`;
-    }
-    
-    // Add a warning message if not already present
-    let warningElement = quickWinnersCount.parentElement.querySelector('.winners-warning');
-    if (!warningElement) {
-      warningElement = document.createElement('small');
-      warningElement.className = 'text-danger d-block mt-1 winners-warning';
-      quickWinnersCount.parentElement.appendChild(warningElement);
-    }
-    
-    // Update warning message based on the situation
-    if (eligibleEntryCount === 0) {
-      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> No entries available`;
-    } else {
-      warningElement.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Listed Participants (${eligibleEntryCount})`;
-    }
-  } else {
-    // Remove red styling when count is valid
-    quickWinnersCount.classList.remove('border-danger', 'text-danger');
-    quickWinnersCount.style.borderWidth = '';
-    
-    if (winnersCountDisplay) {
-      winnersCountDisplay.classList.remove('text-danger', 'fw-bold');
-      winnersCountDisplay.textContent = winnersCount;
-    }
-    
-    // Remove warning message
-    const warningElement = quickWinnersCount.parentElement.querySelector('.winners-warning');
-    if (warningElement) {
-      warningElement.remove();
-    }
+  // Warning display is now handled by Alpine in index.html
+  // Remove any old vanilla JS warnings that might exist
+  const oldWarning = quickWinnersCount.parentElement.querySelector('.winners-warning');
+  if (oldWarning) {
+    oldWarning.remove();
   }
   
   // Enable play button only if at least one list and a prize are selected
@@ -454,10 +305,10 @@ async function updateTotalEntries() {
 // Promise-based confirmation modal
 function showConfirmationPromise(title, message) {
   return new Promise((resolve) => {
-    const modalTitle = document.getElementById('appModalLabel');
-    const modalBody = document.getElementById('appModalBody');
-    const confirmBtn = document.getElementById('appModalConfirmBtn');
-    const cancelBtn = document.querySelector('#appModal .modal-footer .btn-secondary');
+    const modalTitle = document.getElementById('confirmModalLabel');
+    const modalBody = document.getElementById('confirmModalBody');
+    const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+    const cancelBtn = document.querySelector('#confirmModal .modal-footer .btn-secondary');
 
     modalTitle.textContent = title;
     modalBody.innerHTML = `<p>${message}</p>`;
@@ -503,7 +354,7 @@ function showConfirmationPromise(title, message) {
     document.addEventListener('keydown', keyHandler);
 
     // Remove keyboard listener when modal is hidden
-    const modal = document.getElementById('appModal');
+    const modal = document.getElementById('confirmModal');
     modal.addEventListener('hidden.bs.modal', () => {
       document.removeEventListener('keydown', keyHandler);
     }, { once: true });
@@ -566,7 +417,6 @@ export const UI = {
   hideProgress,
   showConfirmationModal: enhancedShowConfirmationModal,
   readFileAsText,
-  populateQuickSelects,
   applyVisibilitySettings,
   syncUI,
   updateSelectionInfo,

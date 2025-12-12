@@ -28,7 +28,7 @@ const CACHE_DURATION = 5000; // 5 seconds cache
 async function loadWinners(winnersData = null, listsData = null) {
   try {
     let winners, lists;
-    
+
     // Use provided data if available
     if (winnersData && listsData) {
       winners = winnersData;
@@ -37,7 +37,7 @@ async function loadWinners(winnersData = null, listsData = null) {
       winnersCache = winners;
       listsCache = lists;
       lastLoadTime = Date.now();
-    } 
+    }
     // Use cached data if recent enough
     else if (winnersCache && listsCache && (Date.now() - lastLoadTime < CACHE_DURATION)) {
       winners = winnersCache;
@@ -56,12 +56,9 @@ async function loadWinners(winnersData = null, listsData = null) {
       listsCache = lists;
       lastLoadTime = Date.now();
     }
-    
+
     winners = winners || [];
     allWinners = winners; // Store all winners
-    const tbody = document.getElementById('winnersTableBody');
-
-    if (!tbody) return;
 
     const listNameMap = {};
     lists.forEach(list => {
@@ -69,285 +66,27 @@ async function loadWinners(winnersData = null, listsData = null) {
       listNameMap[listId] = list.metadata.name;
     });
 
-    const filterPrize = document.getElementById('filterPrize').value;
-    const filterList = document.getElementById('filterList').value;
-    const filterSelection = document.getElementById('filterSelection').value;
-    const filterDateInput = document.getElementById('filterDate').value;
+    // Enrich winners with listName for display
+    const enrichedWinners = winners.map(w => ({
+      ...w,
+      listName: w.listName || listNameMap[w.listId] || 'Unknown'
+    }));
 
-    populateWinnerFilters(winners, lists, filterPrize, filterList, filterSelection);
-
-    const filteredWinners = winners.filter(winner => {
-      const prizeMatch = !filterPrize || winner.prize === filterPrize;
-      // Use stored list name first, then try to look up by ID
-      const listName = winner.listName || 
-                      listNameMap[winner.listId] || 
-                      'Unknown';
-      const listMatch = !filterList || listName === filterList;
-      const selectionMatch = !filterSelection || winner.historyId === filterSelection;
-      
-      // Date filter
-      let dateMatch = true;
-      if (filterDateInput) {
-        const winnerDate = new Date(winner.timestamp).toISOString().split('T')[0];
-        dateMatch = winnerDate === filterDateInput;
+    // Update centralized data store - Alpine handles filtering and rendering
+    if (window.Alpine) {
+      const dataStore = Alpine.store('data');
+      if (dataStore) {
+        dataStore.winners = enrichedWinners;
       }
-      
-      return prizeMatch && listMatch && selectionMatch && dateMatch;
-    });
-
-    // Store the filtered winners globally
-    currentFilteredWinners = filteredWinners;
-
-    updateWinnersCountDisplay(filteredWinners.length, winners.length, filterPrize, filterList, filterSelection, filterDateInput);
-
-    // Clear tbody safely
-    tbody.innerHTML = '';
-    
-    if (filteredWinners.length === 0) {
-      const emptyRow = document.createElement('tr');
-      const emptyCell = document.createElement('td');
-      emptyCell.colSpan = 9;
-      emptyCell.className = 'text-center text-muted';
-      emptyCell.textContent = 'No winners match the current filters.';
-      emptyRow.appendChild(emptyCell);
-      tbody.appendChild(emptyRow);
-      return;
+      // Store filtered winners for export/clear operations
+      const winnersStore = Alpine.store('winners');
+      if (winnersStore) {
+        currentFilteredWinners = winnersStore.filtered;
+      }
     }
-
-    // Use safe DOM manipulation instead of innerHTML
-    filteredWinners.forEach(winner => {
-      const row = document.createElement('tr');
-      
-      // Display with fallback chain: entryId -> idCard -> contactId -> 'N/A'
-      const orderId = winner.orderId ||winner.orderCode || winner.entryId || winner.data?.idCard || winner.data?.contactId || 'N/A';
-      
-      // Cell 1: QR Code button
-      const qrCell = document.createElement('td');
-      const qrButton = SafeHTML.createButton('', {
-        className: 'btn btn-sm btn-outline-secondary',
-        icon: 'bi bi-qr-code',
-        onclick: () => Winners.showQRCode(winner.winnerId),
-        dataset: { winnerId: winner.winnerId }
-      });
-      qrButton.title = 'Show QR Code';
-      qrCell.appendChild(qrButton);
-      row.appendChild(qrCell);
-      
-      // Cell 2: Order ID
-      const idCell = document.createElement('td');
-      const idBadge = SafeHTML.createElement('span', orderId, { className: 'badge bg-primary winner-id-badge' });
-      idCell.appendChild(idBadge);
-      row.appendChild(idCell);
-      
-      // Cell 3: Display Name
-      row.appendChild(SafeHTML.createElement('td', winner.displayName));
-      
-      // Cell 4: Prize
-      row.appendChild(SafeHTML.createElement('td', winner.prize));
-      
-      // Cell 5: Date
-      row.appendChild(SafeHTML.createElement('td', new Date(winner.timestamp).toLocaleDateString()));
-      
-      // Cell 6: List Name
-      row.appendChild(SafeHTML.createElement('td', winner.listName || listNameMap[winner.listId] || 'Unknown'));
-      
-      // Cell 7: Pickup Status
-      const pickupCell = document.createElement('td');
-      const pickupBadge = document.createElement('span');
-      pickupBadge.className = winner.pickedUp ? 'badge bg-success' : 'badge bg-warning';
-      const pickupIcon = document.createElement('i');
-      pickupIcon.className = winner.pickedUp ? 'bi bi-check-circle-fill' : 'bi bi-clock';
-      pickupBadge.appendChild(pickupIcon);
-      pickupBadge.appendChild(document.createTextNode(winner.pickedUp ? ' Picked up' : ' Pending'));
-      pickupCell.appendChild(pickupBadge);
-      row.appendChild(pickupCell);
-      
-      // Cell 8: SMS Status
-      const smsCell = document.createElement('td');
-      const smsBadge = document.createElement('span');
-      
-      if (winner.sms && winner.sms.status) {
-        const status = winner.sms.status.toLowerCase();
-        switch(status) {
-          case 'delivered':
-            smsBadge.className = 'badge bg-success';
-            smsBadge.title = 'SMS Delivered';
-            smsBadge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Delivered';
-            break;
-          case 'bounced':
-            smsBadge.className = 'badge bg-danger';
-            smsBadge.title = `SMS Bounced: ${winner.sms.error || 'Unknown'}`;
-            smsBadge.innerHTML = '<i class="bi bi-x-circle-fill"></i> Bounced';
-            break;
-          case 'failed':
-            smsBadge.className = 'badge bg-danger';
-            smsBadge.title = `SMS Failed: ${winner.sms.error || 'Unknown'}`;
-            smsBadge.innerHTML = '<i class="bi bi-x-circle-fill"></i> Failed';
-            break;
-          case 'queued':
-            smsBadge.className = 'badge bg-info';
-            smsBadge.title = 'SMS Queued';
-            smsBadge.innerHTML = '<i class="bi bi-clock-fill"></i> Queued';
-            break;
-          case 'sending':
-            smsBadge.className = 'badge bg-warning';
-            smsBadge.title = 'SMS Sending';
-            smsBadge.innerHTML = '<i class="bi bi-arrow-up-circle-fill"></i> Sending';
-            break;
-          case 'sent':
-            smsBadge.className = 'badge bg-primary';
-            smsBadge.title = 'SMS Sent';
-            smsBadge.innerHTML = '<i class="bi bi-send-fill"></i> Sent';
-            break;
-          default:
-            smsBadge.className = 'badge bg-secondary';
-            smsBadge.title = 'No SMS';
-            smsBadge.innerHTML = '<i class="bi bi-dash-circle"></i> Not Sent';
-        }
-      } else {
-        smsBadge.className = 'badge bg-secondary';
-        smsBadge.title = 'No SMS';
-        smsBadge.innerHTML = '<i class="bi bi-dash-circle"></i> Not Sent';
-      }
-      smsCell.appendChild(smsBadge);
-      row.appendChild(smsCell);
-      
-      // Cell 9: Actions
-      const actionsCell = document.createElement('td');
-      const btnGroup = document.createElement('div');
-      btnGroup.className = 'btn-group btn-group-sm';
-      btnGroup.setAttribute('role', 'group');
-      
-      const returnBtn = SafeHTML.createButton('', {
-        className: 'btn btn-outline-info',
-        icon: 'bi bi-arrow-return-left',
-        onclick: () => Winners.returnToList(winner.winnerId),
-        dataset: { winnerId: winner.winnerId }
-      });
-      returnBtn.title = 'Return to List';
-      
-      const deleteBtn = SafeHTML.createButton('', {
-        className: 'btn btn-outline-danger',
-        icon: 'bi bi-trash',
-        onclick: () => Winners.deleteWinnerConfirm(winner.winnerId),
-        dataset: { winnerId: winner.winnerId }
-      });
-      deleteBtn.title = 'Delete';
-      
-      btnGroup.appendChild(returnBtn);
-      btnGroup.appendChild(deleteBtn);
-      actionsCell.appendChild(btnGroup);
-      row.appendChild(actionsCell);
-      
-      tbody.appendChild(row);
-    });
   } catch (error) {
     console.error('Error loading winners:', error);
     UI.showToast('Error loading winners: ' + error.message, 'error');
-  }
-}
-
-function populateWinnerFilters(winners, lists, selectedPrize = '', selectedList = '', selectedSelection = '') {
-  const prizeFilter = document.getElementById('filterPrize');
-  const listFilter = document.getElementById('filterList');
-  const selectionFilter = document.getElementById('filterSelection');
-
-  const listNameMap = {};
-  const listTimestampMap = {};
-  lists.forEach(list => {
-    const listId = list.listId || list.metadata.listId;
-    listNameMap[listId] = list.metadata.name;
-    listTimestampMap[list.metadata.name] = list.metadata?.timestamp || 0;
-  });
-
-  const prizes = [...new Set(winners.map(w => w.prize))].sort();
-  
-  // Get unique list names and sort by timestamp (most recent first)
-  const uniqueListNames = [...new Set(winners.map(w => {
-    // Use stored list name first, then try to look up by ID
-    return w.listName || 
-           listNameMap[w.listId] || 
-           'Unknown';
-  }))];
-  const sortedListNames = uniqueListNames.sort((a, b) => {
-    const timestampA = listTimestampMap[a] || 0;
-    const timestampB = listTimestampMap[b] || 0;
-    return timestampB - timestampA;
-  });
-  
-  const selections = [...new Set(winners.map(w => w.historyId).filter(Boolean))];
-
-  // Populate Prize Filter
-  prizeFilter.innerHTML = '<option value="">All Prizes</option>';
-  prizes.forEach(prize => {
-    const count = winners.filter(w => w.prize === prize).length;
-    prizeFilter.innerHTML += `<option value="${prize}">${prize} (${count})</option>`;
-  });
-  prizeFilter.value = selectedPrize;
-
-  // Populate List Filter (now sorted by timestamp)
-  listFilter.innerHTML = '<option value="">All Lists</option>';
-  sortedListNames.forEach(listName => {
-    const count = winners.filter(w => {
-      const winnerListName = w.listName || 
-                             listNameMap[w.listId] || 
-                             'Unknown';
-      return winnerListName === listName;
-    }).length;
-    listFilter.innerHTML += `<option value="${listName}">${listName} (${count})</option>`;
-  });
-  listFilter.value = selectedList;
-
-  // Populate Selection ID Filter
-  selectionFilter.innerHTML = '<option value="">All Selections</option>';
-  
-  const selectionEntries = selections.map(id => {
-    const winnersInSelection = winners.filter(w => w.historyId === id);
-    const timestamp = winnersInSelection[0]?.timestamp;
-    const prize = winnersInSelection[0]?.prize;
-    const count = winnersInSelection.length;
-    return {
-      id,
-      timestamp,
-      prize,
-      count,
-      label: `${new Date(timestamp).toLocaleDateString()} - ${prize} (${count} winner${count > 1 ? 's' : ''})`
-    };
-  });
-
-  selectionEntries.sort((a, b) => b.timestamp - a.timestamp);
-  
-  selectionEntries.forEach(entry => {
-    selectionFilter.innerHTML += `<option value="${entry.id}">${entry.label}</option>`;
-  });
-  selectionFilter.value = selectedSelection;
-}
-
-function updateWinnersCountDisplay(filteredCount, totalCount, filterPrize, filterList, filterSelection, filterDate) {
-  const winnersCountElement = document.getElementById('winnersCount');
-  const filterStatusElement = document.getElementById('filterStatus');
-  
-  if (!winnersCountElement || !filterStatusElement) return;
-
-  if (filteredCount === totalCount) {
-    winnersCountElement.textContent = `Showing ${totalCount} winners`;
-  } else {
-    winnersCountElement.textContent = `Showing ${filteredCount} of ${totalCount} winners`;
-  }
-
-  const activeFilters = [];
-  if (filterPrize) activeFilters.push(`Prize: ${filterPrize}`);
-  if (filterList) activeFilters.push(`List: ${filterList}`);
-  if (filterSelection) activeFilters.push(`Batch: ${filterSelection}`);
-  if (filterDate) {
-    const dateObj = new Date(filterDate + 'T00:00:00');
-    activeFilters.push(`Date: ${dateObj.toLocaleDateString()}`);
-  }
-
-  if (activeFilters.length > 0) {
-    filterStatusElement.textContent = `Filtered by: ${activeFilters.join(', ')}`;
-  } else {
-    filterStatusElement.textContent = '';
   }
 }
 
@@ -561,15 +300,12 @@ async function performUndoBackgroundSync(lastAction) {
     // Execute all operations in a single batch
     await Database.batchSave(operations);
     
-    // Use the locally updated data for immediate UI update
-    // This avoids race conditions with server processing
+    // Reload Alpine stores with updated data
     const lists = await Database.getFromStore('lists');
-    
-    // Update UI with the correct data (prizes array with restored quantities)
-    await UI.populateQuickSelects(lists, prizes);
     const { Lists } = await import('./lists.js');
+    const { Prizes } = await import('./prizes.js');
     await Lists.loadLists(lists);
-
+    await Prizes.loadPrizes(prizes);
     // Undo sync completed
   } catch (error) {
     console.error('Error in undo background sync:', error);
@@ -626,16 +362,13 @@ async function resetToSelectionMode() {
   // Clear current winners and hide SMS button
   clearCurrentWinners();
   
-  // Don't refresh quick selects here - it's handled by the undo sync or other operations
-  // This avoids fetching incomplete data during undo operations
-  
-  // Only refresh lists if not called from undo (undo handles this itself)
-  // Check if we're in an undo operation by seeing if performUndoBackgroundSync is in the call stack
+  // Only refresh Alpine stores if not called from undo (undo handles this itself)
   const isUndoOperation = new Error().stack.includes('undoLastSelection');
   if (!isUndoOperation) {
-    await UI.populateQuickSelects();
     const { Lists } = await import('./lists.js');
+    const { Prizes } = await import('./prizes.js');
     await Lists.loadLists();
+    await Prizes.loadPrizes();
   }
 }
 
@@ -701,11 +434,10 @@ async function returnToList(winnerId) {
           await Database.saveToStore('lists', list);
           
           UI.showToast(`"${winner.displayName}" has been returned to the list "${list.metadata.name}"`, 'success');
-          
-          // Update quick selects
-          await UI.populateQuickSelects();
-          
-          // Reload winners display
+
+          // Reload Alpine stores
+          const { Lists } = await import('./lists.js');
+          await Lists.loadLists();
           await loadWinners();
           
         } catch (error) {
@@ -725,30 +457,26 @@ async function showQRCode(winnerId) {
     // Get the winner record to find the actual ticket code (recordId)
     const winners = await Database.getFromStore('winners');
     const winner = winners.find(w => w.winnerId === winnerId);
-    
+
     if (!winner) {
       UI.showToast('Winner not found', 'error');
       return;
     }
-    
+
     // Use original entry ID if available, otherwise fall back to winnerId
     const ticketCode = winner.entryId || winnerId;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticketCode)}`;
-    
-    const modalElement = document.getElementById('appModal');
-    const modal = new bootstrap.Modal(modalElement);
-    
-    document.getElementById('appModalLabel').textContent = 'Winner Ticket QR Code';
-    document.getElementById('appModalBody').innerHTML = `
+
+    document.getElementById('viewModalLabel').textContent = 'Winner Ticket QR Code';
+    document.getElementById('viewModalBody').innerHTML = `
       <div class="text-center">
         <h5>Ticket Code: <span class="badge bg-primary fs-6">${ticketCode}</span></h5>
         <img src="${qrCodeUrl}" alt="QR Code" class="img-fluid my-3" />
         <p class="text-muted">Scan this code at the prize pickup station</p>
       </div>
     `;
-    
-    document.getElementById('appModalConfirmBtn').style.display = 'none';
-    modal.show();
+
+    window.viewModal.show();
   } catch (error) {
     console.error('Error showing QR code:', error);
     UI.showToast('Error generating QR code: ' + error.message, 'error');
@@ -757,8 +485,6 @@ async function showQRCode(winnerId) {
 
 export const Winners = {
   loadWinners,
-  populateWinnerFilters,
-  updateWinnersCountDisplay,
   deleteWinnerConfirm,
   saveWinner,
   getAllWinners,

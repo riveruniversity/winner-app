@@ -2,6 +2,7 @@
 :root {
   --primary-color: #0A4f7B;
   --secondary-color: #5FA1F7;
+  --selection-color: #10b981;
   --primary-color-shadow: rgba(10, 79, 123, 0.25);
   --primary-color-glow: rgba(10, 79, 123, 0.5);
   --primary-color-glow-intense: rgba(10, 79, 123, 0.7);
@@ -25,6 +26,19 @@
 .tab-pane.fade.show {
   display: block !important;
   opacity: 1 !important;
+}
+
+/* Modal stacking - confirmModal should appear above viewModal/formModal */
+#viewModal {
+  z-index: 1055 !important;
+}
+
+#formModal {
+  z-index: 1060 !important;
+}
+
+#confirmModal {
+  z-index: 1070 !important;
 }
 
 /* Global Styles */
@@ -53,9 +67,10 @@ body {
 /* Winner ID Badge Styles */
 .winner-id-badge {
   display: inline-block;
-  width: 65px;
+  width: 100px;
   text-align: center;
   font-family: monospace;
+  font-size: 0.85rem;
 }
 
 /* Card Shadow Effects - Strong shadows by default, primary glow on hover */
@@ -1761,6 +1776,39 @@ body {
 [data-theme="dark"] .card-subtitle {
   color: var(--primary-color) !important;
   opacity: 0.8;
+}
+
+/* Selection styles - uses selection theme color */
+.badge-selection {
+  background: var(--selection-color);
+  color: white;
+}
+
+.card.border-selected {
+  border: 2px solid var(--selection-color) !important;
+}
+
+.btn-selection {
+  background: var(--selection-color);
+  border: none;
+  color: white;
+}
+
+.btn-selection:hover {
+  background: var(--selection-color);
+  filter: brightness(1.1);
+  color: white;
+}
+
+.btn-outline-selection {
+  background: transparent;
+  border: 1px solid var(--selection-color);
+  color: var(--selection-color);
+}
+
+.btn-outline-selection:hover {
+  background: var(--selection-color);
+  color: white;
 }
 
 /* List Card Selection Styles */

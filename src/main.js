@@ -1,4 +1,4 @@
-import { initializeApp, loadHistory, updateHistoryStats, appModal, setCurrentList, setLastAction } from './js/app.js';
+import { initializeApp, loadHistory, appModal, setCurrentList, setLastAction } from './js/app.js';
 import { UI } from './js/modules/ui.js';
 import { Settings } from './js/modules/settings.js';
 

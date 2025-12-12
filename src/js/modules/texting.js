@@ -428,15 +428,13 @@ class TextingService {
    * Shows results of bulk send operation
    */
   showSendResults(results) {
-    const modal = document.getElementById('appModal');
-    const modalTitle = document.getElementById('appModalLabel');
-    const modalBody = document.getElementById('appModalBody');
-    const confirmBtn = document.getElementById('appModalConfirmBtn');
+    const modalTitle = document.getElementById('viewModalLabel');
+    const modalBody = document.getElementById('viewModalBody');
 
     modalTitle.textContent = 'SMS Send Results';
-    
+
     const successRate = Math.round((results.successful.length / results.total) * 100);
-    
+
     modalBody.innerHTML = `
       <div class="alert alert-${successRate === 100 ? 'success' : successRate > 50 ? 'warning' : 'danger'}">
         <h5>Send Complete</h5>
@@ -474,12 +472,7 @@ class TextingService {
       ` : ''}
     `;
 
-    confirmBtn.textContent = 'Close';
-    confirmBtn.onclick = () => {
-      window.appModal.hide();
-    };
-
-    window.appModal.show();
+    window.viewModal.show();
   }
 
   /**
