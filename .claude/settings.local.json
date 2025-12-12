@@ -12,7 +12,6 @@
       "Bash(diff:*)",
       "Bash(rmdir:*)",
       "Bash(rm:*)",
-      "Bash(for file in *.js)",
       "Bash(do mv \"$file\" modules/)",
       "Bash(done)",
       "Bash(pnpm dev:*)",

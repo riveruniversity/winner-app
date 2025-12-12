@@ -645,6 +645,84 @@
       }
     }
 
+    /* Search Results Styles */
+    .search-results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .search-result-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .search-result-card:hover {
+      background: #e9ecef;
+      border-color: #0A4f7B;
+      transform: translateX(4px);
+    }
+
+    .search-result-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #333;
+      margin-bottom: 0.25rem;
+    }
+
+    .search-result-meta {
+      font-size: 0.875rem;
+      color: #666;
+    }
+
+    .search-result-extra {
+      margin-top: 0.5rem;
+    }
+
+    .no-results-message {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    .no-results-message i {
+      font-size: 3rem;
+      color: #ccc;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    /* Dark mode search results */
+    [data-theme="dark"] .search-result-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .search-result-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #5FA1F7;
+    }
+
+    [data-theme="dark"] .search-result-name {
+      color: #fff;
+    }
+
+    [data-theme="dark"] .search-result-meta {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="dark"] .no-results-message {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    [data-theme="dark"] .no-results-message i {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
     /* Mobile Portrait Friendly Design */
     @media (max-width: 768px) {
       .winner-card-unified {
@@ -690,22 +768,23 @@
     }
   </style>
 </head>
-<body data-theme="light">
+<body x-data :data-theme="$store.scan.darkMode ? 'dark' : 'light'">
   <!-- Header -->
   <div class="selection-header scanner-header">
     <div class="d-flex align-items-center">
       <img src="/favicon.png" width="32" class="me-2">
     </div>
     <div class="d-flex gap-2">
-      <button class="header-btn" id="themeToggle" title="Toggle theme">
-        <i class="bi bi-moon-fill"></i>
+      <button class="header-btn" @click="$store.scan.toggleTheme()" title="Toggle theme">
+        <i :class="$store.scan.darkMode ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
       </button>
     </div>
   </div>
+
   <!-- Main Content -->
   <div class="container scanner-container">
     <!-- Scanner Section -->
-    <div id="scannerSection">
+    <div x-show="$store.scan.view === 'scanner'" x-transition>
       <div class="card">
         <div class="card-body text-center">
           <h5 class="card-title mb-3">Scan QR Code</h5>
@@ -714,24 +793,30 @@
             <video id="qr-video"></video>
           </div>
           <!-- Scanner Status -->
-          <div class="scan-status" id="scanStatus">
-            Camera not started
-          </div>
+          <div class="scan-status" x-text="$store.scan.scanStatus"></div>
           <!-- Scanner Controls -->
           <div class="scanner-controls">
-            <button class="btn btn-primary btn-lg" id="startScanBtn">
+            <button class="btn btn-primary btn-lg"
+                    x-show="!$store.scan.isScanning"
+                    @click="$store.scan.startScanning()">
               <i class="bi bi-camera"></i> Start Scanner
             </button>
-            <button class="btn btn-danger btn-lg d-none" id="stopScanBtn">
+            <button class="btn btn-danger btn-lg"
+                    x-show="$store.scan.isScanning"
+                    @click="$store.scan.stopScanning()">
               <i class="bi bi-stop-circle"></i> Stop Scanner
             </button>
           </div>
           <!-- Manual Entry Option -->
           <div class="mt-4">
-            <p class="text-muted">Or enter ticket code manually:</p>
+            <p class="text-muted">Or search manually:</p>
             <div class="input-group">
-              <input type="text" class="form-control" id="manualTicketCode" placeholder="Enter ticket code">
-              <button class="btn btn-outline-secondary" type="button" id="manualSearchBtn">
+              <input type="text" class="form-control"
+                     x-model="$store.scan.searchInput"
+                     @keypress.enter="$store.scan.performSearch()"
+                     placeholder="Enter ticket code or winner name">
+              <button class="btn btn-outline-secondary" type="button"
+                      @click="$store.scan.performSearch()">
                 <i class="bi bi-search"></i> Search
               </button>
             </div>
@@ -739,48 +824,167 @@
         </div>
       </div>
     </div>
-    <!-- Winner Information Section (Hidden initially) -->
-    <div id="winnerInfo" class="d-none">
+
+    <!-- Search Results Section -->
+    <div x-show="$store.scan.view === 'results'" x-transition>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Search Results</h5>
+            <button class="btn btn-sm btn-outline-secondary" @click="$store.scan.backToScanner()">
+              <i class="bi bi-arrow-left"></i> Back
+            </button>
+          </div>
+
+          <!-- Results info -->
+          <p class="text-muted">
+            <template x-if="$store.scan.searchResults.length > 0">
+              <span>Found <span x-text="$store.scan.searchResults.length"></span> winner(s) matching "<span x-text="$store.scan.searchTerm"></span>"</span>
+            </template>
+            <template x-if="$store.scan.searchResults.length === 0">
+              <span>No winners found matching "<span x-text="$store.scan.searchTerm"></span>"</span>
+            </template>
+          </p>
+
+          <!-- Results list -->
+          <div class="search-results-list">
+            <template x-if="$store.scan.searchResults.length === 0">
+              <div class="no-results-message">
+                <i class="bi bi-search"></i>
+                <p>Try a different name or check the spelling</p>
+              </div>
+            </template>
+
+            <template x-for="(result, index) in $store.scan.searchResults" :key="result.winner.entryId">
+              <div class="search-result-card" @click="$store.scan.selectResult(index)">
+                <div class="search-result-name" x-text="result.winner.displayName || 'Unknown'"></div>
+                <div class="search-result-meta">
+                  <span class="me-3">
+                    <i class="bi bi-gift"></i> <span x-text="result.prizeCount"></span> prize(s)
+                  </span>
+                  <template x-if="result.pendingCount > 0">
+                    <span class="text-warning me-2">
+                      <i class="bi bi-clock"></i> <span x-text="result.pendingCount"></span> pending
+                    </span>
+                  </template>
+                  <template x-if="result.prizeCount - result.pendingCount > 0">
+                    <span class="text-success">
+                      <i class="bi bi-check-circle"></i> <span x-text="result.prizeCount - result.pendingCount"></span> picked up
+                    </span>
+                  </template>
+                </div>
+                <template x-if="result.winner.info2">
+                  <div class="search-result-extra text-muted small">
+                    <i class="bi bi-building"></i> <span x-text="result.winner.info2"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Winner Information Section -->
+    <div x-show="$store.scan.view === 'winner'" x-transition>
       <div class="card winner-card-unified">
         <div class="card-body">
           <!-- Back Button -->
-          <button class="btn btn-sm btn-outline-secondary mb-3" id="scanAnotherBtn">
+          <button class="btn btn-sm btn-outline-secondary mb-3" @click="$store.scan.backToScanner()">
             <i class="bi bi-arrow-left"></i> Back to Scanner
           </button>
-          
+
           <!-- Winner Header Section -->
           <div class="winner-header-section">
-            <h2 id="winnerName" class="winner-name-title"></h2>
-            <div id="winnerDetails" class="winner-meta-info"></div>
+            <h2 class="winner-name-title" x-text="$store.scan.winner?.displayName || 'Unknown Winner'"></h2>
+            <div class="winner-meta-info">
+              <div class="winner-meta-item">
+                <i class="bi bi-ticket-perforated"></i>
+                <span>Ticket: <span x-text="$store.scan.winner?.entryId"></span></span>
+              </div>
+              <template x-if="$store.scan.winner?.info2">
+                <div class="winner-meta-item">
+                  <i class="bi bi-building"></i>
+                  <span x-text="$store.scan.winner.info2"></span>
+                </div>
+              </template>
+              <template x-if="$store.scan.winner?.info3">
+                <div class="winner-meta-item">
+                  <i class="bi bi-telephone"></i>
+                  <span x-text="$store.scan.winner.info3"></span>
+                </div>
+              </template>
+            </div>
           </div>
-          
+
           <hr class="my-4">
-          
+
           <!-- Prizes Section -->
           <div class="prizes-section">
             <h4 class="prizes-title mb-3">
               <i class="bi bi-gift-fill me-2"></i>Prizes Won
             </h4>
-            <div id="prizeList" class="prizes-list">
-              <!-- Prizes will be dynamically inserted here -->
+            <div class="prizes-list">
+              <template x-for="(prize, index) in $store.scan.prizes" :key="prize.winnerId">
+                <div class="prize-item-card" :class="{ 'picked-up': prize.pickedUp }">
+                  <div class="prize-header">
+                    <h5 class="prize-name" x-text="prize.prize"></h5>
+                    <div class="prize-status-badge">
+                      <template x-if="!prize.pickedUp">
+                        <span class="badge bg-warning">
+                          <i class="bi bi-clock"></i> Pending
+                        </span>
+                      </template>
+                      <template x-if="prize.pickedUp">
+                        <span class="badge bg-success">
+                          <i class="bi bi-check-circle-fill"></i> Picked Up
+                        </span>
+                      </template>
+                    </div>
+                  </div>
+
+                  <div class="prize-meta">
+                    <div class="prize-meta-item">
+                      <i class="bi bi-calendar-event"></i>
+                      Won: <span x-text="$store.scan.formatDate(prize.timestamp)"></span>
+                    </div>
+                    <template x-if="prize.pickedUp && prize.pickupTimestamp">
+                      <div class="prize-meta-item">
+                        <i class="bi bi-check-circle"></i>
+                        Picked up: <span x-text="$store.scan.formatDate(prize.pickupTimestamp)"></span>
+                      </div>
+                    </template>
+                  </div>
+
+                  <template x-if="!prize.pickedUp">
+                    <div class="prize-actions">
+                      <button class="btn btn-sm pickup-btn w-100" @click="$store.scan.markPickedUp(index)">
+                        <i class="bi bi-check-circle me-2"></i>Mark as Picked Up
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </template>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
+
   <!-- No Winner Alert Modal -->
-  <div id="noWinnerAlert" class="alert-overlay d-none">
+  <div class="alert-overlay" x-show="$store.scan.showAlert" x-transition @click.self="$store.scan.dismissAlert()">
     <div class="alert-modal">
       <div class="alert-icon">
         <i class="bi bi-exclamation-circle"></i>
       </div>
       <h4 class="alert-title">No Winner Found</h4>
       <p class="alert-message">This QR code doesn't match any winner in our records.</p>
-      <p class="alert-code" id="alertTicketCode"></p>
-      <button class="btn btn-primary" id="dismissAlertBtn"><i class="bi bi-qr-code-scan"></i>
-                <span class="ms-2">Scan Another</span></button>
+      <p class="alert-code">Ticket Code: <span x-text="$store.scan.alertTicketCode"></span></p>
+      <button class="btn btn-primary" @click="$store.scan.dismissAlert()">
+        <i class="bi bi-qr-code-scan"></i>
+        <span class="ms-2">Scan Another</span>
+      </button>
     </div>
   </div>
   
@@ -788,10 +992,67 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Toastify JS -->
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-  <!-- Firebase SDKs removed - using local JSON storage -->
+  <!-- Alpine.js Store (must run BEFORE Alpine) -->
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('scan', {
+        // View state
+        view: 'scanner',
+        isScanning: false,
+        scanStatus: 'Camera not started',
+
+        // Search state
+        searchInput: '',
+        searchTerm: '',
+        searchResults: [],
+
+        // Winner state
+        winner: null,
+        prizes: [],
+
+        // Alert state
+        showAlert: false,
+        alertTicketCode: '',
+
+        // Theme
+        darkMode: localStorage.getItem('theme') === 'dark',
+
+        // Placeholder methods (will be replaced by scan-app.js)
+        toggleTheme() {
+          this.darkMode = !this.darkMode;
+          document.body.setAttribute('data-theme', this.darkMode ? 'dark' : 'light');
+          localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+        },
+        startScanning() {},
+        stopScanning() {},
+        performSearch() {},
+        selectResult(index) {},
+        markPickedUp(index) {},
+        backToScanner() {
+          this.view = 'scanner';
+          this.winner = null;
+          this.prizes = [];
+          this.searchResults = [];
+        },
+        dismissAlert() {
+          this.showAlert = false;
+          this.alertTicketCode = '';
+        },
+        formatDate(timestamp) {
+          if (!timestamp) return '';
+          return new Date(timestamp).toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+        }
+      });
+    });
+  </script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <!-- QR Scanner Library -->
   <script type="module" src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js"></script>
   <!-- Scanner App Entry Point -->
-  <script type="module" src="./src/js/scan-app.js?v=20250816"></script>
+  <script type="module" src="./scan/scan-app.js?v=20251211b"></script>
 </body>
 </html>
