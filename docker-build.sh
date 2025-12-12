@@ -6,23 +6,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Building Winner App Docker Image...${NC}"
-
-# Build the Docker image
-echo -e "${YELLOW}Step 1: Building Docker image...${NC}"
-docker build -t winner-app:latest .
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Docker image built successfully${NC}"
-else
-    echo -e "${RED}✗ Docker build failed${NC}"
-    exit 1
-fi
-
-# Stop and remove existing container if it exists
-echo -e "${YELLOW}Step 2: Stopping existing container (if any)...${NC}"
-docker stop winner-app 2>/dev/null
-docker rm winner-app 2>/dev/null
+echo -e "${GREEN}Building Winner App with Docker Compose...${NC}"
 
 # Create data directory if it doesn't exist
 if [ ! -d "./data" ]; then
@@ -31,27 +15,33 @@ if [ ! -d "./data" ]; then
     chmod 755 ./data
 fi
 
-# Run the container
-echo -e "${YELLOW}Step 3: Starting new container...${NC}"
-docker run -d \
-    --name winner-app \
-    --restart unless-stopped \
-    -p 3001:3001 \
-    -v "$(pwd)/data:/app/data" \
-    winner-app:latest
+# Stop existing containers (including any created outside docker-compose)
+echo -e "${YELLOW}Step 1: Stopping existing containers...${NC}"
+docker stop winner-app 2>/dev/null
+docker rm winner-app 2>/dev/null
+docker-compose down
+
+# Build and start
+echo -e "${YELLOW}Step 2: Building and starting containers...${NC}"
+docker-compose up -d --build
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Container started successfully${NC}"
     echo -e "${GREEN}Application is running at: http://localhost:3001${NC}"
-    
-    # Show container logs
-    echo -e "${YELLOW}Container logs:${NC}"
-    docker logs --tail 10 winner-app
+
+    # Wait for health check
+    echo -e "${YELLOW}Waiting for health check...${NC}"
+    sleep 5
+
+    # Show container status
+    echo -e "${YELLOW}Container status:${NC}"
+    docker-compose ps
+
+    # Show recent logs
+    echo -e "${YELLOW}Recent logs:${NC}"
+    docker-compose logs --tail 15
 else
     echo -e "${RED}✗ Failed to start container${NC}"
+    docker-compose logs
     exit 1
 fi
-
-# Show container status
-echo -e "${YELLOW}Container status:${NC}"
-docker ps | grep winner-app
