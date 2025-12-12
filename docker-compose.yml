@@ -5,7 +5,7 @@ services:
     container_name: winner-app
     restart: unless-stopped
     ports:
-      - "3001:3001"  # Map container port to host port
+      - "127.0.0.1:3001:3001"  # Map container port to nginx reverse proxy
     volumes:
       - ./data:/app/data # Persist data directory using local folder
     env_file:
