@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "dev:server": "nodemon backend/server.ts",
+    "dev:server": "nodemon --exec tsx backend/server.ts",
     "dev:all": "npm run dev:server & npm run dev",
     "build": "vite build && tsc -p tsconfig.backend.json",
     "build:frontend": "vite build",
@@ -39,6 +39,7 @@
     "nodemon": "^3.1.10",
     "puppeteer": "^24.17.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.0",
     "vite": "^7.0.6"
   },

@@ -21,7 +21,6 @@
       "Bash(pnpm run:*)",
       "Bash(taskkill:*)",
       "Bash(grep:*)",
-      "Bash(touch /srv/dev/winner-sveltekit/README.md)",
       "Bash(npm run build)",
       "Bash(curl -s http://localhost:5173)",
       "Bash(curl -s http://localhost:3000)",
@@ -32,12 +31,12 @@
       "Bash(npm install:*)",
       "Bash(npm run build:backend:*)",
       "WebFetch(domain:help.acst.com)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "WebSearch",
+      "WebFetch(domain:alpinejs.dev)"
     ],
     "deny": [],
-    "additionalDirectories": [
-      "/srv/dev"
-    ]
+    "additionalDirectories": []
   },
-  "outputStyle": "Explanatory"
+  "outputStyle": ""
 }

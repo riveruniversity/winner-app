@@ -775,7 +775,7 @@
       <img src="/favicon.png" width="32" class="me-2">
     </div>
     <div class="d-flex gap-2">
-      <button class="header-btn" @click="$store.scan.toggleTheme()" title="Toggle theme">
+      <button class="header-btn" x-on:click="$store.scan.toggleTheme()" title="Toggle theme">
         <i :class="$store.scan.darkMode ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
       </button>
     </div>
@@ -798,12 +798,12 @@
           <div class="scanner-controls">
             <button class="btn btn-primary btn-lg"
                     x-show="!$store.scan.isScanning"
-                    @click="$store.scan.startScanning()">
+                    x-on:click="$store.scan.startScanning()">
               <i class="bi bi-camera"></i> Start Scanner
             </button>
             <button class="btn btn-danger btn-lg"
                     x-show="$store.scan.isScanning"
-                    @click="$store.scan.stopScanning()">
+                    x-on:click="$store.scan.stopScanning()">
               <i class="bi bi-stop-circle"></i> Stop Scanner
             </button>
           </div>
@@ -813,10 +813,10 @@
             <div class="input-group">
               <input type="text" class="form-control"
                      x-model="$store.scan.searchInput"
-                     @keypress.enter="$store.scan.performSearch()"
+                     x-on:keydown.enter="$store.scan.performSearch()"
                      placeholder="Enter ticket code or winner name">
               <button class="btn btn-outline-secondary" type="button"
-                      @click="$store.scan.performSearch()">
+                      x-on:click="$store.scan.performSearch()">
                 <i class="bi bi-search"></i> Search
               </button>
             </div>
@@ -831,7 +831,7 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="card-title mb-0">Search Results</h5>
-            <button class="btn btn-sm btn-outline-secondary" @click="$store.scan.backToScanner()">
+            <button class="btn btn-sm btn-outline-secondary" x-on:click="$store.scan.backToScanner()">
               <i class="bi bi-arrow-left"></i> Back
             </button>
           </div>
@@ -856,7 +856,7 @@
             </template>
 
             <template x-for="(result, index) in $store.scan.searchResults" :key="result.winner.entryId">
-              <div class="search-result-card" @click="$store.scan.selectResult(index)">
+              <div class="search-result-card" x-on:click="$store.scan.selectResult(index)">
                 <div class="search-result-name" x-text="result.winner.displayName || 'Unknown'"></div>
                 <div class="search-result-meta">
                   <span class="me-3">
@@ -890,7 +890,7 @@
       <div class="card winner-card-unified">
         <div class="card-body">
           <!-- Back Button -->
-          <button class="btn btn-sm btn-outline-secondary mb-3" @click="$store.scan.backToScanner()">
+          <button class="btn btn-sm btn-outline-secondary mb-3" x-on:click="$store.scan.backToScanner()">
             <i class="bi bi-arrow-left"></i> Back to Scanner
           </button>
 
@@ -958,7 +958,7 @@
 
                   <template x-if="!prize.pickedUp">
                     <div class="prize-actions">
-                      <button class="btn btn-sm pickup-btn w-100" @click="$store.scan.markPickedUp(index)">
+                      <button class="btn btn-sm pickup-btn w-100" x-on:click="$store.scan.markPickedUp(index)">
                         <i class="bi bi-check-circle me-2"></i>Mark as Picked Up
                       </button>
                     </div>
@@ -981,7 +981,7 @@
       <h4 class="alert-title">No Winner Found</h4>
       <p class="alert-message">This QR code doesn't match any winner in our records.</p>
       <p class="alert-code">Ticket Code: <span x-text="$store.scan.alertTicketCode"></span></p>
-      <button class="btn btn-primary" @click="$store.scan.dismissAlert()">
+      <button class="btn btn-primary" x-on:click="$store.scan.dismissAlert()">
         <i class="bi bi-qr-code-scan"></i>
         <span class="ms-2">Scan Another</span>
       </button>

@@ -16,7 +16,7 @@ class ScannerModule {
   }
 
   async init() {
-    QrScanner.WORKER_PATH = 'https://unpkg.com/qr-scanner@1.4.2/qr-scanner-worker.min.js';
+    // No longer needed - qr-scanner handles worker automatically
   }
 
   async startScanning() {

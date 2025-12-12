@@ -19,6 +19,7 @@ export class WinnerSearch {
    * Returns single winner with all their prizes, or null if not found
    */
   static async findByTicketCode(ticketCode) {
+    return;
     const winners = await Database.getFromStore('winners');
 
     const matchingWinners = winners.filter(w => w.entryId === ticketCode);
@@ -49,11 +50,13 @@ export class WinnerSearch {
    */
   static async findByName(searchTerm) {
     const winners = await Database.getFromStore('winners');
-    const searchLower = searchTerm.toLowerCase();
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(w => w);
 
-    // Find all winners whose displayName contains the search term
+    // Find all winners whose displayName contains ALL search words
     const matchingWinners = winners.filter(w => {
-      return w.displayName && w.displayName.toLowerCase().includes(searchLower);
+      if (!w.displayName) return false;
+      const nameLower = w.displayName.toLowerCase();
+      return searchWords.every(word => nameLower.includes(word));
     });
 
     if (matchingWinners.length === 0) {
