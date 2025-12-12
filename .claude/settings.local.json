@@ -33,7 +33,8 @@
       "WebFetch(domain:help.acst.com)",
       "WebFetch(domain:www.npmjs.com)",
       "WebSearch",
-      "WebFetch(domain:alpinejs.dev)"
+      "WebFetch(domain:alpinejs.dev)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "additionalDirectories": []

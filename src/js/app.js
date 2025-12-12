@@ -75,21 +75,31 @@ async function loadDataInBackground() {
       { collection: 'winners' },
       { collection: 'history' }
     ]);
-    
+
     const lists = batchResults.lists || [];
     const prizes = batchResults.prizes || [];
     const winners = batchResults.winners || [];
     const history = batchResults.history || [];
-    
+
+    // Populate Alpine stores with loaded data (if Alpine is available)
+    if (window.Alpine) {
+      const listsStore = Alpine.store('lists');
+      const prizesStore = Alpine.store('prizes');
+      const winnersStore = Alpine.store('winners');
+      if (listsStore) listsStore.setItems(lists);
+      if (prizesStore) prizesStore.setItems(prizes);
+      if (winnersStore) winnersStore.setItems(winners);
+    }
+
     // Update UI components with the loaded data (pass data to avoid refetching)
     await Lists.loadLists(lists); // Pass loaded data
     await Prizes.loadPrizes(prizes); // Pass loaded data
     await Winners.loadWinners(winners, lists); // Pass loaded data
-    
+
     // Load history UI with already loaded data
     loadHistoryUI(history);
     updateHistoryStatsUI(history, winners);
-    
+
     // Populate quick selects with already loaded data
     UI.populateQuickSelects(lists, prizes);
   } catch (error) {

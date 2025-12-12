@@ -18,7 +18,7 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="/src/css/styles.css">
 </head>
-<body data-theme="light">
+<body data-theme="light" x-data>
   <!-- Main Public Selection Interface -->
   <div class="public-selection-interface" id="publicInterface">
     <!-- Header -->
@@ -46,7 +46,7 @@
         <button class="btn btn-outline-light" id="fullscreenToggle" title="Toggle fullscreen">
           <i class="bi bi-fullscreen"></i>
         </button>
-        <button class="btn btn-outline-light" id="managementToggle">
+        <button class="btn btn-outline-light" id="managementToggle" x-on:click="$store.ui.showManagement()">
           <i class="bi bi-list-ul"></i> Manage
         </button>
       </div>
@@ -61,23 +61,23 @@
         <div class="selection-info">
           <div class="info-card">
             <div class="info-label">Current List</div>
-            <div class="info-value" id="currentListDisplay">Not Selected</div>
+            <div class="info-value" id="currentListDisplay" x-text="$store.setup.listDisplayText">Not Selected</div>
           </div>
-          <div class="info-card" id="totalEntriesCard">
+          <div class="info-card" id="totalEntriesCard" x-show="!$store.settings.hideEntryCounts">
             <div class="info-label">Total Entries</div>
-            <div class="info-value" id="totalEntriesDisplay">0</div>
+            <div class="info-value" id="totalEntriesDisplay" x-text="$store.setup.totalEntries">0</div>
           </div>
           <div class="info-card">
             <div class="info-label">Winners to Select</div>
-            <div class="info-value" id="winnersCountDisplay">1</div>
+            <div class="info-value" id="winnersCountDisplay" x-text="$store.setup.winnersCount">1</div>
           </div>
           <div class="info-card">
             <div class="info-label">Prize</div>
-            <div class="info-value" id="currentPrizeDisplay">Not Selected</div>
+            <div class="info-value" id="currentPrizeDisplay" x-text="$store.setup.prizeDisplayText">Not Selected</div>
           </div>
         </div>
         <!-- Big Play Button -->
-        <button class="big-play-button" id="bigPlayButton" disabled>
+        <button class="big-play-button" id="bigPlayButton" :disabled="!$store.setup.canStart">
           <i class="bi bi-play-fill"></i>
         </button>
       </div>
@@ -120,13 +120,14 @@
                 <li><a class="dropdown-item" href="#" id="restoreOnline"><i class="bi bi-cloud-download me-2"></i>Restore Online</a></li>
               </ul>
             </div>
-            <button class="btn btn-primary" id="backToPublicBtn">
+            <button class="btn btn-primary" id="backToPublicBtn" x-on:click="$store.ui.showPublic()">
               <i class="bi bi-eye me-2"></i>Public View
             </button>
           </div>
         </div>
         <!-- Management Tabs -->
-        <ul class="nav nav-tabs mt-3" id="managementTabs" role="tablist">
+        <ul class="nav nav-tabs mt-3" id="managementTabs" role="tablist"
+            x-init="$el.addEventListener('shown.bs.tab', (e) => $store.ui.setTab(e.target.getAttribute('data-bs-target').replace('#', '')))">
           <li class="nav-item" role="presentation">
             <button class="nav-link active" id="quicksetup-tab" data-bs-toggle="tab" data-bs-target="#quicksetup" type="button" role="tab">
               <i class="bi bi-play-circle me-2"></i>Setup
@@ -166,7 +167,7 @@
         <!-- Tab Content -->
         <div class="tab-content mt-3" id="managementTabContent">
           <!-- Setup Tab -->
-          <div class="tab-pane fade show active" id="quicksetup" role="tabpanel">
+          <div class="tab-pane fade show active" id="quicksetup" role="tabpanel" x-data>
             <!-- Row 1: Full Width Quick Selection Setup -->
             <div class="card">
               <div class="card-header">
@@ -182,26 +183,44 @@
                       <div class="list-selection-controls mb-2">
                         <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllLists">Select All</button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAllLists">Clear All</button>
-                        <span class="ms-2 text-muted" id="selectedListsCount">0 lists selected</span>
+                        <span class="ms-2 text-muted" x-text="$store.setup.selectedListIds.length + ' lists selected'"></span>
                       </div>
                       <div class="list-checkboxes border rounded p-2" id="quickListSelect" style="max-height: 200px; overflow-y: auto;">
-                        <!-- Checkboxes will be added here dynamically -->
+                        <template x-for="list in $store.lists.items" :key="list.listId">
+                          <div class="form-check">
+                            <input class="form-check-input list-checkbox" type="checkbox"
+                                   :id="'list-' + list.listId"
+                                   :value="list.listId"
+                                   :checked="$store.setup.selectedListIds.includes(list.listId)"
+                                   @change="$store.setup.toggleList(list.listId)">
+                            <label class="form-check-label" :for="'list-' + list.listId">
+                              <span x-text="list.metadata.name"></span>
+                              <span class="text-muted" x-text="'(' + list.entries.length + ')'"></span>
+                            </label>
+                          </div>
+                        </template>
+                        <p x-show="$store.lists.items.length === 0" class="text-muted mb-0">No lists uploaded yet</p>
                       </div>
                       <div class="mt-2">
-                        <small class="text-muted">Total entries: <span id="totalSelectedEntries">0</span></small>
+                        <small class="text-muted">Total entries: <span x-text="$store.setup.totalEntries">0</span></small>
                         <small class="text-muted ms-2" id="duplicatesRemoved"></small>
                       </div>
                     </div>
                   </div>
                   <div class="col-md-5">
                     <label class="form-label fw-semibold">Select Prize</label>
-                    <select class="form-select form-select-lg" id="quickPrizeSelect">
+                    <select class="form-select form-select-lg" id="quickPrizeSelect"
+                            x-model="$store.setup.selectedPrizeId">
                       <option value="">Select Prize...</option>
+                      <template x-for="prize in $store.prizes.items" :key="prize.prizeId">
+                        <option :value="prize.prizeId" x-text="prize.name + ' (' + prize.quantity + ' available)'"></option>
+                      </template>
                     </select>
                   </div>
                   <div class="col-md-2">
                     <label class="form-label fw-semibold">Number of Winners</label>
-                    <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" max="9999" placeholder="Count">
+                    <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" max="9999" placeholder="Count"
+                           x-model.number="$store.setup.winnersCount">
                   </div>
                 </div>
               </div>
@@ -224,7 +243,9 @@
                         Selection Mode
                         <i class="bi bi-info-circle text-muted ms-1" title="How winners are selected and revealed"></i>
                       </label>
-                      <select class="form-select form-select-lg" id="selectionMode">
+                      <select class="form-select form-select-lg" id="selectionMode"
+                              x-model="$store.settings.selectionMode"
+                              @change="$store.settings.save('selectionMode')">
                         <option value="all-at-once">All at Once</option>
                         <option value="sequential">Sequential Reveal</option>
                         <option value="individual">Individual Selection</option>
@@ -235,7 +256,9 @@
                         Display Effect
                         <i class="bi bi-info-circle text-muted ms-1" title="How winners appear on screen"></i>
                       </label>
-                      <select class="form-select form-select-lg" id="displayEffect">
+                      <select class="form-select form-select-lg" id="displayEffect"
+                              x-model="$store.settings.displayEffect"
+                              @change="$store.settings.save('displayEffect')">
                         <option value="fade-in">Fade In</option>
                         <option value="fly-in">Fly In</option>
                         <option value="zoom-in">Zoom In</option>
@@ -248,7 +271,9 @@
                         Time Between Winners (seconds)
                         <i class="bi bi-info-circle text-muted ms-1" title="Delay between each winner being revealed (sequential mode only)"></i>
                       </label>
-                      <input type="number" class="form-control form-control-lg" id="displayDuration" value="0.5" min="0.1" max="5" step="0.1">
+                      <input type="number" class="form-control form-control-lg" id="displayDuration" value="0.5" min="0.1" max="5" step="0.1"
+                             x-model.number="$store.settings.displayDuration"
+                             @change="$store.settings.save('displayDuration')">
                     </div>
                   </div>
                 </div>
@@ -268,14 +293,18 @@
                         Delay Duration (seconds)
                         <i class="bi bi-info-circle text-muted ms-1" title="Delay before selection begins"></i>
                       </label>
-                      <input type="number" class="form-control form-control-lg" id="preSelectionDelay" value="0" min="0" max="30" step="0.5">
+                      <input type="number" class="form-control form-control-lg" id="preSelectionDelay" value="0" min="0" max="30" step="0.5"
+                             x-model.number="$store.settings.preSelectionDelay"
+                             @change="$store.settings.save('preSelectionDelay')">
                     </div>
                     <div class="mb-3">
                       <label class="form-label fw-semibold">
                         Delay Visual
                         <i class="bi bi-info-circle text-muted ms-1" title="What to show during the delay"></i>
                       </label>
-                      <select class="form-select form-select-lg" id="delayVisualType">
+                      <select class="form-select form-select-lg" id="delayVisualType"
+                              x-model="$store.settings.delayVisualType"
+                              @change="$store.settings.save('delayVisualType')">
                         <option value="none">No Visual (Silent)</option>
                         <option value="countdown">Countdown Timer</option>
                         <option value="animation">Particle Animation</option>
@@ -307,20 +336,26 @@
                   <div class="card-body">
                     <div class="mb-3">
                       <label for="celebrationEffect" class="form-label fw-semibold">Celebration Animation</label>
-                      <select class="form-select form-select-lg" id="celebrationEffect">
+                      <select class="form-select form-select-lg" id="celebrationEffect"
+                              x-model="$store.settings.celebrationEffect"
+                              @change="$store.settings.save('celebrationEffect')">
                         <option value="none">No Animation</option>
-                        <option value="confetti" selected>Confetti</option>
+                        <option value="confetti">Confetti</option>
                         <option value="coins">Gold Coins</option>
                         <option value="both">Both Confetti & Coins</option>
                       </select>
                     </div>
                     <div class="mb-3">
                       <label for="celebrationDuration" class="form-label fw-semibold">Animation Duration (seconds)</label>
-                      <input type="number" class="form-control form-control-lg" id="celebrationDuration" min="1" max="10" step="0.5" value="4">
+                      <input type="number" class="form-control form-control-lg" id="celebrationDuration" min="1" max="10" step="0.5" value="4"
+                             x-model.number="$store.settings.celebrationDuration"
+                             @change="$store.settings.save('celebrationDuration')">
                     </div>
                     <div class="mb-3">
                       <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="celebrationAutoTrigger" checked>
+                        <input class="form-check-input" type="checkbox" id="celebrationAutoTrigger"
+                               x-model="$store.settings.celebrationAutoTrigger"
+                               @change="$store.settings.save('celebrationAutoTrigger')">
                         <label class="form-check-label" for="celebrationAutoTrigger">
                           Auto-trigger celebration when winners are revealed
                         </label>
@@ -350,7 +385,9 @@
                         <i class="bi bi-info-circle text-muted ms-1" title="Sound effect played during pre-selection delay"></i>
                       </label>
                       <div class="input-group">
-                        <select class="form-select form-select-lg" id="soundDuringDelay">
+                        <select class="form-select form-select-lg" id="soundDuringDelay"
+                                x-model="$store.settings.soundDuringDelay"
+                                @change="$store.settings.save('soundDuringDelay')">
                           <option value="none">No Sound</option>
                         </select>
                         <button type="button" class="btn btn-outline-secondary" id="testSoundDuringDelay">
@@ -364,7 +401,9 @@
                         <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Sound effect when delay completes"></i>
                       </label>
                       <div class="input-group">
-                        <select class="form-select form-select-lg" id="soundEndOfDelay">
+                        <select class="form-select form-select-lg" id="soundEndOfDelay"
+                                x-model="$store.settings.soundEndOfDelay"
+                                @change="$store.settings.save('soundEndOfDelay')">
                           <option value="none">No Sound</option>
                         </select>
                         <button type="button" class="btn btn-outline-secondary" id="testSoundEndOfDelay">
@@ -378,7 +417,9 @@
                         <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Sound effect when winners are revealed"></i>
                       </label>
                       <div class="input-group">
-                        <select class="form-select form-select-lg" id="soundDuringReveal">
+                        <select class="form-select form-select-lg" id="soundDuringReveal"
+                                x-model="$store.settings.soundDuringReveal"
+                                @change="$store.settings.save('soundDuringReveal')">
                           <option value="none">No Sound</option>
                         </select>
                         <button type="button" class="btn btn-outline-secondary" id="testSoundDuringReveal">
@@ -798,7 +839,7 @@
         </div>
       </div>
       <!-- Settings Tab -->
-      <div class="tab-pane fade" id="settings" role="tabpanel">
+      <div class="tab-pane fade" id="settings" role="tabpanel" x-data>
         <div class="row">
           <div class="col-lg-6">
             <!-- Display Settings -->
@@ -807,7 +848,9 @@
                 <h5 class="card-title">General Settings</h5>
                 <div class="mb-3">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="preventDuplicates">
+                    <input class="form-check-input" type="checkbox" id="preventDuplicates"
+                           x-model="$store.settings.preventDuplicates"
+                           @change="$store.settings.save('preventDuplicates')">
                     <label class="form-check-label" for="preventDuplicates">
                       Remove winners from source list
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Prevent the same person from winning multiple times"></i>
@@ -816,7 +859,9 @@
                 </div>
                 <div class="mb-3">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="preventSamePrize">
+                    <input class="form-check-input" type="checkbox" id="preventSamePrize"
+                           x-model="$store.settings.preventSamePrize"
+                           @change="$store.settings.save('preventSamePrize')">
                     <label class="form-check-label" for="preventSamePrize">
                       Prevent winning same prize twice
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Winners cannot win the same prize multiple times (e.g., can't win Jordans twice)"></i>
@@ -825,7 +870,9 @@
                 </div>
                 <div class="mb-3">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="hideEntryCounts">
+                    <input class="form-check-input" type="checkbox" id="hideEntryCounts"
+                           x-model="$store.settings.hideEntryCounts"
+                           @change="$store.settings.save('hideEntryCounts')">
                     <label class="form-check-label" for="hideEntryCounts">
                       Hide Entry Counts
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Hide the number of participants in public view"></i>
@@ -834,7 +881,9 @@
                 </div>
                 <div class="mb-3">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="enableDebugLogs">
+                    <input class="form-check-input" type="checkbox" id="enableDebugLogs"
+                           x-model="$store.settings.enableDebugLogs"
+                           @change="$store.settings.save('enableDebugLogs')">
                     <label class="form-check-label" for="enableDebugLogs">
                       Enable Debug Logs
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Show detailed console logs for debugging"></i>
@@ -849,19 +898,23 @@
                 <h5 class="card-title">Webhook Settings</h5>
                 <div class="mb-3">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="enableWebhook">
+                    <input class="form-check-input" type="checkbox" id="enableWebhook"
+                           x-model="$store.settings.enableWebhook"
+                           @change="$store.settings.save('enableWebhook')">
                     <label class="form-check-label" for="enableWebhook">
                       Enable Webhook Notifications
                       <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Send HTTP POST requests when winners are selected"></i>
                     </label>
                   </div>
                 </div>
-                <div class="mb-3" id="webhookUrlSection">
+                <div class="mb-3" id="webhookUrlSection" x-show="$store.settings.enableWebhook" x-transition>
                   <label class="form-label" for="webhookUrl">
                     Webhook URL
                     <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="URL where winner selection notifications will be sent via POST request"></i>
                   </label>
-                  <input type="url" class="form-control" id="webhookUrl" placeholder="https://example.com/webhook" disabled>
+                  <input type="url" class="form-control" id="webhookUrl" placeholder="https://example.com/webhook"
+                         x-model="$store.settings.webhookUrl"
+                         @change="$store.settings.save('webhookUrl')">
                   <div class="form-text">Winners data will be sent as JSON in the request body</div>
                 </div>
               </div>
@@ -897,7 +950,9 @@
                     Font Family
                     <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose the main font for the application"></i>
                   </label>
-                  <select class="form-select" id="fontFamily">
+                  <select class="form-select" id="fontFamily"
+                          x-model="$store.settings.fontFamily"
+                          @change="$store.settings.save('fontFamily')">
                     <option value="Open Sans">Open Sans</option>
                     <option value="Roboto">Roboto</option>
                     <option value="Inter">Inter</option>
@@ -910,11 +965,17 @@
                   <div class="row">
                     <div class="col-6">
                       <label class="form-label">Primary Color</label>
-                      <input type="color" class="form-control color-input" id="primaryColor" value="#6366f1">
+                      <input type="color" class="form-control color-input" id="primaryColor" value="#6366f1"
+                             x-model="$store.settings.primaryColor"
+                             @input="$store.settings.applyTheme()"
+                             @change="$store.settings.save('primaryColor')">
                     </div>
                     <div class="col-6">
                       <label class="form-label">Secondary Color</label>
-                      <input type="color" class="form-control color-input" id="secondaryColor" value="#8b5cf6">
+                      <input type="color" class="form-control color-input" id="secondaryColor" value="#8b5cf6"
+                             x-model="$store.settings.secondaryColor"
+                             @input="$store.settings.applyTheme()"
+                             @change="$store.settings.save('secondaryColor')">
                     </div>
                   </div>
                 </div>
@@ -923,13 +984,15 @@
                     Background Type
                     <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Choose background style for winner display"></i>
                   </label>
-                  <select class="form-select" id="backgroundType">
+                  <select class="form-select" id="backgroundType"
+                          x-model="$store.settings.backgroundType"
+                          @change="$store.settings.save('backgroundType')">
                     <option value="gradient">Gradient</option>
                     <option value="solid">Solid Color</option>
                     <option value="image">Custom Image</option>
                   </select>
                 </div>
-                <div class="mb-3" id="backgroundImageUpload" style="display: none;">
+                <div class="mb-3" id="backgroundImageUpload" x-show="$store.settings.backgroundType === 'image'" x-transition>
                   <label class="form-label">Background Image</label>
                   
                   <!-- Toggle buttons for selecting or uploading -->
@@ -1213,8 +1276,294 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Toastify JS -->
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-  <!-- Firebase SDKs (Modular) -->
-  <!-- Firebase SDKs removed - using local JSON storage -->
+
+  <!-- Alpine.js Persist Plugin (loads and executes first, registers $persist) -->
+  <script src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.14.9/dist/cdn.min.js"></script>
+
+  <!-- Alpine.js Store Registration - must be AFTER persist plugin -->
+  <script>
+    document.addEventListener('alpine:init', () => {
+      // Settings store with persistence
+      Alpine.store('settings', {
+        // General settings
+        preventDuplicates: Alpine.$persist(false).as('settings_preventDuplicates'),
+        preventSamePrize: Alpine.$persist(false).as('settings_preventSamePrize'),
+        hideEntryCounts: Alpine.$persist(false).as('settings_hideEntryCounts'),
+        enableDebugLogs: Alpine.$persist(false).as('settings_enableDebugLogs'),
+        enableWebhook: Alpine.$persist(false).as('settings_enableWebhook'),
+        webhookUrl: Alpine.$persist('').as('settings_webhookUrl'),
+
+        // Theme settings
+        fontFamily: Alpine.$persist('Open Sans').as('settings_fontFamily'),
+        primaryColor: Alpine.$persist('#6366f1').as('settings_primaryColor'),
+        secondaryColor: Alpine.$persist('#8b5cf6').as('settings_secondaryColor'),
+        backgroundType: Alpine.$persist('gradient').as('settings_backgroundType'),
+        customBackgroundImage: Alpine.$persist(null).as('settings_customBackgroundImage'),
+
+        // Selection display settings
+        selectionMode: Alpine.$persist('all-at-once').as('settings_selectionMode'),
+        displayEffect: Alpine.$persist('fade-in').as('settings_displayEffect'),
+        displayDuration: Alpine.$persist(0.5).as('settings_displayDuration'),
+        preSelectionDelay: Alpine.$persist(0).as('settings_preSelectionDelay'),
+        delayVisualType: Alpine.$persist('none').as('settings_delayVisualType'),
+
+        // Sound settings
+        soundDuringDelay: Alpine.$persist('none').as('settings_soundDuringDelay'),
+        soundEndOfDelay: Alpine.$persist('none').as('settings_soundEndOfDelay'),
+        soundDuringReveal: Alpine.$persist('none').as('settings_soundDuringReveal'),
+
+        // Celebration settings
+        celebrationEffect: Alpine.$persist('confetti').as('settings_celebrationEffect'),
+        celebrationDuration: Alpine.$persist(4).as('settings_celebrationDuration'),
+        celebrationAutoTrigger: Alpine.$persist(true).as('settings_celebrationAutoTrigger'),
+
+        // SMS Template
+        smsTemplate: Alpine.$persist('Congratulations {name}! You won {prize}. Your code: {contactId}').as('settings_smsTemplate'),
+
+        init() {
+          // Sync with backend on load (non-blocking)
+          this.loadFromServer();
+        },
+
+        async loadFromServer() {
+          // Bridge to existing database.js - will be implemented after module loads
+        },
+
+        async save(key) {
+          // Bridge to existing Settings.saveSingleSetting() - will be connected after module loads
+          if (window.Settings && window.Settings.saveSingleSetting) {
+            await window.Settings.saveSingleSetting(key, this[key]);
+          }
+        },
+
+        applyTheme() {
+          // Apply CSS variables for live preview
+          document.documentElement.style.setProperty('--bs-primary', this.primaryColor);
+          document.documentElement.style.setProperty('--color-primary', this.primaryColor);
+          document.documentElement.style.setProperty('--color-secondary', this.secondaryColor);
+        }
+      });
+
+      // Quick setup state
+      Alpine.store('setup', {
+        selectedListIds: Alpine.$persist([]).as('setup_selectedListIds'),
+        selectedPrizeId: Alpine.$persist('').as('setup_selectedPrizeId'),
+        winnersCount: Alpine.$persist(1).as('setup_winnersCount'),
+
+        get canStart() {
+          return this.selectedListIds.length > 0 && this.selectedPrizeId;
+        },
+
+        get totalEntries() {
+          const listsStore = Alpine.store('lists');
+          if (!listsStore || !listsStore.items) return 0;
+          return this.selectedListIds.reduce((total, listId) => {
+            const list = listsStore.items.find(l => l.listId === listId);
+            return total + (list ? list.entries.length : 0);
+          }, 0);
+        },
+
+        get listDisplayText() {
+          const listsStore = Alpine.store('lists');
+          if (!listsStore || !listsStore.items) return 'Not Selected';
+          if (this.selectedListIds.length === 0) return 'Not Selected';
+          if (this.selectedListIds.length === 1) {
+            const list = listsStore.items.find(l => l.listId === this.selectedListIds[0]);
+            return list?.metadata?.name || 'Unknown';
+          }
+          return `${this.selectedListIds.length} Lists Selected`;
+        },
+
+        get prizeDisplayText() {
+          const prizesStore = Alpine.store('prizes');
+          if (!prizesStore || !prizesStore.items) return 'Not Selected';
+          if (!this.selectedPrizeId) return 'Not Selected';
+          const prize = prizesStore.items.find(p => p.prizeId === this.selectedPrizeId);
+          return prize?.name || 'Not Selected';
+        },
+
+        isListSelected(listId) {
+          return this.selectedListIds.includes(listId);
+        },
+
+        toggleList(listId) {
+          const idx = this.selectedListIds.indexOf(listId);
+          if (idx > -1) {
+            this.selectedListIds.splice(idx, 1);
+          } else {
+            this.selectedListIds.push(listId);
+          }
+        },
+
+        selectList(listId) {
+          if (!this.selectedListIds.includes(listId)) {
+            this.selectedListIds.push(listId);
+          }
+        },
+
+        deselectList(listId) {
+          const idx = this.selectedListIds.indexOf(listId);
+          if (idx > -1) {
+            this.selectedListIds.splice(idx, 1);
+          }
+        }
+      });
+
+      // Data stores
+      Alpine.store('lists', {
+        items: [],
+        loading: false,
+
+        async load() {
+          // Will be connected to Database.getFromStore('lists')
+        },
+
+        setItems(items) {
+          this.items = items || [];
+        }
+      });
+
+      Alpine.store('prizes', {
+        items: [],
+        loading: false,
+
+        async load() {
+          // Will be connected to Database.getFromStore('prizes')
+        },
+
+        setItems(items) {
+          this.items = items || [];
+        },
+
+        get available() {
+          // Prizes with quantity > 0
+          return this.items.filter(p => p.quantity > 0);
+        }
+      });
+
+      Alpine.store('winners', {
+        items: [],
+        filters: {
+          prize: '',
+          list: '',
+          batch: '',
+          date: ''
+        },
+
+        get filtered() {
+          return this.items.filter(w => {
+            if (this.filters.prize && w.prizeId !== this.filters.prize) return false;
+            if (this.filters.list && w.listId !== this.filters.list) return false;
+            return true;
+          });
+        },
+
+        setItems(items) {
+          this.items = items || [];
+        },
+
+        clearFilters() {
+          this.filters = { prize: '', list: '', batch: '', date: '' };
+        }
+      });
+
+      // UI state store
+      Alpine.store('ui', {
+        view: Alpine.$persist('public').as('ui_view'), // 'public' or 'management'
+        currentTab: Alpine.$persist('quicksetup').as('ui_currentTab'),
+        showWinnersGrid: false,
+        isSelecting: false,
+
+        init() {
+          // Restore view on page load after DOM is ready
+          const restoreView = () => {
+            try {
+              const publicEl = document.getElementById('publicInterface');
+              const managementEl = document.getElementById('managementInterface');
+
+              if (this.view === 'management') {
+                if (publicEl) publicEl.classList.add('d-none');
+                if (managementEl) managementEl.classList.add('active');
+                // Activate the saved tab
+                const tabTrigger = document.querySelector(`[data-bs-target="#${this.currentTab}"]`);
+                if (tabTrigger && window.bootstrap) {
+                  const tab = new bootstrap.Tab(tabTrigger);
+                  tab.show();
+                }
+              } else {
+                // Ensure public view is shown
+                if (publicEl) publicEl.classList.remove('d-none');
+                if (managementEl) managementEl.classList.remove('active');
+              }
+            } catch (e) {
+              console.warn('Error restoring UI state:', e);
+            }
+          };
+
+          // Wait for DOM to be ready
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', restoreView);
+          } else {
+            setTimeout(restoreView, 150);
+          }
+        },
+
+        showManagement() {
+          this.view = 'management';
+          document.getElementById('publicInterface')?.classList.add('d-none');
+          document.getElementById('managementInterface')?.classList.add('active');
+        },
+
+        showPublic() {
+          this.view = 'public';
+          document.getElementById('publicInterface')?.classList.remove('d-none');
+          document.getElementById('managementInterface')?.classList.remove('active');
+        },
+
+        setTab(tabId) {
+          this.currentTab = tabId;
+        }
+      });
+
+      // Reusable component: Confirmation Modal
+      Alpine.data('confirmModal', () => ({
+        title: '',
+        message: '',
+        confirmText: 'Confirm',
+        confirmClass: 'btn-danger',
+        onConfirm: null,
+        bsModal: null,
+
+        init() {
+          this.bsModal = new bootstrap.Modal(this.$el);
+        },
+
+        show(options) {
+          Object.assign(this, {
+            title: options.title || '',
+            message: options.message || '',
+            confirmText: options.confirmText || 'Confirm',
+            confirmClass: options.confirmClass || 'btn-danger',
+            onConfirm: options.onConfirm || null
+          });
+          this.bsModal.show();
+        },
+
+        confirm() {
+          if (this.onConfirm) this.onConfirm();
+          this.bsModal.hide();
+        },
+
+        close() {
+          this.bsModal.hide();
+        }
+      }));
+    });
+  </script>
+
+  <!-- Alpine.js Core (loads after inline setup, triggers alpine:init) -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+
   <!-- Vite Entry Point -->
   <script type="module" src="./src/main.js"></script>
 </body>
