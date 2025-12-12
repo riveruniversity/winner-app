@@ -5,11 +5,11 @@ export class WinnerSearch {
   /**
    * Check if input matches a ticket code format
    * Supports:
-   * - 12-24 lowercase alphanumeric (e.g., "abc123def456...")
+   * - 8-24 alphanumeric (mixed case) (e.g., "HWFXaOUlVT", "abc123def456...")
    * - [A-Z]-[0-9]{5,7} prefix format (e.g., "A-369008", "B-1234567")
    */
   static isTicketCode(input) {
-    const alphanumericPattern = /^[a-z0-9]{12,24}$/;
+    const alphanumericPattern = /^[a-zA-Z0-9]{8,24}$/;
     const prefixPattern = /^[A-Z]-\d{5,7}$/;
     return alphanumericPattern.test(input) || prefixPattern.test(input);
   }
@@ -19,7 +19,6 @@ export class WinnerSearch {
    * Returns single winner with all their prizes, or null if not found
    */
   static async findByTicketCode(ticketCode) {
-    return;
     const winners = await Database.getFromStore('winners');
 
     const matchingWinners = winners.filter(w => w.entryId === ticketCode);
@@ -117,7 +116,8 @@ export class WinnerSearch {
       prize: w.prize,
       timestamp: w.timestamp,
       pickedUp: w.pickedUp || false,
-      pickupTimestamp: w.pickupTimestamp || null
+      pickupTimestamp: w.pickupTimestamp || null,
+      pickupStation: w.pickupStation || null
     }));
 
     return {

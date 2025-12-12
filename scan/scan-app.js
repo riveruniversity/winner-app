@@ -21,6 +21,11 @@ async function initializeScanApp() {
     // Apply saved theme
     document.body.setAttribute('data-theme', store.darkMode ? 'dark' : 'light');
 
+    // Check if operator name is set, show modal if not
+    if (!store.operatorName) {
+      store.showOperatorModal = true;
+    }
+
     // Initialize QR Scanner
     await Scanner.init();
 
@@ -76,8 +81,7 @@ async function initializeScanApp() {
           const results = searchResult.results;
           if (results.length === 0) {
             store.searchTerm = input;
-            store.searchResults = [];
-            store.view = 'results';
+            store.showNoResultsModal = true;
           } else if (results.length === 1) {
             store.winner = results[0].winner;
             store.prizes = results[0].prizes;
@@ -85,6 +89,7 @@ async function initializeScanApp() {
             Scanner.stopScanning();
           } else {
             store.searchTerm = input;
+            store.searchInput = input;
             store.searchResults = results;
             store.view = 'results';
           }
@@ -112,11 +117,13 @@ async function initializeScanApp() {
         // Optimistic UI update
         store.prizes[index].pickedUp = true;
         store.prizes[index].pickupTimestamp = new Date().toISOString();
+        store.prizes[index].pickupStation = store.operatorName;
 
         // Persist to database
         await Database.updateWinner(prize.winnerId, {
           pickedUp: true,
-          pickupTimestamp: store.prizes[index].pickupTimestamp
+          pickupTimestamp: store.prizes[index].pickupTimestamp,
+          pickupStation: store.operatorName
         });
 
         UI.showToast('Prize marked as picked up!', 'success');
@@ -124,6 +131,7 @@ async function initializeScanApp() {
         // Revert on error
         store.prizes[index].pickedUp = false;
         store.prizes[index].pickupTimestamp = null;
+        store.prizes[index].pickupStation = null;
         console.error('Error marking as picked up:', error);
         UI.showToast('Failed to update: ' + error.message, 'error');
       }

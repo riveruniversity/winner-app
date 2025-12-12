@@ -37,7 +37,9 @@
       "WebSearch",
       "Bash(curl:*)",
       "Bash(findstr:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:frontend:*)"
     ],
     "deny": [],
     "additionalDirectories": []

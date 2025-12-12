@@ -182,6 +182,36 @@
       color: #fff;
     }
 
+    [data-theme="dark"] .text-muted {
+      color: #adb5bd !important;
+    }
+
+    [data-theme="dark"] .form-control {
+      background-color: #3d3d3d;
+      border-color: #555;
+      color: #fff;
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+      color: #888;
+    }
+
+    [data-theme="dark"] .btn-outline-secondary {
+      border-color: #555;
+      color: #ccc;
+    }
+
+    :root {
+      --glow-bg: rgba(10, 79, 123, 0.3);
+      --glow-border: #5FA1F7;
+    }
+
+    .btn-outline-secondary:hover {
+      background-color: var(--glow-bg);
+      border-color: var(--glow-border);
+      color: #fff;
+    }
+
     /* Loading spinner */
     .loading-spinner {
       display: inline-block;
@@ -242,7 +272,38 @@
       font-size: 2.5rem;
       color: white;
     }
-    
+
+    /* Alert icon variants */
+    .alert-icon.alert-icon-error {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    }
+
+    .alert-icon.alert-icon-info {
+      background: linear-gradient(135deg, #0A4f7B, #5FA1F7);
+    }
+
+    .alert-icon.alert-icon-search {
+      background: linear-gradient(135deg, #6c757d, #adb5bd);
+    }
+
+    /* Modal actions container */
+    .modal-actions {
+      display: flex;
+      justify-content: flex-start;
+      margin-top: 1.5rem;
+    }
+
+    /* Card footer section */
+    .card-footer-actions {
+      border-top: 1px solid #e9ecef;
+      padding-top: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    [data-theme="dark"] .card-footer-actions {
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
     .alert-title {
       font-size: 1.5rem;
       font-weight: 700;
@@ -361,7 +422,7 @@
     }
 
     .winner-meta-item i {
-      font-size: 0.9rem;
+      font-size: 1.1rem;
       color: #0A4f7B;
     }
 
@@ -389,6 +450,7 @@
       padding: 1rem;
       transition: all 0.2s ease;
       position: relative;
+      overflow: hidden;
     }
 
     .prize-item-card:hover {
@@ -482,7 +544,6 @@
       padding: 0.7rem 1.2rem;
       border-radius: 8px;
       transition: all 0.2s ease;
-      width: 100%;
     }
 
     .pickup-btn:hover {
@@ -774,7 +835,11 @@
     <div class="d-flex align-items-center">
       <img src="/favicon.png" width="32" class="me-2">
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
+      <button class="header-btn" x-on:click="$store.scan.openOperatorModal()" title="Change operator">
+        <i class="bi bi-person-fill"></i>
+        <span x-text="$store.scan.operatorName || 'Set Name'"></span>
+      </button>
       <button class="header-btn" x-on:click="$store.scan.toggleTheme()" title="Toggle theme">
         <i :class="$store.scan.darkMode ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
       </button>
@@ -829,32 +894,27 @@
     <div x-show="$store.scan.view === 'results'" x-transition>
       <div class="card">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="card-title mb-0">Search Results</h5>
-            <button class="btn btn-sm btn-outline-secondary" x-on:click="$store.scan.backToScanner()">
-              <i class="bi bi-arrow-left"></i> Back
+          <h5 class="card-title mb-3 text-center">Search Results</h5>
+
+          <!-- Search input to refine search -->
+          <div class="input-group mb-3">
+            <input type="text" class="form-control"
+                   x-model="$store.scan.searchInput"
+                   x-on:keydown.enter="$store.scan.performSearch()"
+                   placeholder="Search again">
+            <button class="btn btn-outline-secondary" type="button"
+                    x-on:click="$store.scan.performSearch()">
+              <i class="bi bi-search"></i>
             </button>
           </div>
 
           <!-- Results info -->
-          <p class="text-muted">
-            <template x-if="$store.scan.searchResults.length > 0">
-              <span>Found <span x-text="$store.scan.searchResults.length"></span> winner(s) matching "<span x-text="$store.scan.searchTerm"></span>"</span>
-            </template>
-            <template x-if="$store.scan.searchResults.length === 0">
-              <span>No winners found matching "<span x-text="$store.scan.searchTerm"></span>"</span>
-            </template>
+          <p class="text-muted text-center mb-3">
+            Found <span x-text="$store.scan.searchResults.length"></span> winner(s)
           </p>
 
           <!-- Results list -->
           <div class="search-results-list">
-            <template x-if="$store.scan.searchResults.length === 0">
-              <div class="no-results-message">
-                <i class="bi bi-search"></i>
-                <p>Try a different name or check the spelling</p>
-              </div>
-            </template>
-
             <template x-for="(result, index) in $store.scan.searchResults" :key="result.winner.entryId">
               <div class="search-result-card" x-on:click="$store.scan.selectResult(index)">
                 <div class="search-result-name" x-text="result.winner.displayName || 'Unknown'"></div>
@@ -881,6 +941,14 @@
               </div>
             </template>
           </div>
+
+          <!-- Footer with back button -->
+          <div class="card-footer-actions">
+            <button class="btn btn-primary" x-on:click="$store.scan.backToScanner()">
+              <i class="bi bi-arrow-left"></i>
+              <span class="ms-2">Back</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -889,11 +957,6 @@
     <div x-show="$store.scan.view === 'winner'" x-transition>
       <div class="card winner-card-unified">
         <div class="card-body">
-          <!-- Back Button -->
-          <button class="btn btn-sm btn-outline-secondary mb-3" x-on:click="$store.scan.backToScanner()">
-            <i class="bi bi-arrow-left"></i> Back to Scanner
-          </button>
-
           <!-- Winner Header Section -->
           <div class="winner-header-section">
             <h2 class="winner-name-title" x-text="$store.scan.winner?.displayName || 'Unknown Winner'"></h2>
@@ -954,11 +1017,17 @@
                         Picked up: <span x-text="$store.scan.formatDate(prize.pickupTimestamp)"></span>
                       </div>
                     </template>
+                    <template x-if="prize.pickedUp && prize.pickupStation">
+                      <div class="prize-meta-item">
+                        <i class="bi bi-person-check"></i>
+                        Station: <span x-text="prize.pickupStation"></span>
+                      </div>
+                    </template>
                   </div>
 
                   <template x-if="!prize.pickedUp">
-                    <div class="prize-actions">
-                      <button class="btn btn-sm pickup-btn w-100" x-on:click="$store.scan.markPickedUp(index)">
+                    <div class="prize-actions text-end">
+                      <button class="btn btn-sm pickup-btn" x-on:click="$store.scan.markPickedUp(index)">
                         <i class="bi bi-check-circle me-2"></i>Mark as Picked Up
                       </button>
                     </div>
@@ -966,6 +1035,14 @@
                 </div>
               </template>
             </div>
+          </div>
+
+          <!-- Footer with back button -->
+          <div class="card-footer-actions">
+            <button class="btn btn-primary" x-on:click="$store.scan.backToScanner()">
+              <i class="bi bi-arrow-left"></i>
+              <span class="ms-2">Back</span>
+            </button>
           </div>
         </div>
       </div>
@@ -975,19 +1052,60 @@
   <!-- No Winner Alert Modal -->
   <div class="alert-overlay" x-show="$store.scan.showAlert" x-transition @click.self="$store.scan.dismissAlert()">
     <div class="alert-modal">
-      <div class="alert-icon">
+      <div class="alert-icon alert-icon-error">
         <i class="bi bi-exclamation-circle"></i>
       </div>
       <h4 class="alert-title">No Winner Found</h4>
       <p class="alert-message">This QR code doesn't match any winner in our records.</p>
       <p class="alert-code">Ticket Code: <span x-text="$store.scan.alertTicketCode"></span></p>
       <button class="btn btn-primary" x-on:click="$store.scan.dismissAlert()">
-        <i class="bi bi-qr-code-scan"></i>
-        <span class="ms-2">Scan Another</span>
+        <i class="bi bi-arrow-left"></i>
+        <span class="ms-2">Back</span>
       </button>
     </div>
   </div>
-  
+
+  <!-- Operator Name Modal -->
+  <div class="alert-overlay" x-show="$store.scan.showOperatorModal" x-transition>
+    <div class="alert-modal">
+      <div class="alert-icon alert-icon-info">
+        <i class="bi bi-person-badge"></i>
+      </div>
+      <h4 class="alert-title">Operator Setup</h4>
+      <p class="alert-message">Please enter your name to track prize pickups.</p>
+      <div class="mb-3">
+        <input type="text"
+               class="form-control form-control-lg text-center"
+               placeholder="Enter your name"
+               x-model="$store.scan.operatorInput"
+               x-on:keydown.enter="$store.scan.setOperatorName()"
+               x-ref="operatorInput">
+      </div>
+      <button class="btn btn-primary"
+              x-on:click="$store.scan.setOperatorName()"
+              :disabled="!$store.scan.operatorInput.trim()">
+        <i class="bi bi-check-circle"></i>
+        <span class="ms-2">Continue</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- No Results Modal -->
+  <div class="alert-overlay" x-show="$store.scan.showNoResultsModal" x-transition @click.self="$store.scan.dismissNoResults()">
+    <div class="alert-modal">
+      <div class="alert-icon alert-icon-search">
+        <i class="bi bi-search"></i>
+      </div>
+      <h4 class="alert-title">No Results Found</h4>
+      <p class="alert-message">No winners found matching your search.</p>
+      <p class="alert-code">Search: "<span x-text="$store.scan.searchTerm"></span>"</p>
+      <button class="btn btn-primary" x-on:click="$store.scan.dismissNoResults()">
+        <i class="bi bi-arrow-left"></i>
+        <span class="ms-2">Back</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Toastify JS -->
@@ -1014,6 +1132,14 @@
         showAlert: false,
         alertTicketCode: '',
 
+        // No Results state
+        showNoResultsModal: false,
+
+        // Operator state
+        operatorName: localStorage.getItem('scan_operator_name') || '',
+        showOperatorModal: false,
+        operatorInput: '',
+
         // Theme
         darkMode: localStorage.getItem('theme') === 'dark',
 
@@ -1037,6 +1163,23 @@
         dismissAlert() {
           this.showAlert = false;
           this.alertTicketCode = '';
+        },
+        dismissNoResults() {
+          this.showNoResultsModal = false;
+          this.searchTerm = '';
+          this.view = 'scanner';
+        },
+        setOperatorName() {
+          const name = this.operatorInput.trim();
+          if (!name) return;
+          this.operatorName = name;
+          localStorage.setItem('scan_operator_name', name);
+          this.showOperatorModal = false;
+          this.operatorInput = '';
+        },
+        openOperatorModal() {
+          this.operatorInput = this.operatorName;
+          this.showOperatorModal = true;
         },
         formatDate(timestamp) {
           if (!timestamp) return '';
