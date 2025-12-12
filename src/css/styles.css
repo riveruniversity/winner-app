@@ -970,6 +970,15 @@ body {
   transition: transform 0.3s ease;
 }
 
+/* Selected card border override */
+.card.border-success {
+  border: 2px solid var(--bs-success) !important;
+}
+
+.card.border-primary {
+  border: 2px solid var(--bs-primary) !important;
+}
+
 /* Removed general card hover transform to prevent unwanted movement */
 
 .card-title {

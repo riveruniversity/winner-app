@@ -435,7 +435,7 @@
         </div>
       </div>
       <!-- Lists Tab -->
-      <div class="tab-pane fade" id="lists" role="tabpanel">
+      <div class="tab-pane fade" id="lists" role="tabpanel" x-data>
         <div class="card">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -463,13 +463,13 @@
                 </ul>
               </div>
             </div>
-            
+
             <!-- Multi-select controls -->
-            <div class="alert alert-info mb-3">
+            <div class="alert alert-info mb-3" x-show="$store.lists.items.length > 0">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <i class="bi bi-info-circle me-2"></i>
-                  <span id="selectedListsInfo">Select multiple lists to use for giveaways</span>
+                  <span>Select multiple lists to use for giveaways</span>
                 </div>
                 <div class="btn-group btn-group-sm">
                   <button type="button" class="btn btn-outline-primary" id="selectAllListsTab">
@@ -482,18 +482,60 @@
               </div>
               <div class="mt-2">
                 <small class="text-muted">
-                  <span id="selectedListsCountTab">0 lists selected</span> | 
-                  <span id="totalEntriesCountTab">0 total entries</span>
+                  <span x-text="$store.setup.selectedListIds.length + ' lists selected'">0 lists selected</span> |
+                  <span x-text="$store.setup.totalEntries + ' total entries'">0 total entries</span>
                 </small>
               </div>
             </div>
-            
+
             <!-- Lists Grid -->
             <div class="row g-4" id="listsGrid">
-              <!-- List cards will be displayed here in grid format -->
+              <template x-for="list in $store.lists.items" :key="list.listId">
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 list-card-selectable"
+                       :class="{ 'border-success': $store.setup.selectedListIds.includes(list.listId) }"
+                       @click="$store.setup.toggleList(list.listId)"
+                       style="cursor: pointer;">
+                    <div class="card-header">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0 text-truncate" x-text="list.metadata.name" style="max-width: 180px;"></h6>
+                        <div>
+                          <span class="badge bg-success me-1" x-show="$store.setup.selectedListIds.includes(list.listId)">
+                            <i class="bi bi-check-circle-fill"></i>
+                          </span>
+                          <span class="badge bg-secondary" x-text="list.entries.length"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                      <p class="card-text text-muted small mb-2">
+                        Uploaded <span x-text="new Date(list.metadata.timestamp).toLocaleDateString()"></span>
+                      </p>
+                      <div class="mt-auto pt-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <button class="btn btn-sm"
+                                  :class="$store.setup.selectedListIds.includes(list.listId) ? 'btn-success' : 'btn-outline-success'"
+                                  @click.stop="$store.setup.toggleList(list.listId)">
+                            <i :class="$store.setup.selectedListIds.includes(list.listId) ? 'bi bi-check-circle-fill' : 'bi bi-check-circle'"></i>
+                            <span x-text="$store.setup.selectedListIds.includes(list.listId) ? 'Selected' : 'Select'"></span>
+                          </button>
+                          <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" @click.stop="Lists.viewList(list.listId)" title="View entries">
+                              <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" @click.stop="Lists.deleteListConfirm(list.listId)" title="Delete list">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
             <!-- Empty state -->
-            <div id="noListsMessage" class="text-center py-5" style="display: none;">
+            <div id="noListsMessage" class="text-center py-5" x-show="$store.lists.items.length === 0">
               <i class="bi bi-file-earmark-spreadsheet display-1 text-muted"></i>
               <p class="text-muted mt-3">No lists uploaded yet</p>
               <div class="dropdown d-inline-block">
@@ -663,7 +705,7 @@
         </div>
       </div>
       <!-- Prizes Tab -->
-      <div class="tab-pane fade" id="prizes" role="tabpanel">
+      <div class="tab-pane fade" id="prizes" role="tabpanel" x-data>
         <div class="card">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -674,10 +716,43 @@
             </div>
             <!-- Prizes Grid -->
             <div class="row g-4" id="prizesGrid">
-              <!-- Prize cards will be displayed here in grid format -->
+              <template x-for="prize in $store.prizes.items" :key="prize.prizeId">
+                <div class="col-md-6 col-lg-4">
+                  <div class="card h-100 prize-card"
+                       :class="{ 'border-primary': $store.setup.selectedPrizeId === prize.prizeId }">
+                    <div class="card-header">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0 text-truncate" x-text="prize.name" style="max-width: 180px;"></h6>
+                        <span class="badge" :class="prize.quantity > 0 ? 'bg-success' : 'bg-secondary'" x-text="prize.quantity + ' available'"></span>
+                      </div>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                      <p class="card-text text-muted small mb-2" x-show="prize.description" x-text="prize.description"></p>
+                      <div class="mt-auto pt-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <button class="btn btn-sm"
+                                  :class="$store.setup.selectedPrizeId === prize.prizeId ? 'btn-primary' : 'btn-outline-primary'"
+                                  @click="$store.setup.selectedPrizeId = prize.prizeId">
+                            <i :class="$store.setup.selectedPrizeId === prize.prizeId ? 'bi bi-check-circle-fill' : 'bi bi-check-circle'"></i>
+                            <span x-text="$store.setup.selectedPrizeId === prize.prizeId ? 'Selected' : 'Select'"></span>
+                          </button>
+                          <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary" @click="Prizes.editPrize(prize.prizeId)" title="Edit prize">
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" @click="Prizes.deletePrizeConfirm(prize.prizeId)" title="Delete prize">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
             <!-- Empty state -->
-            <div id="noPrizesMessage" class="text-center py-5" style="display: none;">
+            <div id="noPrizesMessage" class="text-center py-5" x-show="$store.prizes.items.length === 0">
               <i class="bi bi-gift display-1 text-muted"></i>
               <p class="text-muted mt-3">No prizes added yet</p>
               <button class="btn btn-primary" onclick="document.getElementById('addPrizeModalBtn').click()">
@@ -1115,19 +1190,20 @@
   <!-- Hidden file input for restore -->
   <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
   <!-- Generic Modal -->
-  <div class="modal fade" id="appModal" tabindex="-1" aria-labelledby="appModalLabel" aria-hidden="true">
+  <div class="modal fade" id="appModal" tabindex="-1" aria-labelledby="appModalLabel" x-data="confirmModal">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="appModalLabel">Modal title</h5>
+          <h5 class="modal-title" id="appModalLabel" x-text="title">Modal title</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body" id="appModalBody">
-          ...
+          <p x-text="message"></p>
+          <div x-html="customContent" x-show="customContent"></div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="appModalConfirmBtn">Confirm</button>
+          <button type="button" class="btn" :class="confirmClass" id="appModalConfirmBtn" @click="confirm()" x-text="confirmText">Confirm</button>
         </div>
       </div>
     </div>
@@ -1529,33 +1605,49 @@
       Alpine.data('confirmModal', () => ({
         title: '',
         message: '',
+        customContent: '',
         confirmText: 'Confirm',
         confirmClass: 'btn-danger',
         onConfirm: null,
         bsModal: null,
 
         init() {
-          this.bsModal = new bootstrap.Modal(this.$el);
+          // Use getOrCreateInstance to avoid duplicate modal instances
+          this.bsModal = bootstrap.Modal.getOrCreateInstance(this.$el);
+          // Make this component globally accessible for UI.showConfirmationModal bridge
+          window.alpineConfirmModal = this;
+          // Also set window.appModal for legacy code that uses it directly
+          window.appModal = this.bsModal;
         },
 
         show(options) {
-          Object.assign(this, {
-            title: options.title || '',
-            message: options.message || '',
-            confirmText: options.confirmText || 'Confirm',
-            confirmClass: options.confirmClass || 'btn-danger',
-            onConfirm: options.onConfirm || null
-          });
+          this.title = options.title || '';
+          this.message = options.message || '';
+          this.customContent = options.customContent || '';
+          this.confirmText = options.confirmText || 'Confirm';
+          this.confirmClass = options.confirmClass || 'btn-danger';
+          this.onConfirm = options.onConfirm || null;
           this.bsModal.show();
         },
 
         confirm() {
           if (this.onConfirm) this.onConfirm();
           this.bsModal.hide();
+          this.reset();
         },
 
         close() {
           this.bsModal.hide();
+          this.reset();
+        },
+
+        reset() {
+          this.title = '';
+          this.message = '';
+          this.customContent = '';
+          this.confirmText = 'Confirm';
+          this.confirmClass = 'btn-danger';
+          this.onConfirm = null;
         }
       }));
     });

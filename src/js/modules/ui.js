@@ -58,7 +58,29 @@ function hideProgress() {
 }
 
 
-function showConfirmationModal(title, message, onConfirm) {
+function showConfirmationModal(title, message, onConfirm, options = {}) {
+  // Use Alpine modal component if available
+  const alpineModal = window.alpineConfirmModal;
+  if (alpineModal && alpineModal.bsModal) {
+    alpineModal.show({
+      title,
+      message,
+      customContent: options.customContent || '',
+      confirmText: options.confirmText || 'Confirm',
+      confirmClass: options.confirmClass || 'btn-danger',
+      onConfirm: async () => {
+        try {
+          await onConfirm();
+        } catch (error) {
+          console.error(`Error in confirmation modal for "${title}":`, error);
+          showToast(`Operation failed: ${error.message}`, 'error');
+        }
+      }
+    });
+    return;
+  }
+
+  // Fallback to legacy DOM manipulation if Alpine not available
   const modalTitle = document.getElementById('appModalLabel');
   const modalBody = document.getElementById('appModalBody');
   const confirmBtn = document.getElementById('appModalConfirmBtn');
@@ -66,8 +88,8 @@ function showConfirmationModal(title, message, onConfirm) {
 
   modalTitle.textContent = title;
   modalBody.innerHTML = `<p>${message}</p>`;
-  confirmBtn.textContent = 'Confirm';
-  confirmBtn.className = 'btn btn-danger';
+  confirmBtn.textContent = options.confirmText || 'Confirm';
+  confirmBtn.className = `btn ${options.confirmClass || 'btn-danger'}`;
   confirmBtn.style.display = 'inline-block';
   cancelBtn.textContent = 'Cancel';
 

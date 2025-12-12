@@ -141,10 +141,12 @@ export async function initializeApp() {
     MinistryPlatform.init();
 
     // Initialize modal after everything else is ready
+    // Note: Alpine confirmModal component handles #appModal now
+    // Use getOrCreateInstance to get the existing instance from Alpine
     setTimeout(() => {
       const modalElement = document.getElementById('appModal');
       if (modalElement) {
-        appModal = new bootstrap.Modal(modalElement);
+        appModal = bootstrap.Modal.getOrCreateInstance(modalElement);
         window.appModal = appModal; // Make available globally
       } else {
         console.error('Modal element #appModal not found');
