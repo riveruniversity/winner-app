@@ -2314,7 +2314,7 @@
         }
       });
 
-      // Quick setup state
+      // Quick setup state with Alpine.$persist for automatic localStorage sync
       Alpine.store('setup', {
         selectedListIds: Alpine.$persist([]).as('setup_selectedListIds'),
         selectedPrizeId: Alpine.$persist('').as('setup_selectedPrizeId'),
@@ -2441,24 +2441,22 @@
         },
 
         toggleList(listId) {
-          const idx = this.selectedListIds.indexOf(listId);
-          if (idx > -1) {
-            this.selectedListIds.splice(idx, 1);
+          if (this.selectedListIds.includes(listId)) {
+            this.selectedListIds = this.selectedListIds.filter(id => id !== listId);
           } else {
-            this.selectedListIds.push(listId);
+            this.selectedListIds = [...this.selectedListIds, listId];
           }
         },
 
         selectList(listId) {
           if (!this.selectedListIds.includes(listId)) {
-            this.selectedListIds.push(listId);
+            this.selectedListIds = [...this.selectedListIds, listId];
           }
         },
 
         deselectList(listId) {
-          const idx = this.selectedListIds.indexOf(listId);
-          if (idx > -1) {
-            this.selectedListIds.splice(idx, 1);
+          if (this.selectedListIds.includes(listId)) {
+            this.selectedListIds = this.selectedListIds.filter(id => id !== listId);
           }
         }
       });

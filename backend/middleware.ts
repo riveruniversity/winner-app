@@ -112,7 +112,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      res.setHeader('Clear-Site-Data', '"cache", "storage"');
+      // Note: Removed Clear-Site-Data header - it was wiping localStorage on every page load
     }
   }
   next();
