@@ -27,7 +27,7 @@ const CACHE_DURATION = 5000; // 5 seconds cache
 
 async function loadWinners(winnersData = null, listsData = null) {
   try {
-    let winners, lists;
+    let winners, lists, archive = [];
 
     // Use provided data if available
     if (winnersData && listsData) {
@@ -42,15 +42,19 @@ async function loadWinners(winnersData = null, listsData = null) {
     else if (winnersCache && listsCache && (Date.now() - lastLoadTime < CACHE_DURATION)) {
       winners = winnersCache;
       lists = listsCache;
+      // Fetch archive separately (small collection, not cached)
+      archive = await Database.getFromStore('archive') || [];
     }
-    // Otherwise batch fetch both collections
+    // Otherwise batch fetch all collections
     else {
       const batchResults = await Database.batchFetch([
         { collection: 'winners' },
-        { collection: 'lists' }
+        { collection: 'lists' },
+        { collection: 'archive' }
       ]);
       winners = batchResults.winners || [];
       lists = batchResults.lists || [];
+      archive = batchResults.archive || [];
       // Update cache
       winnersCache = winners;
       listsCache = lists;
@@ -60,17 +64,31 @@ async function loadWinners(winnersData = null, listsData = null) {
     winners = winners || [];
     allWinners = winners; // Store all winners
 
+    // Build list name map from active lists
     const listNameMap = {};
     lists.forEach(list => {
       const listId = list.listId;
       listNameMap[listId] = list.metadata.name;
     });
 
-    // Enrich winners with listName for display
-    const enrichedWinners = winners.map(w => ({
-      ...w,
-      listName: w.listName || listNameMap[w.listId] || 'Unknown'
-    }));
+    // Build archive name map for fallback
+    const archiveNameMap = {};
+    if (archive && archive.length > 0) {
+      archive.forEach(item => {
+        archiveNameMap[item.listId] = item.metadata?.name;
+      });
+    }
+
+    // Enrich winners with listName for display (fallback to archive if not in active lists)
+    const enrichedWinners = winners.map(w => {
+      const isArchived = !listNameMap[w.listId] && archiveNameMap[w.listId];
+      const listName = w.listName || listNameMap[w.listId] || archiveNameMap[w.listId] || 'Unknown';
+      return {
+        ...w,
+        listName: isArchived ? `${listName} (Archived)` : listName,
+        isArchivedList: isArchived
+      };
+    });
 
     // Update centralized data store - Alpine handles filtering and rendering
     if (window.Alpine) {
@@ -208,13 +226,14 @@ async function performUndoBackgroundSync(lastAction) {
   try {
     // Prepare batch operations for undo
     const operations = [];
-    
+    const winners = Array.isArray(lastAction.winners) ? lastAction.winners : [];
+
     // Delete winners - batch delete operation
-    for (const winner of lastAction.winners) {
-      operations.push({ 
-        collection: 'winners', 
+    for (const winner of winners) {
+      operations.push({
+        collection: 'winners',
         operation: 'delete',
-        id: winner.winnerId 
+        id: winner.winnerId
       });
     }
     
@@ -236,15 +255,17 @@ async function performUndoBackgroundSync(lastAction) {
       });
     }
 
-    // Restore entries to list(s) if they were removed
+    // Restore entries to list(s) if they were removed during selection
     const currentList = getCurrentList();
-    if (settings.preventDuplicates && currentList && lastAction.removedEntries) {
+    const removedEntries = Array.isArray(lastAction.removedEntries) ? lastAction.removedEntries : [];
+
+    if (lastAction.entriesRemoved && currentList && removedEntries.length > 0) {
       // Check if this was a combined list selection
       if (currentList.metadata?.isCombined && currentList.metadata?.sourceListIds) {
         // For combined lists, we need to restore entries to their original lists
         // Group removed entries by their original list ID
         const entriesByList = {};
-        lastAction.removedEntries.forEach(entry => {
+        removedEntries.forEach(entry => {
           const listId = entry.sourceListId || entry.listId || entry.metadata?.listId;
           if (listId) {
             if (!entriesByList[listId]) {
@@ -253,11 +274,11 @@ async function performUndoBackgroundSync(lastAction) {
             entriesByList[listId].push(entry);
           }
         });
-        
+
         // Restore entries to each original list
         for (const listId of currentList.metadata.sourceListIds) {
           const list = await Database.getFromStore('lists', listId);
-          if (list && entriesByList[listId]) {
+          if (list && entriesByList[listId] && Array.isArray(list.entries)) {
             // Clean up entries before restoring - remove the sourceListId we added
             const cleanedEntries = entriesByList[listId].map(entry => {
               // Create a copy without sourceListId
@@ -266,9 +287,9 @@ async function performUndoBackgroundSync(lastAction) {
             });
             list.entries.push(...cleanedEntries);
             list.metadata.entryCount = list.entries.length; // Update count
-            operations.push({ 
-              collection: 'lists', 
-              data: list 
+            operations.push({
+              collection: 'lists',
+              data: list
             });
           }
         }
@@ -277,21 +298,21 @@ async function performUndoBackgroundSync(lastAction) {
         const listId = currentList.listId || currentList.metadata?.listId;
         if (listId) {
           const actualList = await Database.getFromStore('lists', listId);
-          if (actualList) {
-            actualList.entries.push(...lastAction.removedEntries);
+          if (actualList && Array.isArray(actualList.entries)) {
+            actualList.entries.push(...removedEntries);
             actualList.metadata.entryCount = actualList.entries.length;
-            operations.push({ 
-              collection: 'lists', 
-              data: actualList 
+            operations.push({
+              collection: 'lists',
+              data: actualList
             });
           }
-        } else {
+        } else if (Array.isArray(currentList.entries)) {
           // Fallback to current list if no ID found
-          currentList.entries.push(...lastAction.removedEntries);
+          currentList.entries.push(...removedEntries);
           currentList.metadata.entryCount = currentList.entries.length;
-          operations.push({ 
-            collection: 'lists', 
-            data: currentList 
+          operations.push({
+            collection: 'lists',
+            data: currentList
           });
         }
       }
@@ -300,17 +321,17 @@ async function performUndoBackgroundSync(lastAction) {
     // Execute all operations in a single batch
     await Database.batchSave(operations);
     
-    // Reload Alpine stores with updated data
-    const lists = await Database.getFromStore('lists');
+    // Reload Alpine stores with fresh data from database
+    const updatedLists = await Database.getFromStore('lists');
+    const updatedPrizes = await Database.getFromStore('prizes');
     const { Lists } = await import('./lists.js');
     const { Prizes } = await import('./prizes.js');
-    await Lists.loadLists(lists);
-    await Prizes.loadPrizes(prizes);
+    await Lists.loadLists(updatedLists);
+    await Prizes.loadPrizes(updatedPrizes);
     // Undo sync completed
   } catch (error) {
     console.error('Error in undo background sync:', error);
-    // Don't show user error for background operations
-    // The UI already shows success, no need to confuse user with sync errors
+    throw error; // Re-throw so caller can handle and show error to user
   }
 }
 
@@ -465,18 +486,14 @@ async function showQRCode(winnerId) {
 
     // Use original entry ID if available, otherwise fall back to winnerId
     const ticketCode = winner.entryId || winnerId;
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ticketCode)}`;
 
-    document.getElementById('viewModalLabel').textContent = 'Winner Ticket QR Code';
-    document.getElementById('viewModalBody').innerHTML = `
-      <div class="text-center">
-        <h5>Ticket Code: <span class="badge bg-primary fs-6">${ticketCode}</span></h5>
-        <img src="${qrCodeUrl}" alt="QR Code" class="img-fluid my-3" />
-        <p class="text-muted">Scan this code at the prize pickup station</p>
-      </div>
-    `;
-
-    window.viewModal.show();
+    // Use Alpine viewModal component
+    if (window.alpineViewModal) {
+      window.alpineViewModal.showQRCode(ticketCode);
+    } else {
+      console.error('Alpine viewModal not initialized');
+      UI.showToast('Error: Modal not ready', 'error');
+    }
   } catch (error) {
     console.error('Error showing QR code:', error);
     UI.showToast('Error generating QR code: ' + error.message, 'error');

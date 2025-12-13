@@ -15,8 +15,16 @@ export class WinnerSearch {
   }
 
   /**
+   * Check if input matches MP idCard format (for family fallback)
+   */
+  static isMPIdCard(input) {
+    return /^[A-Z]-\d{5,7}$/.test(input);
+  }
+
+  /**
    * Search by ticket code (exact match on entryId)
    * Returns single winner with all their prizes, or null if not found
+   * If no direct match and idCard is MP format, falls back to family search
    */
   static async findByTicketCode(ticketCode) {
     const winners = await Database.getFromStore('winners');
@@ -24,6 +32,13 @@ export class WinnerSearch {
     const matchingWinners = winners.filter(w => w.entryId === ticketCode);
 
     if (matchingWinners.length === 0) {
+      // No direct match - try family fallback for MP idCards only
+      if (this.isMPIdCard(ticketCode)) {
+        const familyResults = await this.findFamilyWinners(ticketCode, winners);
+        if (familyResults && familyResults.length > 0) {
+          return { type: 'familyWinners', scannedIdCard: ticketCode, results: familyResults };
+        }
+      }
       return null;
     }
 
@@ -41,6 +56,61 @@ export class WinnerSearch {
     }
 
     return this._groupWinnerPrizes(matchingWinners);
+  }
+
+  /**
+   * Find family members who won prizes by looking up household in MP
+   * @param {string} idCard - The scanned parent's idCard
+   * @param {Array} winners - Pre-loaded winners array (optional, will load if not provided)
+   * @returns {Array} Array of family member winner results
+   */
+  static async findFamilyWinners(idCard, winners = null) {
+    try {
+      // Call MP API to get family member idCards
+      const response = await fetch('/api/mp/family-members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idCard })
+      });
+
+      const result = await response.json();
+
+      if (!result.success || !result.familyIdCards || result.familyIdCards.length === 0) {
+        console.log(`No family members found for ${idCard}`);
+        return [];
+      }
+
+      console.log(`Found ${result.familyIdCards.length} family members for ${idCard}:`, result.familyIdCards);
+
+      // Load winners if not provided
+      if (!winners) {
+        winners = await Database.getFromStore('winners');
+      }
+
+      // Match family idCards against winners
+      const familyWinners = [];
+      for (const familyIdCard of result.familyIdCards) {
+        const matchingWinners = winners.filter(w =>
+          w.entryId === familyIdCard || w.data?.idCard === familyIdCard
+        );
+
+        if (matchingWinners.length > 0) {
+          const grouped = this._groupWinnerPrizes(matchingWinners);
+          familyWinners.push({
+            ...grouped,
+            prizeCount: grouped.prizes.length,
+            pendingCount: grouped.prizes.filter(p => !p.pickedUp).length
+          });
+        }
+      }
+
+      console.log(`Found ${familyWinners.length} family members who won prizes`);
+      return familyWinners;
+
+    } catch (error) {
+      console.error('Error finding family winners:', error);
+      return [];
+    }
   }
 
   /**

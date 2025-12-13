@@ -11,6 +11,7 @@ class ScannerModule {
 
     // Callbacks for Alpine store integration
     this.onWinnerFound = null;
+    this.onFamilyWinners = null;
     this.onNoWinner = null;
     this.onScanningChange = null;
   }
@@ -75,7 +76,12 @@ class ScannerModule {
       const winnerData = await WinnerSearch.findByTicketCode(ticketCode);
 
       if (winnerData) {
-        this.onWinnerFound?.(winnerData);
+        // Check if this is a family winners result
+        if (winnerData.type === 'familyWinners') {
+          this.onFamilyWinners?.(winnerData);
+        } else {
+          this.onWinnerFound?.(winnerData);
+        }
       } else {
         this.onNoWinner?.(ticketCode);
       }

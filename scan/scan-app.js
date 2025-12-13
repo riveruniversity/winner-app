@@ -33,7 +33,15 @@ async function initializeScanApp() {
     Scanner.onWinnerFound = (winnerData) => {
       store.winner = winnerData.winner;
       store.prizes = winnerData.prizes;
+      store.isFamilySearch = false;
       store.view = 'winner';
+    };
+
+    Scanner.onFamilyWinners = (familyData) => {
+      store.scannedIdCard = familyData.scannedIdCard;
+      store.searchResults = familyData.results;
+      store.isFamilySearch = true;
+      store.view = 'results';
     };
 
     Scanner.onNoWinner = (ticketCode) => {
@@ -68,10 +76,20 @@ async function initializeScanApp() {
 
         if (searchResult.type === 'ticketCode') {
           if (searchResult.result) {
-            store.winner = searchResult.result.winner;
-            store.prizes = searchResult.result.prizes;
-            store.view = 'winner';
-            Scanner.stopScanning();
+            // Check if this is a family winners result
+            if (searchResult.result.type === 'familyWinners') {
+              store.scannedIdCard = searchResult.result.scannedIdCard;
+              store.searchResults = searchResult.result.results;
+              store.isFamilySearch = true;
+              store.view = 'results';
+              Scanner.stopScanning();
+            } else {
+              store.winner = searchResult.result.winner;
+              store.prizes = searchResult.result.prizes;
+              store.isFamilySearch = false;
+              store.view = 'winner';
+              Scanner.stopScanning();
+            }
           } else {
             store.alertTicketCode = input;
             store.showAlert = true;
@@ -85,12 +103,14 @@ async function initializeScanApp() {
           } else if (results.length === 1) {
             store.winner = results[0].winner;
             store.prizes = results[0].prizes;
+            store.isFamilySearch = false;
             store.view = 'winner';
             Scanner.stopScanning();
           } else {
             store.searchTerm = input;
             store.searchInput = input;
             store.searchResults = results;
+            store.isFamilySearch = false;
             store.view = 'results';
           }
         }
@@ -142,6 +162,9 @@ async function initializeScanApp() {
       store.winner = null;
       store.prizes = [];
       store.searchResults = [];
+      store.searchInput = '';
+      store.isFamilySearch = false;
+      store.scannedIdCard = '';
       Scanner.startScanning();
     };
 

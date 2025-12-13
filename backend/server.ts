@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 import { ROOT_DIR, DIST_DIR, UPLOADS_DIR, PORT } from './config.js';
 import { ensureDataDir } from './services/collection.js';
-import { apiRouter } from './routes.js';
+import { apiRouter } from './routes/router.js';
 import {
   corsMiddleware,
   helmetMiddleware,

@@ -17,7 +17,7 @@ export interface CollectionItem {
   [key: string]: any;
 }
 
-export type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'backups' | 'templates';
+export type CollectionName = 'lists' | 'winners' | 'prizes' | 'history' | 'settings' | 'backups' | 'templates' | 'archive';
 
 interface KeyFields {
   lists: 'listId';
@@ -26,12 +26,13 @@ interface KeyFields {
   history: 'historyId';
   settings: 'key';
   backups: 'backupId';
+  archive: 'listId';
   [key: string]: string;
 }
 
 // Allowed collections whitelist
 const ALLOWED_COLLECTIONS = new Set<string>([
-  'lists', 'winners', 'prizes', 'history', 'settings', 'backups', 'templates'
+  'lists', 'winners', 'prizes', 'history', 'settings', 'backups', 'templates', 'archive'
 ]);
 
 export function isValidCollection(collection: string): boolean {
@@ -46,7 +47,8 @@ export function getKeyField(collection: string): string {
     history: 'historyId',
     settings: 'key',
     backups: 'backupId',
-    templates: 'templateId'
+    templates: 'templateId',
+    archive: 'listId'
   };
   return keyFields[collection] || 'id';
 }

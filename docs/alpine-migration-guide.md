@@ -13,6 +13,7 @@ Incremental migration from vanilla JavaScript to Alpine.js following [official A
 | Phase 1 | Forms & Inputs (Settings, Quick Setup) | COMPLETED |
 | Phase 2 | Modals & UI (confirmModal, Lists grid, Prizes grid) | COMPLETED |
 | Phase 3 | Data Tables (Winners, History) | COMPLETED |
+| Phase 4 | View State & Progress Overlay | COMPLETED |
 
 ---
 
@@ -27,6 +28,8 @@ Incremental migration from vanilla JavaScript to Alpine.js following [official A
 - **History Tab**: Table via `x-for` + `$store.history.sorted`, reactive stats
 - **Confirmation Modal**: `Alpine.data('confirmModal')` component
 - **UI State**: View persistence, tab tracking via `$store.ui`
+- **View Toggle**: Public/Management interface switching via `x-show` + `$store.ui.view`
+- **Progress Overlay**: Loading state via `x-show` + `x-text` + `:style` bindings
 
 ### Hybrid (Alpine + Vanilla JS)
 - **Winner Filters**: Dropdowns populated by vanilla JS, values sync to Alpine store
@@ -135,11 +138,11 @@ Always wrap `x-for` in a `<template>` tag:
 ```
 
 ### 7. Click Event Propagation
-Use `@click.stop` to prevent event bubbling when cards are clickable:
+Use `x-on:click.stop` to prevent event bubbling when cards are clickable:
 
 ```html
-<div class="card" @click="selectCard(id)">
-  <button @click.stop="deleteCard(id)">Delete</button>
+<div class="card" x-on:click="selectCard(id)">
+  <button x-on:click.stop="deleteCard(id)">Delete</button>
 </div>
 ```
 
@@ -185,7 +188,7 @@ Alpine.store('lists', {
 | `x-model` | Two-way binding | `<input x-model="search">` |
 | `x-show` | Toggle visibility | `<div x-show="open">` |
 | `x-for` | Loop arrays | `<template x-for="item in items">` |
-| `@click` | Event listener | `<button @click="count++">` |
+| `x-on:click` | Event listener | `<button x-on:click="count++">` |
 | `x-text` | Set text content | `<span x-text="count">` |
 | `:class` | Bind classes | `:class="{ 'active': isActive }"` |
 | `x-init` | Run on mount | `<div x-init="loadData()">` |
@@ -254,27 +257,59 @@ Alpine.store('ui', {
   view: Alpine.$persist('public').as('ui_view'),
   currentTab: Alpine.$persist('quicksetup').as('ui_currentTab'),
 
+  // Progress overlay state (Phase 4)
+  showProgress: false,
+  progressTitle: 'Processing...',
+  progressText: 'Please wait...',
+  progressPercent: 0,
+
   init() {
-    // Restore view on page load
-    if (this.view === 'management') {
-      this.showManagement();
+    // Restore saved tab when returning to management view
+    const restoreTab = () => {
+      if (this.view === 'management' && this.currentTab) {
+        const tabTrigger = document.querySelector(`[data-bs-target="#${this.currentTab}"]`);
+        if (tabTrigger && window.bootstrap) {
+          new bootstrap.Tab(tabTrigger).show();
+        }
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', restoreTab);
+    } else {
+      setTimeout(restoreTab, 150);
     }
   },
 
+  // View is now controlled by Alpine directives on elements:
+  // <div id="publicInterface" x-show="$store.ui.view === 'public'" x-cloak>
+  // <div id="managementInterface" :class="{ 'active': $store.ui.view === 'management' }" x-cloak>
   showManagement() {
     this.view = 'management';
-    document.getElementById('publicInterface').style.display = 'none';
-    document.getElementById('managementInterface').classList.add('active');
   },
 
   showPublic() {
     this.view = 'public';
-    document.getElementById('managementInterface').classList.remove('active');
-    document.getElementById('publicInterface').style.display = 'flex';
   },
 
   setTab(tabId) {
     this.currentTab = tabId;
+  },
+
+  // Progress overlay methods (Phase 4)
+  startProgress(title, text) {
+    this.progressTitle = title || 'Processing...';
+    this.progressText = text || 'Please wait...';
+    this.progressPercent = 0;
+    this.showProgress = true;
+  },
+
+  updateProgressState(percent, text) {
+    this.progressPercent = percent;
+    if (text) this.progressText = text;
+  },
+
+  endProgress() {
+    this.showProgress = false;
   }
 });
 ```
@@ -414,7 +449,7 @@ Alpine.store('history', {
       <td x-text="entry.winners.map(w => w.displayName).join(', ')"></td>
       <td>
         <button class="btn btn-sm btn-outline-danger"
-                @click="deleteHistoryConfirm(entry.historyId)">
+                x-on:click="deleteHistoryConfirm(entry.historyId)">
           <i class="bi bi-trash"></i>
         </button>
       </td>
@@ -445,6 +480,90 @@ Alpine.store('history', {
 
 ---
 
+## Phase 4: View State & Progress Overlay
+
+### 4.1 View Toggle with Alpine Directives
+
+**Before (vanilla JS in app.js):**
+```javascript
+document.getElementById('publicInterface').style.display = 'none';
+document.getElementById('managementInterface').classList.add('active');
+```
+
+**After (Alpine directives in HTML):**
+```html
+<div id="publicInterface" x-show="$store.ui.view === 'public'" x-cloak>
+<div id="managementInterface" :class="{ 'active': $store.ui.view === 'management' }" x-cloak>
+```
+
+**Store methods simplified:**
+```javascript
+showManagement() {
+  this.view = 'management';  // Alpine handles DOM automatically
+},
+showPublic() {
+  this.view = 'public';
+}
+```
+
+### 4.2 Progress Overlay Migration
+
+**Before (vanilla JS in ui.js):**
+```javascript
+function showProgress(title, text) {
+  document.getElementById('progressTitle').textContent = title;
+  document.getElementById('progressText').textContent = text;
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressOverlay').classList.remove('d-none');
+}
+```
+
+**After (Alpine-controlled HTML):**
+```html
+<div id="progressOverlay" class="progress-overlay" x-show="$store.ui.showProgress" x-cloak>
+  <div class="progress-content">
+    <h5 x-text="$store.ui.progressTitle">Processing...</h5>
+    <div class="progress-bar-custom">
+      <div class="progress-fill" :style="{ width: $store.ui.progressPercent + '%' }"></div>
+    </div>
+    <p x-text="$store.ui.progressText">Please wait...</p>
+  </div>
+</div>
+```
+
+**Updated ui.js with Alpine bridge:**
+```javascript
+function showProgress(title, text) {
+  if (window.Alpine && Alpine.store('ui')) {
+    Alpine.store('ui').startProgress(title, text);
+  } else {
+    // Fallback for backward compatibility
+    document.getElementById('progressOverlay').classList.remove('d-none');
+  }
+}
+```
+
+### 4.3 Inline onclick to @click Migration
+
+**Before:**
+```html
+<a href="#" onclick="document.getElementById('uploadListModalBtn').click(); return false;">
+```
+
+**After:**
+```html
+<a href="#" @click.prevent="document.getElementById('uploadListModalBtn')?.click()">
+```
+
+### 4.4 Key Patterns from Phase 4
+
+1. **x-cloak**: Prevents flash of unstyled content on page load
+2. **x-show vs :class**: Use `x-show` for visibility, `:class` for CSS state
+3. **Alpine store bridge**: Check `window.Alpine && Alpine.store('ui')` before using stores
+4. **@click.prevent**: Cleaner than `onclick="...; return false;"`
+
+---
+
 ## Best Practices Summary
 
 1. **Keep components focused** - Don't cram too much logic into single x-data blocks
@@ -460,7 +579,7 @@ Alpine.store('history', {
 ## EventManager Coexistence
 
 - **Keep EventManager** for: keyboard shortcuts, Web Worker communication, complex delegation
-- **Use Alpine** for: click handlers (`@click`), form bindings (`x-model`), visibility (`x-show`)
+- **Use Alpine** for: click handlers (`x-on:click`), form bindings (`x-model`), visibility (`x-show`)
 - **Gradual removal**: Remove EventManager registrations as sections migrate
 
 ---

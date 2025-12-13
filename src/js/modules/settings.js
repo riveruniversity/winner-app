@@ -860,6 +860,58 @@ function showDelayDisplay(delaySeconds, displayType) {
         }
         break;
 
+      case 'christmas-snow':
+        // Show countdown overlay with Christmas snow animation canvas
+        const christmasCountdownOverlay = document.getElementById('countdownOverlay');
+        const christmasCountdownNumber = document.getElementById('countdownNumber');
+
+        debugLog('Christmas snow animation case - Elements found:', {
+          overlay: !!christmasCountdownOverlay,
+          number: !!christmasCountdownNumber,
+          animations: !!window.Animations,
+          startChristmasSnow: !!(window.Animations && window.Animations.startChristmasSnowAnimation)
+        });
+
+        if (christmasCountdownOverlay && christmasCountdownNumber) {
+          // Hide delay overlay and show countdown overlay
+          overlay.classList.add('d-none');
+          christmasCountdownOverlay.classList.remove('d-none');
+          debugLog('Countdown overlay shown for Christmas snow animation');
+
+          // Start Christmas snow animation
+          if (window.Animations && window.Animations.startChristmasSnowAnimation) {
+            window.Animations.startChristmasSnowAnimation();
+            debugLog('Christmas snow animation started');
+          } else {
+            debugLog('Christmas snow animation not available');
+          }
+
+          let christmasCount = Math.ceil(delaySeconds);
+          christmasCountdownNumber.textContent = christmasCount;
+          debugLog('Starting Christmas snow countdown from:', christmasCount);
+
+          const christmasInterval = setInterval(() => {
+            christmasCount--;
+            debugLog('Christmas countdown tick:', christmasCount);
+            if (christmasCount > 0) {
+              christmasCountdownNumber.textContent = christmasCount;
+            } else {
+              clearInterval(christmasInterval);
+              christmasCountdownOverlay.classList.add('d-none');
+              if (window.Animations && window.Animations.stopAnimation) {
+                window.Animations.stopAnimation();
+              }
+              debugLog('Christmas snow animation countdown completed');
+              resolve();
+            }
+          }, 1000);
+        } else {
+          debugLog('Christmas snow animation elements not found, falling back to silent delay');
+          overlay.classList.add('d-none');
+          setTimeout(resolve, delaySeconds * 1000);
+        }
+        break;
+
       case 'none':
       default:
         // Silent delay - hide overlay immediately and just wait

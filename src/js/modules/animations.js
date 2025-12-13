@@ -452,6 +452,119 @@ function startChristmasSnowAnimation() {
     }
   }
 
+  // Star of Bethlehem - The guiding star for the Wise Men
+  class StarOfBethlehem {
+    constructor() {
+      this.x = canvas.width * 0.75;
+      this.y = canvas.height * 0.15;
+      this.size = 25;
+      this.pulsePhase = 0;
+      this.pulseSpeed = 0.03;
+      this.rayRotation = 0;
+      this.rayRotationSpeed = 0.005;
+    }
+
+    update() {
+      this.pulsePhase += this.pulseSpeed;
+      this.rayRotation += this.rayRotationSpeed;
+    }
+
+    draw() {
+      const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
+      const size = this.size * pulse;
+
+      ctx.save();
+      ctx.translate(this.x, this.y);
+
+      // Outer radial glow
+      const outerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 4);
+      outerGlow.addColorStop(0, `rgba(255, 248, 220, ${0.4 * pulse})`);
+      outerGlow.addColorStop(0.3, `rgba(255, 215, 0, ${0.2 * pulse})`);
+      outerGlow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 4, 0, Math.PI * 2);
+      ctx.fillStyle = outerGlow;
+      ctx.fill();
+
+      // Draw 8 long rays emanating from the star
+      ctx.save();
+      ctx.rotate(this.rayRotation);
+      for (let i = 0; i < 8; i++) {
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 4);
+
+        // Ray gradient
+        const rayLength = i % 2 === 0 ? size * 3.5 : size * 2.5;
+        const rayWidth = i % 2 === 0 ? 3 : 2;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.5);
+        ctx.lineTo(rayWidth, -rayLength);
+        ctx.lineTo(0, -rayLength - 5);
+        ctx.lineTo(-rayWidth, -rayLength);
+        ctx.closePath();
+
+        const rayGradient = ctx.createLinearGradient(0, -size * 0.5, 0, -rayLength);
+        rayGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 * pulse})`);
+        rayGradient.addColorStop(0.5, `rgba(255, 248, 200, ${0.6 * pulse})`);
+        rayGradient.addColorStop(1, `rgba(255, 215, 0, 0)`);
+        ctx.fillStyle = rayGradient;
+        ctx.fill();
+
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // Inner glow layers
+      const innerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.5);
+      innerGlow.addColorStop(0, `rgba(255, 255, 255, ${0.95 * pulse})`);
+      innerGlow.addColorStop(0.4, `rgba(255, 248, 220, ${0.7 * pulse})`);
+      innerGlow.addColorStop(1, `rgba(255, 215, 0, ${0.3 * pulse})`);
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = innerGlow;
+      ctx.fill();
+
+      // Draw the main 4-pointed star shape
+      ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+
+      // Vertical beam (longer)
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 1.8);
+      ctx.quadraticCurveTo(size * 0.15, -size * 0.3, size * 0.4, 0);
+      ctx.quadraticCurveTo(size * 0.15, size * 0.3, 0, size * 1.8);
+      ctx.quadraticCurveTo(-size * 0.15, size * 0.3, -size * 0.4, 0);
+      ctx.quadraticCurveTo(-size * 0.15, -size * 0.3, 0, -size * 1.8);
+      ctx.fill();
+
+      // Horizontal beam (shorter)
+      ctx.beginPath();
+      ctx.moveTo(-size * 1.2, 0);
+      ctx.quadraticCurveTo(-size * 0.3, -size * 0.12, 0, -size * 0.3);
+      ctx.quadraticCurveTo(size * 0.3, -size * 0.12, size * 1.2, 0);
+      ctx.quadraticCurveTo(size * 0.3, size * 0.12, 0, size * 0.3);
+      ctx.quadraticCurveTo(-size * 0.3, size * 0.12, -size * 1.2, 0);
+      ctx.fill();
+
+      // Bright center core
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.35, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Add sparkle highlight
+      ctx.beginPath();
+      ctx.arc(-size * 0.1, -size * 0.1, size * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  // Create the Star of Bethlehem
+  const starOfBethlehem = new StarOfBethlehem();
+
   // Create initial snowflakes
   for (let i = 0; i < 100; i++) {
     snowflakes.push(new Snowflake());
@@ -472,13 +585,17 @@ function startChristmasSnowAnimation() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Update and draw stars first (background)
+    // Update and draw small stars first (background)
     stars.forEach(star => {
       star.update();
       star.draw();
     });
 
-    // Update and draw snowflakes
+    // Update and draw the Star of Bethlehem
+    starOfBethlehem.update();
+    starOfBethlehem.draw();
+
+    // Update and draw snowflakes (in front)
     snowflakes.forEach(snowflake => {
       snowflake.update();
       snowflake.draw();

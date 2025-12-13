@@ -630,6 +630,21 @@ async function handleConfirmUpload() {
     UI.updateProgress(35, 'Creating list structure...');
 
     const listId = UI.generateId();
+
+    // Get per-list settings from checkboxes (if present)
+    const removeWinnersCheckbox = document.getElementById('listRemoveWinnersFromList');
+    const preventSamePrizeCheckbox = document.getElementById('listPreventWinningSamePrize');
+
+    // Build list settings - use checkbox values or fall back to global settings
+    const removeWinnersFromList = removeWinnersCheckbox
+      ? removeWinnersCheckbox.checked
+      : settings.preventDuplicates;
+
+    // preventWinningSamePrize is auto-enabled when NOT removing winners from list
+    const preventWinningSamePrize = !removeWinnersFromList
+      ? true
+      : (preventSamePrizeCheckbox ? preventSamePrizeCheckbox.checked : settings.preventSamePrize);
+
     const listData = {
       listId: listId,
       metadata: {
@@ -642,7 +657,17 @@ async function handleConfirmUpload() {
         skippedWinners: skippedCount,
         nameConfig: nameConfig,
         infoConfig: infoConfig,
-        idConfig: idConfig
+        idConfig: idConfig,
+        // MP source info for sync capability (null if not from MP)
+        mpSource: pendingCSVData.mpSource || null,
+        // Sync tracking
+        lastSyncAt: null,
+        syncCount: 0,
+        // Per-list settings
+        listSettings: {
+          removeWinnersFromList: removeWinnersFromList,
+          preventWinningSamePrize: preventWinningSamePrize
+        }
       },
       entries: dataToUpload.map((row, index) => ({
         id: generateEntryId(row, index, idConfig),

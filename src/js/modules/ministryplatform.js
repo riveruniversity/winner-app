@@ -582,9 +582,14 @@ class MinistryPlatformModule {
       const eventId = event.eventID;
       const eventTitle = event.eventTitle || 'Unnamed Event';
       const eventDate = event.eventStartDate || '';
-      
+
+      // Format: "12345 | Dec 15, 2024 | Event Name"
+      const dateStr = eventDate
+        ? new Date(eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : '—';
+
       option.value = eventId || '';
-      option.textContent = `${eventTitle} (${eventDate ? new Date(eventDate).toLocaleDateString() : 'No date'})`;
+      option.textContent = `${eventId} | ${dateStr} | ${eventTitle}`;
       option.selected = false; // Don't select by default
       select.appendChild(option);
     });
@@ -613,12 +618,11 @@ class MinistryPlatformModule {
     
     buttonGroup.appendChild(selectAllBtn);
     buttonGroup.appendChild(selectNoneBtn);
-    selectorDiv.appendChild(buttonGroup);
-    
+
     // Add execute button
     const executeBtn = document.createElement('button');
     executeBtn.type = 'button';
-    executeBtn.className = 'btn btn-primary mt-2 ms-2';
+    executeBtn.className = 'btn btn-primary';
     executeBtn.innerHTML = '<i class="bi bi-search me-2"></i>Get Participants';
     executeBtn.onclick = () => {
       // Get selected event IDs
@@ -642,7 +646,13 @@ class MinistryPlatformModule {
         UI.showToast('Please select at least one event', 'warning');
       }
     };
-    selectorDiv.appendChild(executeBtn);
+
+    // Wrap buttons in flex container
+    const buttonWrapper = document.createElement('div');
+    buttonWrapper.className = 'd-flex justify-content-between align-items-center mt-2';
+    buttonWrapper.appendChild(buttonGroup);
+    buttonWrapper.appendChild(executeBtn);
+    selectorDiv.appendChild(buttonWrapper);
     
     parametersContainer.appendChild(selectorDiv);
   }
@@ -733,9 +743,14 @@ class MinistryPlatformModule {
           const eventId = event.eventID;
           const eventTitle = event.eventTitle || 'Unnamed Event';
           const eventDate = event.eventStartDate || '';
-          
+
+          // Format: "12345 | Dec 15, 2024 | Event Name"
+          const dateStr = eventDate
+            ? new Date(eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : '—';
+
           option.value = eventId || '';
-          option.textContent = `${eventTitle} (${eventDate ? new Date(eventDate).toLocaleDateString() : 'No date'})`;
+          option.textContent = `${eventId} | ${dateStr} | ${eventTitle}`;
           option.selected = false; // Don't select by default
           select.appendChild(option);
         });
@@ -764,12 +779,11 @@ class MinistryPlatformModule {
         
         buttonGroup.appendChild(selectAllBtn);
         buttonGroup.appendChild(selectNoneBtn);
-        selectorDiv.appendChild(buttonGroup);
-        
+
         // Add execute button
         const executeBtn = document.createElement('button');
         executeBtn.type = 'button';
-        executeBtn.className = 'btn btn-primary mt-2 ms-2';
+        executeBtn.className = 'btn btn-primary';
         executeBtn.innerHTML = '<i class="bi bi-search me-2"></i>Get Participants';
         executeBtn.onclick = () => {
           // Get selected event IDs
@@ -786,7 +800,13 @@ class MinistryPlatformModule {
             UI.showToast('Please select at least one event', 'warning');
           }
         };
-        selectorDiv.appendChild(executeBtn);
+
+        // Wrap buttons in flex container
+        const buttonWrapper = document.createElement('div');
+        buttonWrapper.className = 'd-flex justify-content-between align-items-center mt-2';
+        buttonWrapper.appendChild(buttonGroup);
+        buttonWrapper.appendChild(executeBtn);
+        selectorDiv.appendChild(buttonWrapper);
         
         parametersContainer.appendChild(selectorDiv);
         
@@ -927,19 +947,50 @@ async importData() {
     try {
       const listNameInput = document.getElementById('mpListName');
       const importBtn = document.getElementById('mpImportBtn');
-      
+
       if (!this.currentData || this.currentData.length === 0) {
         throw new Error('No data to import');
       }
-      
+
       // Store data for CSV parser
       const queryName = this.currentQuery ? this.currentQuery.name : 'Query';
       const listNameValue = listNameInput.value.trim() || queryName;
       const dataToImport = this.currentData;
-      
+
+      // Collect the parameters that were used for this query (for sync capability)
+      const usedParams = {};
+      if (this.currentQuery && this.currentQuery.params) {
+        for (const [paramName, paramConfig] of Object.entries(this.currentQuery.params)) {
+          // Priority 1: Hidden input (from event selection dropdown)
+          const hiddenInput = document.getElementById(`mpParam_${paramName}_hidden`);
+          if (hiddenInput && hiddenInput.value) {
+            usedParams[paramName] = hiddenInput.value;
+            continue;
+          }
+          // Priority 2: Visible input field
+          const visibleInput = document.getElementById(`mpParam_${paramName}`);
+          if (visibleInput && visibleInput.value) {
+            usedParams[paramName] = visibleInput.value;
+            continue;
+          }
+          // Priority 3: Hardcoded value from query config
+          if (paramConfig.value) {
+            usedParams[paramName] = paramConfig.value;
+          }
+        }
+      }
+
+      // Create MP source metadata for sync capability
+      const mpSourceInfo = {
+        queryId: this.currentQuery ? this.currentQuery.id : null,
+        queryName: this.currentQuery ? this.currentQuery.name : 'Query',
+        params: usedParams,
+        importedAt: Date.now()
+      };
+
       // Close MP modal
       this.modal.hide();
-      
+
       // Pass data to CSV parser's configuration modal
       // Import dynamically to avoid circular dependency
       import('./csv-parser.js').then(({ CSVParser }) => {
@@ -947,15 +998,16 @@ async importData() {
         CSVParser.pendingCSVData = {
           listName: listNameValue,
           fileName: `MinistryPlatform_${queryName}.json`,
-          data: dataToImport
+          data: dataToImport,
+          mpSource: mpSourceInfo  // Add MP source info for sync
         };
         // Then show preview
         CSVParser.showCSVPreview(dataToImport, listNameValue);
       });
-      
+
       // Reset form after passing data
       this.resetForm();
-      
+
     } catch (error) {
       console.error('Error importing MP data:', error);
       this.showError(error.message);

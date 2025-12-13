@@ -1,3 +1,11 @@
+/* Alpine.js x-cloak - hide elements until Alpine initializes */
+[x-cloak] { display: none !important; }
+
+/* Base font size - override Bootstrap's responsive scaling */
+html {
+  font-size: 11pt;
+}
+
 /* CSS Custom Properties for Theming */
 :root {
   --primary-color: #0A4f7B;
@@ -1846,6 +1854,82 @@ body {
   100% { transform: scale(1.02); }
 }
 
+/* List Card Action Drawer */
+.list-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  justify-content: flex-end;
+}
+
+.list-card-drawer {
+  display: flex;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+  margin-right: 0;
+}
+
+.list-card-drawer.open {
+  max-width: 200px;
+  opacity: 1;
+  margin-right: 0;
+}
+
+.list-card-drawer .btn-group {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.list-card-drawer.open .btn-group > .btn:last-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none !important;
+}
+
+.list-card-toggle {
+  flex-shrink: 0;
+  transition: transform 0.2s ease, border-radius 0.3s ease;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+  min-width: 0;
+  margin-left: 0;
+}
+
+.list-card-toggle.radius-right {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: var(--bs-border-radius) !important;
+  border-bottom-right-radius: var(--bs-border-radius) !important;
+  border-left: none !important;
+}
+
+.list-card-toggle:hover {
+  transform: none;
+}
+
+.list-card-view,
+.list-card-sync {
+  flex-shrink: 0;
+  transition: width 0.3s ease, opacity 0.2s ease, padding 0.3s ease, border-width 0.3s ease;
+  width: 31px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-card-view.hidden,
+.list-card-sync.hidden {
+  width: 0;
+  opacity: 0;
+  padding: 0;
+  border-width: 0;
+  pointer-events: none;
+}
+
 /* Dark mode list card selection */
 
 /* Keyboard Shortcuts Styles */
@@ -1931,4 +2015,199 @@ body {
 
 [data-theme="dark"] .list-card-selectable[style*="background"] .card-header {
   background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+}
+
+/* Sortable table headers */
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sortable-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .sortable-header:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ================================
+   IMPORT WIZARD STYLES
+   ================================ */
+
+.import-wizard {
+  padding: 1rem 0;
+}
+
+/* Progress Indicator */
+.wizard-progress {
+  position: relative;
+  padding: 0 1rem;
+}
+
+.wizard-progress-line {
+  position: absolute;
+  top: 20px;
+  left: 50px;
+  right: 50px;
+  height: 3px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  z-index: 0;
+}
+
+.wizard-progress-line-active {
+  position: absolute;
+  top: 20px;
+  left: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  border-radius: 2px;
+  z-index: 1;
+  transition: width 0.4s ease;
+}
+
+.wizard-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.wizard-step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  border: 3px solid transparent;
+}
+
+.wizard-step.active .wizard-step-circle {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  box-shadow: 0 4px 12px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+.wizard-step.current .wizard-step-circle {
+  border-color: var(--primary-color);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(var(--bs-primary-rgb), 0.15);
+}
+
+.wizard-step-label {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  text-align: center;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+}
+
+.wizard-step.active .wizard-step-label {
+  color: var(--primary-color);
+}
+
+.wizard-step.current .wizard-step-label {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* Step Content */
+.wizard-content {
+  min-height: 200px;
+  padding: 1.5rem 0;
+}
+
+.wizard-pane {
+  animation: wizardFadeIn 0.3s ease;
+}
+
+@keyframes wizardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.wizard-pane h5 {
+  color: #1e293b;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.wizard-pane h5 i {
+  font-size: 1.25rem;
+}
+
+/* Navigation Buttons */
+.wizard-navigation {
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Dark mode wizard styles */
+[data-theme="dark"] .wizard-progress-line {
+  background: #334155;
+}
+
+[data-theme="dark"] .wizard-step-circle {
+  background: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .wizard-step.active .wizard-step-circle {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+}
+
+[data-theme="dark"] .wizard-step-label {
+  color: #64748b;
+}
+
+[data-theme="dark"] .wizard-step.active .wizard-step-label,
+[data-theme="dark"] .wizard-step.current .wizard-step-label {
+  color: var(--secondary-color);
+}
+
+[data-theme="dark"] .wizard-pane h5 {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .wizard-navigation {
+  border-top-color: #334155;
+}
+
+/* Responsive wizard */
+@media (max-width: 576px) {
+  .wizard-step-label {
+    font-size: 0.65rem;
+  }
+
+  .wizard-step-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .wizard-progress-line,
+  .wizard-progress-line-active {
+    top: 16px;
+    left: 30px;
+    right: 30px;
+  }
 }

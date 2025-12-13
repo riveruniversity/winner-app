@@ -428,51 +428,12 @@ class TextingService {
    * Shows results of bulk send operation
    */
   showSendResults(results) {
-    const modalTitle = document.getElementById('viewModalLabel');
-    const modalBody = document.getElementById('viewModalBody');
-
-    modalTitle.textContent = 'SMS Send Results';
-
-    const successRate = Math.round((results.successful.length / results.total) * 100);
-
-    modalBody.innerHTML = `
-      <div class="alert alert-${successRate === 100 ? 'success' : successRate > 50 ? 'warning' : 'danger'}">
-        <h5>Send Complete</h5>
-        <p>Success rate: ${successRate}%</p>
-      </div>
-      <div class="row">
-        <div class="col-6">
-          <div class="card">
-            <div class="card-body text-center">
-              <h3 class="text-success">${results.successful.length}</h3>
-              <p class="text-muted">Successful</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-6">
-          <div class="card">
-            <div class="card-body text-center">
-              <h3 class="text-danger">${results.failed.length}</h3>
-              <p class="text-muted">Failed</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      ${results.failed.length > 0 ? `
-        <div class="mt-3">
-          <h6>Failed Recipients:</h6>
-          <div class="small" style="max-height: 200px; overflow-y: auto;">
-            ${results.failed.map(f => `
-              <div class="text-danger">
-                ${f.recipient.displayName || 'Unknown'}: ${f.error}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
-    `;
-
-    window.viewModal.show();
+    // Use Alpine viewModal component
+    if (window.alpineViewModal) {
+      window.alpineViewModal.showSmsResults(results);
+    } else {
+      console.error('Alpine viewModal not initialized');
+    }
   }
 
   /**

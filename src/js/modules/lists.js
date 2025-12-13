@@ -31,75 +31,13 @@ async function viewList(listId) {
   try {
     const list = await Database.getFromStore('lists', listId);
     if (list) {
-      const modalTitle = document.getElementById('viewModalLabel');
-      const modalBody = document.getElementById('viewModalBody');
-
-      modalTitle.textContent = `List: ${list.metadata.name}`;
-
-      // Get all unique columns from the data (first 10 entries for performance)
-      const sampleEntries = list.entries.slice(0, 10);
-      const allColumns = new Set();
-      sampleEntries.forEach(entry => {
-        if (entry.data) {
-          Object.keys(entry.data).forEach(col => allColumns.add(col));
-        }
-      });
-      const columns = Array.from(allColumns).sort();
-
-      // Limit columns shown in table view (show first 5 columns)
-      const displayColumns = columns.slice(0, 5);
-
-      // Create table headers
-      const tableHeaders = `
-        <tr>
-          <th style="width: 60px;">#</th>
-          <th>Display Name</th>
-          ${displayColumns.map(col => `<th>${col}</th>`).join('')}
-          <th style="width: 80px;">Actions</th>
-        </tr>
-      `;
-
-      // Create table rows with actual data
-      const tableRows = list.entries.map((entry, index) => {
-        const displayName = formatDisplayName(entry, list.metadata.nameConfig);
-
-        return `
-          <tr>
-            <td>${index + 1}</td>
-            <td>${displayName}</td>
-            ${displayColumns.map(col => `<td>${entry.data?.[col] || ''}</td>`).join('')}
-            <td>
-              <button class="btn btn-sm btn-outline-danger" onclick="Lists.deleteListEntry('${listId}', '${entry.id}')">
-                <i class="bi bi-trash"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-
-      modalBody.innerHTML = `
-        ${!settings.hideEntryCounts ? `
-        <div class="mb-3">
-          <strong>Total Entries:</strong> ${list.entries !== undefined ? list.entries.length : (list.metadata?.entryCount || 0)}
-          ${list.metadata.skippedWinners ? `<span class="text-muted ms-2">(${list.metadata.skippedWinners} winners skipped during upload)</span>` : ''}
-        </div>
-        ` : ''}
-        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-          <table class="table table-striped table-sm">
-            <thead class="sticky-top bg-white">
-              ${tableHeaders}
-            </thead>
-            <tbody>
-              ${tableRows || '<tr><td colspan="${displayColumns.length + 3}" class="text-center text-muted">No entries in this list</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-        <div class="mt-3 text-muted small">
-          <i class="bi bi-info-circle"></i> Individual records can be deleted from this list. This action cannot be undone.
-        </div>
-      `;
-
-      window.viewModal.show();
+      // Use Alpine viewModal component
+      if (window.alpineViewModal) {
+        await window.alpineViewModal.showList(list);
+      } else {
+        console.error('Alpine viewModal not initialized');
+        UI.showToast('Error: Modal not ready', 'error');
+      }
     }
   } catch (error) {
     console.error('Error viewing list:', error);
@@ -107,19 +45,50 @@ async function viewList(listId) {
   }
 }
 
-function deleteListConfirm(listId) {
+async function deleteListConfirm(listId) {
+  // Check if list is referenced by winners or history
+  const isReferenced = await Database.isListReferenced(listId);
+
+  const message = isReferenced
+    ? 'This list has associated winners or history. It will be archived so records can still reference it. Continue?'
+    : 'Are you sure you want to delete this list? This action cannot be undone.';
+
   UI.showConfirmationModal(
     'Delete List',
-    'Are you sure you want to delete this list? This action cannot be undone.',
+    message,
     async () => {
       try {
-        // Wait for delete to complete
-        await Database.deleteFromStore('lists', listId);
-        UI.showToast('List deleted', 'success');
+        if (isReferenced) {
+          // Auto-archive if referenced
+          await Database.archiveList(listId);
+          UI.showToast('List archived', 'success');
+        } else {
+          // Direct delete if not referenced
+          await Database.deleteFromStore('lists', listId);
+          UI.showToast('List deleted', 'success');
+        }
         await loadLists(); // Updates Alpine store reactively
       } catch (error) {
         console.error('Error deleting list:', error);
         UI.showToast('Error deleting list: ' + error.message, 'error');
+      }
+    }
+  );
+}
+
+// Archive list manually (metadata only, entries discarded)
+function archiveListConfirm(listId) {
+  UI.showConfirmationModal(
+    'Archive List',
+    'Archive this list? The list will be removed but winners and history will still show its name. Entries will be discarded.',
+    async () => {
+      try {
+        await Database.archiveList(listId);
+        UI.showToast('List archived', 'success');
+        await loadLists(); // Updates Alpine store reactively
+      } catch (error) {
+        console.error('Error archiving list:', error);
+        UI.showToast('Error archiving list: ' + error.message, 'error');
       }
     }
   );
@@ -148,21 +117,28 @@ function formatDisplayName(entry, nameConfig) {
 
 async function deleteListEntry(listId, entryId) {
   try {
+    // Validate inputs
+    if (!listId || !entryId) {
+      UI.showToast('Invalid list or entry ID', 'error');
+      console.error('deleteListEntry called with invalid params:', { listId, entryId });
+      return;
+    }
+
     const list = await Database.getFromStore('lists', listId);
     if (!list) {
       UI.showToast('List not found', 'error');
       return;
     }
-    
+
     // Find and remove the entry
     const entryIndex = list.entries.findIndex(e => e.id === entryId);
     if (entryIndex === -1) {
       UI.showToast('Entry not found in list', 'error');
       return;
     }
-    
+
     const entryName = formatDisplayName(list.entries[entryIndex], list.metadata.nameConfig);
-    
+
     UI.showConfirmationModal(
       'Delete Entry',
       `Are you sure you want to delete "${entryName}" from this list?`,
@@ -170,25 +146,25 @@ async function deleteListEntry(listId, entryId) {
         try {
           // Remove the entry from the list
           list.entries.splice(entryIndex, 1);
-          
+
           // Update entry count in metadata
           list.metadata.entryCount = list.entries.length;
-          
+
           // Re-index remaining entries
           list.entries.forEach((entry, index) => {
             entry.index = index;
           });
-          
+
           // Save the updated list
           await Database.saveToStore('lists', list);
-          
+
           UI.showToast(`Entry "${entryName}" deleted`, 'success');
 
-          // Refresh the modal view
-          viewList(listId);
-
-          // Refresh Alpine store
-          loadLists();
+          // Refresh Alpine store and modal view
+          await loadLists();
+          if (window.alpineViewModal) {
+            await window.alpineViewModal.refreshList();
+          }
         } catch (error) {
           console.error('Error deleting entry:', error);
           UI.showToast('Error deleting entry: ' + error.message, 'error');
@@ -201,13 +177,225 @@ async function deleteListEntry(listId, entryId) {
   }
 }
 
+// Sync list from Ministry Platform
+async function syncList(listId) {
+  try {
+    // Get the list
+    const list = await Database.getFromStore('lists', listId);
+    if (!list) {
+      UI.showToast('List not found', 'error');
+      return;
+    }
+
+    // Check if list is syncable (has MP source info)
+    if (!list.metadata.mpSource) {
+      UI.showToast('This list was not imported from Ministry Platform and cannot be synced', 'warning');
+      return;
+    }
+
+    const mpSource = list.metadata.mpSource;
+
+    UI.showProgress('Syncing List', 'Fetching data from Ministry Platform...');
+
+    // Re-execute the MP query with stored parameters
+    const response = await fetch('/api/mp/execute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        queryId: mpSource.queryId,
+        params: mpSource.params
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      UI.hideProgress();
+      UI.showToast(result.error || 'Failed to fetch data from Ministry Platform', 'error');
+      return;
+    }
+
+    UI.updateProgress(40, 'Processing entries...');
+
+    const newData = result.data;
+
+    // Build set of existing entry IDs
+    const existingIds = new Set(list.entries.map(e => e.id));
+
+    // Determine ID column from idConfig
+    const idColumn = list.metadata.idConfig?.column || 'idCard';
+
+    // If removeWinnersFromList is active, get existing winner IDs to exclude
+    let winnerIds = new Set();
+    if (list.metadata.listSettings?.removeWinnersFromList !== false) {
+      const winners = await Database.getFromStore('winners');
+      if (winners && Array.isArray(winners)) {
+        // Filter winners that came from this list
+        winners.forEach(w => {
+          if (w.listId === listId && w.entryId) {
+            winnerIds.add(w.entryId);
+          }
+        });
+      }
+    }
+
+    UI.updateProgress(60, 'Finding new entries...');
+
+    // Find new entries (not in existing list and not already winners)
+    const newEntries = [];
+    for (const record of newData) {
+      const entryId = record[idColumn]?.toString().trim();
+      if (!entryId) continue;
+      if (existingIds.has(entryId)) continue;
+      // Exclude if already a winner (when removeWinnersFromList is active)
+      if (winnerIds.has(entryId)) continue;
+
+      newEntries.push({
+        id: entryId,
+        index: list.entries.length + newEntries.length,
+        data: record
+      });
+    }
+
+    if (newEntries.length === 0) {
+      UI.hideProgress();
+      UI.showToast('No new entries found - list is up to date', 'info');
+
+      // Update sync timestamp even if no new entries
+      list.metadata.lastSyncAt = Date.now();
+      list.metadata.syncCount = (list.metadata.syncCount || 0) + 1;
+      await Database.saveToStore('lists', list);
+      await loadLists();
+      return;
+    }
+
+    UI.updateProgress(80, `Adding ${newEntries.length} new entries...`);
+
+    // Add new entries to list
+    list.entries.push(...newEntries);
+    list.metadata.entryCount = list.entries.length;
+    list.metadata.lastSyncAt = Date.now();
+    list.metadata.syncCount = (list.metadata.syncCount || 0) + 1;
+
+    // Save updated list
+    await Database.saveToStore('lists', list);
+
+    UI.hideProgress();
+    UI.showToast(`Sync complete! Added ${newEntries.length} new entries`, 'success');
+
+    // Refresh lists display
+    await loadLists();
+
+  } catch (error) {
+    UI.hideProgress();
+    console.error('Error syncing list:', error);
+    UI.showToast('Error syncing list: ' + error.message, 'error');
+  }
+}
+
+// Edit list configuration (opens modal)
+async function editListConfig(listId) {
+  try {
+    const list = await Database.getFromStore('lists', listId);
+    if (!list) {
+      UI.showToast('List not found', 'error');
+      return;
+    }
+
+    // Get modal element and its Alpine data
+    const modalEl = document.getElementById('editListConfigModal');
+    if (!modalEl) {
+      UI.showToast('Edit modal not found', 'error');
+      return;
+    }
+
+    // Get current settings with defaults
+    const removeWinners = list.metadata?.listSettings?.removeWinnersFromList ?? true;
+    const listName = list.metadata?.name || '';
+
+    // Update Alpine data on the modal
+    const alpineData = Alpine.$data(modalEl);
+    if (alpineData) {
+      alpineData.listId = listId;
+      alpineData.listName = listName;
+      alpineData.removeWinners = removeWinners;
+    }
+
+    // Show the modal
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+  } catch (error) {
+    console.error('Error opening edit config:', error);
+    UI.showToast('Error opening settings: ' + error.message, 'error');
+  }
+}
+
+// Save list configuration
+async function saveListConfig(listId) {
+  try {
+    const list = await Database.getFromStore('lists', listId);
+    if (!list) {
+      UI.showToast('List not found', 'error');
+      return;
+    }
+
+    // Get values from modal
+    const modalEl = document.getElementById('editListConfigModal');
+    const alpineData = Alpine.$data(modalEl);
+
+    const listName = alpineData?.listName || document.getElementById('editListName')?.value;
+    const removeWinners = alpineData?.removeWinners ?? document.getElementById('editRemoveWinnersFromList')?.checked ?? true;
+
+    // preventWinningSamePrize is auto-enabled when NOT removing winners
+    const preventSamePrize = !removeWinners
+      ? true
+      : (document.getElementById('editPreventWinningSamePrize')?.checked ?? false);
+
+    // Update list metadata
+    list.metadata.name = listName;
+
+    // Initialize listSettings if not present
+    if (!list.metadata.listSettings) {
+      list.metadata.listSettings = {};
+    }
+
+    list.metadata.listSettings.removeWinnersFromList = removeWinners;
+    list.metadata.listSettings.preventWinningSamePrize = preventSamePrize;
+
+    // Save the updated list
+    await Database.saveToStore('lists', list);
+
+    // Hide modal
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) {
+      modal.hide();
+    }
+
+    UI.showToast('List settings saved', 'success');
+
+    // Refresh lists display
+    await loadLists();
+
+  } catch (error) {
+    console.error('Error saving list config:', error);
+    UI.showToast('Error saving settings: ' + error.message, 'error');
+  }
+}
+
 // Export public functions
 export const Lists = {
   loadLists,
   viewList,
   deleteListConfirm,
+  archiveListConfirm,
   deleteListEntry,
-  formatDisplayName
+  formatDisplayName,
+  syncList,
+  editListConfig,
+  saveListConfig
 };
 
 // Keep for onclick handlers in Alpine templates

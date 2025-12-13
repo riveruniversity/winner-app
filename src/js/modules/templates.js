@@ -98,7 +98,7 @@ function displayTemplates(templates) {
     grid.innerHTML = `
       <div class="col-12 text-center py-5">
         <i class="bi bi-chat-text display-1 text-muted"></i>
-        <p class="text-muted mt-3">No templates yet. Click "Add Template" to create one.</p>
+        <p class="text-muted mt-3">No templates yet.</p>
       </div>
     `;
     return;

@@ -639,7 +639,7 @@
       border-color: #0f5132;
     }
 
-    /* Mobile Optimized Design */
+    /* Scan Page Mobile Styles */
     @media (max-width: 768px) {
       .scanner-header {
         padding: 0.4rem 0.75rem !important;
@@ -651,62 +651,89 @@
         width: 28px;
       }
 
-      .header-btn {
-        padding: 0.5em 0.75rem;
-        font-size: 0.8rem;
+      .scanner-header .header-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
       }
 
-      .header-btn i {
-        font-size: 0.9rem;
+      .scanner-header .header-btn i {
+        font-size: 0.85rem;
       }
 
       .scanner-container {
-        padding: 0.75rem;
-      }
-
-      .qr-video-container {
-        max-width: min(350px, calc(100vw - 1.5rem));
-      }
-
-      .card {
-        border-radius: 12px;
-      }
-
-      .card-body {
-        padding: 1rem;
-      }
-
-      .card-title {
-        font-size: 1.1rem;
-        margin-bottom: 1rem !important;
-      }
-
-      .scanner-controls button {
-        font-size: 0.95rem;
-        padding: 0.6rem 1.2rem;
-      }
-
-      .scan-status {
-        font-size: 0.95rem;
-        margin: 1rem 0;
-      }
-
-      .input-group {
-        font-size: 0.95rem;
-      }
-
-      .form-control {
-        font-size: 0.95rem;
         padding: 0.5rem;
       }
 
-      .btn-outline-secondary {
-        font-size: 0.95rem;
+      .scanner-container .card-body {
+        padding: 0.75rem;
+      }
+
+      .scanner-container .card-title {
+        font-size: 1rem;
+        margin-bottom: 0.5rem !important;
+      }
+
+      .qr-video-container {
+        max-width: min(260px, calc(100vw - 2rem));
+        border-radius: 15px;
+      }
+
+      .scanner-controls {
+        margin-top: 0.75rem;
+      }
+
+      .scanner-controls button {
+        font-size: 0.9rem;
         padding: 0.5rem 1rem;
+      }
+
+      .scan-status {
+        font-size: 0.85rem;
+        margin: 0.5rem 0;
+      }
+
+      .scanner-container .search-manual {
+        margin-top: 1rem !important;
+      }
+
+      .scanner-container .search-manual p {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .scanner-container .search-input-group .form-control {
+        font-size: 1rem;
+        padding: 0.75rem;
+      }
+
+      .scanner-container .search-input-group .btn {
+        padding: 0.75rem 1.25rem;
+      }
+
+      /* Hide search button label on mobile */
+      .scanner-container .search-input-group .btn .btn-label {
+        display: none;
       }
     }
 
+    /* Search input group - remove default bootstrap styling */
+    .search-input-group {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
     /* Search Results Styles */
+    .search-results-card .card-body {
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-results-card .search-results-list {
+      flex: 1;
+    }
+
     .search-results-list {
       display: flex;
       flex-direction: column;
@@ -826,6 +853,60 @@
         font-size: 0.9rem;
         padding: 0.5rem;
       }
+
+      /* Search Results Mobile */
+      .search-result-card {
+        padding: 0.75rem;
+      }
+
+      .search-result-name {
+        font-size: 1rem;
+      }
+
+      .search-result-meta {
+        font-size: 0.8rem;
+      }
+
+      .card-footer-actions .btn {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+      }
+
+      /* Alert Modal Mobile */
+      .alert-modal {
+        padding: 1.5rem;
+        margin: 0.5rem;
+        max-width: calc(100vw - 1rem);
+      }
+
+      .alert-icon {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 1rem;
+      }
+
+      .alert-icon i {
+        font-size: 2rem;
+      }
+
+      .alert-title {
+        font-size: 1.25rem;
+      }
+
+      .alert-message {
+        font-size: 0.9rem;
+      }
+
+      .alert-code {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.75rem;
+      }
+
+      .alert-modal .btn {
+        min-width: 120px;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+      }
     }
   </style>
 </head>
@@ -873,16 +954,16 @@
             </button>
           </div>
           <!-- Manual Entry Option -->
-          <div class="mt-4">
+          <div class="mt-4 search-manual">
             <p class="text-muted">Or search manually:</p>
-            <div class="input-group">
+            <div class="input-group search-input-group">
               <input type="text" class="form-control"
                      x-model="$store.scan.searchInput"
                      x-on:keydown.enter="$store.scan.performSearch()"
                      placeholder="Enter ticket code or winner name">
               <button class="btn btn-outline-secondary" type="button"
                       x-on:click="$store.scan.performSearch()">
-                <i class="bi bi-search"></i> Search
+                <i class="bi bi-search"></i><span class="btn-label"> Search</span>
               </button>
             </div>
           </div>
@@ -892,25 +973,29 @@
 
     <!-- Search Results Section -->
     <div x-show="$store.scan.view === 'results'" x-transition>
-      <div class="card">
+      <div class="card search-results-card">
         <div class="card-body">
-          <h5 class="card-title mb-3 text-center">Search Results</h5>
+          <!-- Family search header -->
+          <template x-if="$store.scan.isFamilySearch">
+            <div class="text-center mb-3">
+              <div class="alert alert-info py-2 mb-2">
+                <i class="bi bi-people-fill me-2"></i>
+                <strong>Family Members Who Won</strong>
+              </div>
+              <p class="text-muted small mb-0">
+                Scanned: <code x-text="$store.scan.scannedIdCard"></code> (not a winner)
+              </p>
+            </div>
+          </template>
 
-          <!-- Search input to refine search -->
-          <div class="input-group mb-3">
-            <input type="text" class="form-control"
-                   x-model="$store.scan.searchInput"
-                   x-on:keydown.enter="$store.scan.performSearch()"
-                   placeholder="Search again">
-            <button class="btn btn-outline-secondary" type="button"
-                    x-on:click="$store.scan.performSearch()">
-              <i class="bi bi-search"></i>
-            </button>
-          </div>
+          <!-- Regular search header -->
+          <template x-if="!$store.scan.isFamilySearch">
+            <h5 class="card-title mb-3 text-center">Search Results</h5>
+          </template>
 
           <!-- Results info -->
           <p class="text-muted text-center mb-3">
-            Found <span x-text="$store.scan.searchResults.length"></span> winner(s)
+            Found <span x-text="$store.scan.searchResults.length"></span> <span x-text="$store.scan.isFamilySearch ? 'family member(s) who won' : 'winner(s)'"></span>
           </p>
 
           <!-- Results list -->
@@ -941,6 +1026,23 @@
               </div>
             </template>
           </div>
+
+          <!-- Search input to refine search (hide for family search) -->
+          <template x-if="!$store.scan.isFamilySearch">
+            <div>
+              <p class="text-muted small mb-2 mt-3">Refine search</p>
+              <div class="input-group search-input-group">
+                <input type="text" class="form-control"
+                       x-model="$store.scan.searchInput"
+                       x-on:keydown.enter="$store.scan.performSearch()"
+                       placeholder="Refine search">
+                <button class="btn btn-outline-secondary" type="button"
+                        x-on:click="$store.scan.performSearch()">
+                  <i class="bi bi-search"></i><span class="btn-label"> Search</span>
+                </button>
+              </div>
+            </div>
+          </template>
 
           <!-- Footer with back button -->
           <div class="card-footer-actions">
@@ -1123,6 +1225,8 @@
         searchInput: '',
         searchTerm: '',
         searchResults: [],
+        isFamilySearch: false,
+        scannedIdCard: '',
 
         // Winner state
         winner: null,
@@ -1159,6 +1263,9 @@
           this.winner = null;
           this.prizes = [];
           this.searchResults = [];
+          this.searchInput = '';
+          this.isFamilySearch = false;
+          this.scannedIdCard = '';
         },
         dismissAlert() {
           this.showAlert = false;

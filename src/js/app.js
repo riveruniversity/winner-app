@@ -122,15 +122,8 @@ export async function initializeApp() {
     MinistryPlatform.init();
 
     // Initialize modals after everything else is ready
-    // Alpine handles confirmModal and formModal components
-    // viewModal is vanilla Bootstrap (read-only displays)
+    // Alpine handles confirmModal, formModal, and viewModal components
     setTimeout(() => {
-      // View modal (for read-only displays) - only non-Alpine modal
-      const viewModalElement = document.getElementById('viewModal');
-      if (viewModalElement) {
-        window.viewModal = bootstrap.Modal.getOrCreateInstance(viewModalElement);
-      }
-
       // Handle stacked modal backdrops - ensure confirmModal backdrop is above other modals
       const confirmModalElement = document.getElementById('confirmModal');
       confirmModalElement?.addEventListener('show.bs.modal', () => {
@@ -227,8 +220,10 @@ function setupInterfaceToggles() {
 
   if (managementToggle) {
     managementToggle.addEventListener('click', function () {
-      document.getElementById('publicInterface').style.display = 'none';
-      document.getElementById('managementInterface').classList.add('active');
+      // Use Alpine store for view toggle
+      if (window.Alpine && Alpine.store('ui')) {
+        Alpine.store('ui').showManagement();
+      }
     });
   }
 
@@ -252,10 +247,11 @@ function setupInterfaceToggles() {
         
         // Update history stats
         await loadHistory();
-        
-        // Switch to public interface
-        document.getElementById('managementInterface').classList.remove('active');
-        document.getElementById('publicInterface').style.display = 'flex';
+
+        // Switch to public interface using Alpine store
+        if (window.Alpine && Alpine.store('ui')) {
+          Alpine.store('ui').showPublic();
+        }
       } catch (error) {
         console.error('Error refreshing data:', error);
         UI.showToast('Error refreshing data: ' + error.message, 'error');
@@ -279,21 +275,19 @@ function setupInterfaceToggles() {
   document.addEventListener('keydown', function(e) {
     // Only trigger if not typing in an input field
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    
+
     if (e.key === 'v' || e.key === 'V') {
-      const publicInterface = document.getElementById('publicInterface');
-      const managementInterface = document.getElementById('managementInterface');
-      
-      if (publicInterface && managementInterface) {
-        if (managementInterface.classList.contains('active')) {
+      // Use Alpine store for view toggle
+      if (window.Alpine && Alpine.store('ui')) {
+        const uiStore = Alpine.store('ui');
+        if (uiStore.view === 'management') {
           // Switch to public view (same as clicking "Public View" button)
           if (backToPublicBtn) {
             backToPublicBtn.click();
           }
         } else {
           // Switch to management view
-          publicInterface.style.display = 'none';
-          managementInterface.classList.add('active');
+          uiStore.showManagement();
         }
       }
     }
@@ -527,10 +521,10 @@ function setupDisplayMode() {
 export async function loadHistory() {
   try {
     const history = await Database.getFromStore('history');
-    // Update Alpine store - Alpine x-for handles rendering
+    // Update centralized data store - history store uses getter from data store
     if (window.Alpine) {
-      const historyStore = Alpine.store('history');
-      if (historyStore) historyStore.setItems(history);
+      const dataStore = Alpine.store('data');
+      if (dataStore) dataStore.history = history || [];
     }
   } catch (error) {
     console.error('Error loading history:', error);

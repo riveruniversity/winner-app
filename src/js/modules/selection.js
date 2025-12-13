@@ -424,6 +424,12 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
     timestamp: Date.now()
   };
 
+  // Determine if we should remove winners from this list (needed for undo)
+  // Use per-list setting if available, otherwise fall back to global setting
+  const currentList = getCurrentList();
+  const shouldRemoveWinners = currentList.metadata?.listSettings?.removeWinnersFromList
+                            ?? settings.preventDuplicates;
+
   // Store last action for undo
   setLastAction({
     type: 'selectWinners',
@@ -431,7 +437,8 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
     removedEntries: selectedEntries,
     prizeId: selectedPrize.prizeId,
     prizeCount: numWinners,
-    historyId: historyEntry.historyId
+    historyId: historyEntry.historyId,
+    entriesRemoved: shouldRemoveWinners // Track if entries were removed for undo
   });
 
   // Prepare batch operations
@@ -441,10 +448,8 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
     { collection: 'history', data: historyEntry }
   ];
 
-  // Remove winners from source lists if setting is enabled
-  if (settings.preventDuplicates) {
-    const currentList = getCurrentList();
-    
+  // Remove winners from source lists if configured
+  if (shouldRemoveWinners) {
     // If it's a combined list, update each source list separately
     if (currentList.metadata?.isCombined && currentList.metadata?.sourceListIds) {
       // Group selected entries by their source list
@@ -457,20 +462,25 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
           entriesByList[entry.sourceListId].push(entry.id);
         }
       });
-      
-      // Update each source list
+
+      // Update each source list (check per-list setting for each)
       for (const listId of currentList.metadata.sourceListIds) {
         const sourceList = await Database.getFromStore('lists', listId);
         if (sourceList && entriesByList[listId]) {
-          // Remove the winners from this list
-          sourceList.entries = sourceList.entries.filter(entry =>
-            !entriesByList[listId].includes(entry.id)
-          );
-          sourceList.metadata.entryCount = sourceList.entries.length;
-          operations.push({ collection: 'lists', data: sourceList });
+          // Check per-list setting for this source list
+          const shouldRemoveFromSourceList = sourceList.metadata?.listSettings?.removeWinnersFromList
+                                           ?? settings.preventDuplicates;
+          if (shouldRemoveFromSourceList) {
+            // Remove the winners from this list
+            sourceList.entries = sourceList.entries.filter(entry =>
+              !entriesByList[listId].includes(entry.id)
+            );
+            sourceList.metadata.entryCount = sourceList.entries.length;
+            operations.push({ collection: 'lists', data: sourceList });
+          }
         }
       }
-      
+
       // Update the combined list in memory
       currentList.entries = currentList.entries.filter(entry =>
         !selectedEntries.some(selected => selected.id === entry.id)
@@ -495,9 +505,9 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
 
   UI.updateProgress(100, 'Winners selected!');
   UI.hideProgress();
-  
+
   // Update Alpine store to reflect new entry counts after removing winners
-  if (settings.preventDuplicates) {
+  if (shouldRemoveWinners) {
     const { Lists } = await import('./lists.js');
     await Lists.loadLists();
   }
@@ -628,6 +638,14 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     };
     await Database.saveToStore('history', historyEntry);
 
+    // Remove winners from source lists based on per-list or global setting
+    const currentListSeq = getCurrentList();
+
+    // Determine if we should remove winners from this list
+    // Use per-list setting if available, otherwise fall back to global setting
+    const shouldRemoveWinnersSeq = currentListSeq.metadata?.listSettings?.removeWinnersFromList
+                                 ?? settings.preventDuplicates;
+
     // Store last action for undo
     setLastAction({
       type: 'selectWinners',
@@ -635,15 +653,13 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
       removedEntries: selectedEntries,
       prizeId: selectedPrize.prizeId,
       prizeCount: numWinners,
-      historyId: historyEntry.historyId
+      historyId: historyEntry.historyId,
+      entriesRemoved: shouldRemoveWinnersSeq // Track if entries were removed for undo
     });
 
-    // Remove winners from source lists if setting is enabled
-    if (settings.preventDuplicates) {
-      const currentList = getCurrentList();
-      
+    if (shouldRemoveWinnersSeq) {
       // If it's a combined list, update each source list separately
-      if (currentList.metadata?.isCombined && currentList.metadata?.sourceListIds) {
+      if (currentListSeq.metadata?.isCombined && currentListSeq.metadata?.sourceListIds) {
         // Group selected entries by their source list
         const entriesByList = {};
         selectedEntries.forEach(entry => {
@@ -654,25 +670,30 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
             entriesByList[entry.sourceListId].push(entry.id);
           }
         });
-        
-        // Update each source list
-        for (const listId of currentList.metadata.sourceListIds) {
+
+        // Update each source list (check per-list setting for each)
+        for (const listId of currentListSeq.metadata.sourceListIds) {
           const sourceList = await Database.getFromStore('lists', listId);
           if (sourceList && entriesByList[listId]) {
-            // Remove the winners from this list
-            sourceList.entries = sourceList.entries.filter(entry =>
-              !entriesByList[listId].includes(entry.id)
-            );
-            sourceList.metadata.entryCount = sourceList.entries.length;
-            await Database.saveToStore('lists', sourceList);
+            // Check per-list setting for this source list
+            const shouldRemoveFromSourceList = sourceList.metadata?.listSettings?.removeWinnersFromList
+                                             ?? settings.preventDuplicates;
+            if (shouldRemoveFromSourceList) {
+              // Remove the winners from this list
+              sourceList.entries = sourceList.entries.filter(entry =>
+                !entriesByList[listId].includes(entry.id)
+              );
+              sourceList.metadata.entryCount = sourceList.entries.length;
+              await Database.saveToStore('lists', sourceList);
+            }
           }
         }
-        
+
         // Update the combined list in memory
-        currentList.entries = currentList.entries.filter(entry =>
+        currentListSeq.entries = currentListSeq.entries.filter(entry =>
           !selectedEntries.some(selected => selected.id === entry.id)
         );
-        setCurrentList(currentList);
+        setCurrentList(currentListSeq);
       } else {
         // Single list - original logic
         const updatedList = getCurrentList();
@@ -690,7 +711,7 @@ async function selectWinners(numWinners, selectedPrize, selectionMode) {
     UI.updateProgress(100, 'Winners selected!');
 
     // Update Alpine store to reflect new entry counts after removing winners
-    if (settings.preventDuplicates) {
+    if (shouldRemoveWinnersSeq) {
       const { Lists } = await import('./lists.js');
       await Lists.loadLists();
     }

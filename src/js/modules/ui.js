@@ -40,21 +40,36 @@ function showToast(message, type = 'info') {
 }
 
 function showProgress(title, text) {
-  document.getElementById('progressTitle').textContent = title;
-  document.getElementById('progressText').textContent = text;
-  document.getElementById('progressFill').style.width = '0%';
-  document.getElementById('progressOverlay').classList.remove('d-none');
+  // Use Alpine store if available, fallback to DOM for backward compatibility
+  if (window.Alpine && Alpine.store('ui')) {
+    Alpine.store('ui').startProgress(title, text);
+  } else {
+    document.getElementById('progressTitle').textContent = title;
+    document.getElementById('progressText').textContent = text;
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressOverlay').classList.remove('d-none');
+  }
 }
 
 function updateProgress(percentage, text) {
-  document.getElementById('progressFill').style.width = percentage + '%';
-  if (text) {
-    document.getElementById('progressText').textContent = text;
+  // Use Alpine store if available
+  if (window.Alpine && Alpine.store('ui')) {
+    Alpine.store('ui').updateProgressState(percentage, text);
+  } else {
+    document.getElementById('progressFill').style.width = percentage + '%';
+    if (text) {
+      document.getElementById('progressText').textContent = text;
+    }
   }
 }
 
 function hideProgress() {
-  document.getElementById('progressOverlay').classList.add('d-none');
+  // Use Alpine store if available
+  if (window.Alpine && Alpine.store('ui')) {
+    Alpine.store('ui').endProgress();
+  } else {
+    document.getElementById('progressOverlay').classList.add('d-none');
+  }
 }
 
 
@@ -104,6 +119,9 @@ function showConfirmationModal(title, message, onConfirm, options = {}) {
       console.error(`Error in confirmation modal for "${title}":`, error);
       showToast(`Operation failed: ${error.message}`, 'error');
     } finally {
+      // Workaround for Bootstrap bug: clear data-bs-overflow before hiding
+      // Bootstrap tries to JSON.parse this value which fails if it's "hidden"
+      document.body.removeAttribute('data-bs-overflow');
       window.appModal.hide();
       document.removeEventListener('keydown', keyHandler);
     }
@@ -115,6 +133,7 @@ function showConfirmationModal(title, message, onConfirm, options = {}) {
       e.preventDefault();
       handleConfirm();
     } else if (e.key === 'Escape') {
+      document.body.removeAttribute('data-bs-overflow');
       window.appModal.hide();
       document.removeEventListener('keydown', keyHandler);
     }

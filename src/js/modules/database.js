@@ -9,11 +9,12 @@ const API_BASE = './api';
 // Collection names matching current schema
 const COLLECTIONS = {
   lists: 'lists',
-  winners: 'winners', 
+  winners: 'winners',
   prizes: 'prizes',
   history: 'history',
   settings: 'settings',
-  backups: 'backups'
+  backups: 'backups',
+  archive: 'archive'
 };
 
 // Track all active intervals for proper cleanup
@@ -36,12 +37,13 @@ if (typeof window !== 'undefined') {
 function getKeyField(collectionName) {
   const keyFields = {
     lists: 'listId',
-    winners: 'winnerId', 
+    winners: 'winnerId',
     prizes: 'prizeId',
     history: 'historyId',
     settings: 'key',
     backups: 'backupId',
-    templates: 'templateId'
+    templates: 'templateId',
+    archive: 'listId'
   };
   return keyFields[collectionName] || 'id';
 }
@@ -223,20 +225,21 @@ async function getListWithShards(listId) {
 // Universal get function - handles single docs, all docs, and sharded lists automatically
 async function getFromStore(collectionName, key = null) {
   try {
-    
+
     // If key provided, get single document
     if (key) {
       // Standard single document retrieval
-      const response = await fetch(`${API_BASE}/${collectionName}/${key}`);
-      
+      const url = `${API_BASE}/${collectionName}/${key}`;
+      const response = await fetch(url);
+
       if (response.status === 404) {
         return null;
       }
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return await response.json();
     }
     
@@ -462,6 +465,64 @@ async function batchSave(operations) {
   }
 }
 
+// Archive a list (save metadata to archive, delete original list)
+async function archiveList(listId) {
+  try {
+    // Get the list to archive
+    const list = await getFromStore('lists', listId);
+    if (!list) {
+      throw new Error(`List ${listId} not found`);
+    }
+
+    // Create archive entry with metadata only (no entries)
+    const archiveEntry = {
+      listId: list.listId,
+      metadata: { ...list.metadata },
+      archivedAt: Date.now()
+    };
+
+    // Save to archive collection
+    await saveToStore('archive', archiveEntry);
+
+    // Delete the original list
+    await deleteFromStore('lists', listId);
+
+    // Also delete any shards if this was a sharded list
+    if (list.isSharded && list.shardIds) {
+      for (const shardId of list.shardIds) {
+        try {
+          await deleteFromStore('lists', shardId);
+        } catch (e) {
+          console.warn(`Failed to delete shard ${shardId}:`, e);
+        }
+      }
+    }
+
+    return archiveEntry;
+  } catch (error) {
+    console.error(`Error archiving list ${listId}:`, error);
+    throw error;
+  }
+}
+
+// Check if a list is referenced by winners or history
+async function isListReferenced(listId) {
+  try {
+    const [winners, history] = await Promise.all([
+      getFromStore('winners'),
+      getFromStore('history')
+    ]);
+
+    const hasWinners = winners.some(w => w.listId === listId);
+    const hasHistory = history.some(h => h.listId === listId);
+
+    return hasWinners || hasHistory;
+  } catch (error) {
+    console.error(`Error checking list references:`, error);
+    return false;
+  }
+}
+
 // Export the clean API - only the essentials
 export const Database = {
   saveToStore,     // Handles everything: local-first, sharding
@@ -472,6 +533,8 @@ export const Database = {
   updateWinner,    // Update winner pickup status
   batchFetch,      // Batch fetch multiple collections
   batchSave,       // Batch save multiple documents
+  archiveList,     // Archive list metadata and delete original
+  isListReferenced, // Check if list has winners/history
   initDB: async () => {
     // Test server connectivity
     try {
