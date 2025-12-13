@@ -3083,7 +3083,6 @@
           const columns = Array.from(allColumns).sort().slice(0, 5);
 
           // Format entries with display names
-          const { Lists } = await import('./src/js/modules/lists.js');
           const formattedEntries = list.entries.map(entry => ({
             id: entry.id,
             displayName: Lists.formatDisplayName(entry, list.metadata.nameConfig),
@@ -3104,14 +3103,12 @@
 
         // Delete entry from list view
         async deleteEntry(entryId) {
-          const { Lists } = await import('./src/js/modules/lists.js');
           await Lists.deleteListEntry(this.listData.listId, entryId);
         },
 
         // Refresh list after entry deletion
         async refreshList() {
           if (this.listData.listId) {
-            const { Database } = await import('./src/js/modules/database.js');
             const list = await Database.getFromStore('lists', this.listData.listId);
             if (list) {
               await this.showList(list);
@@ -3219,7 +3216,6 @@
           this.title = prize ? 'Edit Prize' : 'Add New Prize';
 
           // Load templates for dropdown
-          const { Database } = await import('./src/js/modules/database.js');
           this.templates = await Database.getFromStore('templates') || [];
 
           // Set form data
@@ -3257,12 +3253,11 @@
         async getAvailablePlaceholders() {
           const fieldSet = new Set(['name', 'prize', 'ticketCode', 'eventName']);
           try {
-            const { Database } = await import('./src/js/modules/database.js');
-            const { settings } = await import('./src/js/modules/settings.js');
             const lists = await Database.getFromStore('lists');
+            const settingsData = Settings.data;
 
-            const selectedLists = settings?.selectedListIds?.length > 0
-              ? lists.filter(list => settings.selectedListIds.includes(list.listId))
+            const selectedLists = settingsData?.selectedListIds?.length > 0
+              ? lists.filter(list => settingsData.selectedListIds.includes(list.listId))
               : lists;
 
             selectedLists.forEach(list => {
@@ -3285,10 +3280,6 @@
         },
 
         async savePrize() {
-          const { Database } = await import('./src/js/modules/database.js');
-          const { UI } = await import('./src/js/modules/ui.js');
-          const { Prizes } = await import('./src/js/modules/prizes.js');
-
           const { name, quantity, winnersCount, description, templateId } = this.formData;
 
           if (!name?.trim()) {
@@ -3330,10 +3321,6 @@
         },
 
         async saveTemplate() {
-          const { Database } = await import('./src/js/modules/database.js');
-          const { UI } = await import('./src/js/modules/ui.js');
-          const { Templates } = await import('./src/js/modules/templates.js');
-
           const { name, message, isDefault } = this.formData;
 
           if (!name?.trim() || !message?.trim()) {
