@@ -19,6 +19,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy for proper IP detection behind nginx
+app.set('trust proxy', 1);
+
 // Apply middleware
 app.use(corsMiddleware);
 app.use(helmetMiddleware);
