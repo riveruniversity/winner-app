@@ -334,6 +334,167 @@ function startConfettiAnimation() {
   }
 }
 
+// Christmas Snow and Stars Animation
+function startChristmasSnowAnimation() {
+  if (Settings && Settings.debugLog) Settings.debugLog('startChristmasSnowAnimation called');
+  const canvas = document.getElementById('countdownCanvas');
+  const ctx = canvas.getContext('2d');
+  let snowflakes = [];
+  let stars = [];
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Christmas colors
+  const snowColor = { r: 255, g: 255, b: 255 };
+  const starColors = [
+    { r: 255, g: 215, b: 0 },   // Gold
+    { r: 255, g: 255, b: 200 }, // Warm white
+    { r: 200, g: 220, b: 255 }, // Cool white
+  ];
+
+  class Snowflake {
+    constructor() {
+      this.reset();
+      this.y = Math.random() * canvas.height; // Start at random height initially
+    }
+
+    reset() {
+      this.x = Math.random() * canvas.width;
+      this.y = -10;
+      this.radius = Math.random() * 3 + 1;
+      this.speed = Math.random() * 2 + 1;
+      this.drift = (Math.random() - 0.5) * 0.5;
+      this.opacity = Math.random() * 0.5 + 0.5;
+      this.wobble = Math.random() * Math.PI * 2;
+      this.wobbleSpeed = Math.random() * 0.02 + 0.01;
+    }
+
+    update() {
+      this.y += this.speed;
+      this.wobble += this.wobbleSpeed;
+      this.x += this.drift + Math.sin(this.wobble) * 0.5;
+
+      // Reset when off screen
+      if (this.y > canvas.height + 10) {
+        this.reset();
+      }
+      if (this.x < -10) this.x = canvas.width + 10;
+      if (this.x > canvas.width + 10) this.x = -10;
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${snowColor.r}, ${snowColor.g}, ${snowColor.b}, ${this.opacity})`;
+      ctx.fill();
+
+      // Add subtle glow for larger snowflakes
+      if (this.radius > 2) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${snowColor.r}, ${snowColor.g}, ${snowColor.b}, ${this.opacity * 0.2})`;
+        ctx.fill();
+      }
+    }
+  }
+
+  class Star {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height * 0.6; // Stars in upper portion
+      this.size = Math.random() * 2 + 1;
+      this.color = starColors[Math.floor(Math.random() * starColors.length)];
+      this.twinkleSpeed = Math.random() * 0.05 + 0.02;
+      this.twinklePhase = Math.random() * Math.PI * 2;
+      this.baseOpacity = Math.random() * 0.5 + 0.3;
+    }
+
+    update() {
+      this.twinklePhase += this.twinkleSpeed;
+    }
+
+    draw() {
+      const twinkle = Math.sin(this.twinklePhase) * 0.4 + 0.6;
+      const opacity = this.baseOpacity * twinkle;
+
+      // Draw star with 4 points
+      ctx.save();
+      ctx.translate(this.x, this.y);
+
+      // Outer glow
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity * 0.15})`;
+      ctx.fill();
+
+      // Inner glow
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity * 0.3})`;
+      ctx.fill();
+
+      // Star cross shape
+      ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${opacity})`;
+
+      // Vertical line
+      ctx.fillRect(-this.size * 0.3, -this.size * 2, this.size * 0.6, this.size * 4);
+      // Horizontal line
+      ctx.fillRect(-this.size * 2, -this.size * 0.3, this.size * 4, this.size * 0.6);
+
+      // Core
+      ctx.beginPath();
+      ctx.arc(0, 0, this.size * 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  // Create initial snowflakes
+  for (let i = 0; i < 100; i++) {
+    snowflakes.push(new Snowflake());
+  }
+
+  // Create stars
+  for (let i = 0; i < 30; i++) {
+    stars.push(new Star());
+  }
+
+  function animate() {
+    // Dark blue night sky gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#0a1628');
+    gradient.addColorStop(0.5, '#162d50');
+    gradient.addColorStop(1, '#1a3a5c');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Update and draw stars first (background)
+    stars.forEach(star => {
+      star.update();
+      star.draw();
+    });
+
+    // Update and draw snowflakes
+    snowflakes.forEach(snowflake => {
+      snowflake.update();
+      snowflake.draw();
+    });
+
+    animationFrameId = requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  animate();
+}
+
 // Time Machine Animation - Tunnel/warp effect
 function startTimeMachineAnimation() {
   if (Settings && Settings.debugLog) Settings.debugLog('startTimeMachineAnimation called');
@@ -639,6 +800,7 @@ class CoinParticle {
 export const Animations = {
   startSwirlAnimation,
   startParticleAnimation,
+  startChristmasSnowAnimation,
   startAnimation,
   startConfettiAnimation,
   startTimeMachineAnimation,
