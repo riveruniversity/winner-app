@@ -291,6 +291,17 @@
                              x-model.number="$store.settings.displayDuration"
                              @change="$store.settings.save('displayDuration')">
                     </div>
+                    <div class="mb-3" x-show="$store.settings.selectionMode === 'sequential' || $store.settings.selectionMode === 'individual'">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="stableGrid"
+                               x-model="$store.settings.stableGrid"
+                               @change="$store.settings.save('stableGrid')">
+                        <label class="form-check-label fw-semibold" for="stableGrid">
+                          Stable Grid
+                          <i class="bi bi-info-circle text-muted ms-1" title="Pre-position all cards to prevent grid shifting during reveal"></i>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2232,7 +2243,10 @@
   <!-- Alpine.js Persist Plugin (loads and executes first, registers $persist) -->
   <script src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.15.2/dist/cdn.min.js"></script>
 
-  <!-- Bootstrap nested modal scroll fix - patch ONLY document.body.getAttribute -->
+  <!-- TODO: Bootstrap nested modal scroll fix - TEMPORARY WORKAROUND
+       Issue: Bootstrap 5.3 ScrollBarHelper JSON.parse error with nested modals.
+       Proper fix: Avoid nested modals OR upgrade Bootstrap when fixed.
+       See: https://getbootstrap.com/docs/5.3/components/modal/#how-it-works -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const _bodyGetAttr = document.body.getAttribute.bind(document.body);
@@ -2271,6 +2285,7 @@
         selectionMode: Alpine.$persist('all-at-once').as('settings_selectionMode'),
         displayEffect: Alpine.$persist('fade-in').as('settings_displayEffect'),
         displayDuration: Alpine.$persist(0.5).as('settings_displayDuration'),
+        stableGrid: Alpine.$persist(false).as('settings_stableGrid'),
         preSelectionDelay: Alpine.$persist(0).as('settings_preSelectionDelay'),
         delayVisualType: Alpine.$persist('none').as('settings_delayVisualType'),
 
@@ -2930,6 +2945,7 @@
 
         showPublic() {
           this.view = 'public';
+          this.currentTab = 'quicksetup';
         },
 
         setTab(tabId) {

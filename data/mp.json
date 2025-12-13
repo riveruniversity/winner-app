@@ -57,7 +57,7 @@
     "description": "Get attending Christmas Fest River Bears kids participants",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
-    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (411)",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (411, 522) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -3, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -6, GETDATE())",
     "distinct": true,
     "params": {
       "eventId": {
@@ -83,7 +83,7 @@
     "description": "Get attending Christmas Fest kids participants",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
-    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (412)",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND (Event_Participants.Group_ID = 412 OR (Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -6, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -13, GETDATE())  ))",
     "distinct": true,
     "params": {
       "eventId": {
@@ -109,7 +109,7 @@
     "description": "Get attending Christmas Fest youngsters participants",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
-    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Event_Participants.Group_ID IN (485)",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND ((Event_Participants.Group_ID = 485 AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -18, GETDATE())) OR (Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -13, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -18, GETDATE())))",
     "distinct": true,
     "params": {
       "eventId": {

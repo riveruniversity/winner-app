@@ -678,6 +678,12 @@ body {
   animation: bounceIn 0.8s ease-out forwards;
 }
 
+/* Stable Grid: Placeholder state for cards before reveal */
+.winner-card.winner-card-placeholder {
+  visibility: hidden;
+  opacity: 0;
+}
+
 .winner-number {
   width: clamp(16px, 4cqw, 35px);
   height: clamp(16px, 4cqw, 35px);

@@ -839,40 +839,87 @@ async function displayWinnersSequential(winners, winnersGrid) {
   const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   const shouldShowCoins = celebrationAutoTrigger && (celebrationEffect === 'coins' || celebrationEffect === 'both');
-  
+  const stableGrid = document.getElementById('stableGrid')?.checked || false;
+
   return new Promise((resolve) => {
     let completedWinners = 0;
-    
-    winners.forEach((winner, index) => {
-      const delay = index * (displayDuration * 1000);
-      
-      setTimeout(() => {
+
+    if (stableGrid) {
+      // STABLE GRID MODE: Pre-create all cards as placeholders, then reveal sequentially
+      // This prevents grid layout shifting as cards are revealed
+      const cards = [];
+
+      // Step 1: Create all cards as invisible placeholders
+      winners.forEach((winner, index) => {
         const winnerCard = createWinnerCard(winner, index);
-        // Apply the selected display effect
-        winnerCard.classList.add(displayEffect);
+        winnerCard.classList.add('winner-card-placeholder');
         winnersGrid.appendChild(winnerCard);
-        
-        // Trigger coin burst from card position after a short delay (only if coins are enabled)
-        if (shouldShowCoins) {
-          setTimeout(() => {
-            const rect = winnerCard.getBoundingClientRect();
-            const cardCenterX = rect.left + rect.width / 2;
-            const cardCenterY = rect.top + rect.height / 2;
-            if (Animations && Animations.createCoinBurst) {
-              Animations.createCoinBurst(cardCenterX, cardCenterY);
-            }
-          }, 300); // Delay to ensure card animation has started
-        }
-        
-        // Listen for animation end to track completion
-        winnerCard.addEventListener('animationend', () => {
-          completedWinners++;
-          if (completedWinners === winners.length) {
-            resolve();
+        cards.push(winnerCard);
+      });
+
+      // Step 2: Reveal cards one by one with animation
+      cards.forEach((winnerCard, index) => {
+        const delay = index * (displayDuration * 1000);
+
+        setTimeout(() => {
+          // Remove placeholder class and add reveal animation
+          winnerCard.classList.remove('winner-card-placeholder');
+          winnerCard.classList.add(displayEffect);
+
+          // Trigger coin burst from card position
+          if (shouldShowCoins) {
+            setTimeout(() => {
+              const rect = winnerCard.getBoundingClientRect();
+              const cardCenterX = rect.left + rect.width / 2;
+              const cardCenterY = rect.top + rect.height / 2;
+              if (Animations && Animations.createCoinBurst) {
+                Animations.createCoinBurst(cardCenterX, cardCenterY);
+              }
+            }, 300);
           }
-        });
-      }, delay);
-    });
+
+          // Track completion
+          winnerCard.addEventListener('animationend', () => {
+            completedWinners++;
+            if (completedWinners === winners.length) {
+              resolve();
+            }
+          });
+        }, delay);
+      });
+    } else {
+      // ORIGINAL MODE: Add cards to DOM sequentially (grid adjusts as cards appear)
+      winners.forEach((winner, index) => {
+        const delay = index * (displayDuration * 1000);
+
+        setTimeout(() => {
+          const winnerCard = createWinnerCard(winner, index);
+          // Apply the selected display effect
+          winnerCard.classList.add(displayEffect);
+          winnersGrid.appendChild(winnerCard);
+
+          // Trigger coin burst from card position after a short delay (only if coins are enabled)
+          if (shouldShowCoins) {
+            setTimeout(() => {
+              const rect = winnerCard.getBoundingClientRect();
+              const cardCenterX = rect.left + rect.width / 2;
+              const cardCenterY = rect.top + rect.height / 2;
+              if (Animations && Animations.createCoinBurst) {
+                Animations.createCoinBurst(cardCenterX, cardCenterY);
+              }
+            }, 300); // Delay to ensure card animation has started
+          }
+
+          // Listen for animation end to track completion
+          winnerCard.addEventListener('animationend', () => {
+            completedWinners++;
+            if (completedWinners === winners.length) {
+              resolve();
+            }
+          });
+        }, delay);
+      });
+    }
   });
 }
 

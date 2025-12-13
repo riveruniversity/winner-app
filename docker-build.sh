@@ -8,12 +8,13 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Building Winner App with Docker Compose...${NC}"
 
-# Create data directory if it doesn't exist
+# Create data directory if it doesn't exist and fix permissions
 if [ ! -d "./data" ]; then
     echo -e "${YELLOW}Creating data directory...${NC}"
     mkdir -p ./data
-    chmod 755 ./data
 fi
+echo -e "${YELLOW}Fixing data directory permissions...${NC}"
+chmod -R 777 ./data
 
 # Stop existing containers (including any created outside docker-compose)
 echo -e "${YELLOW}Step 1: Stopping existing containers...${NC}"
