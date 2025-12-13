@@ -217,7 +217,8 @@
                   <div class="col-md-5">
                     <label class="form-label fw-semibold">Select Prize</label>
                     <select class="form-select form-select-lg" id="quickPrizeSelect"
-                            x-model="$store.setup.selectedPrizeId">
+                            x-model="$store.setup.selectedPrizeId"
+                            @change="$store.setup.onPrizeChange()">
                       <option value="">Select Prize...</option>
                       <template x-for="prize in $store.data.prizes" :key="prize.prizeId">
                         <option :value="prize.prizeId" x-text="prize.name + ' (' + prize.quantity + ' available)'" :selected="prize.prizeId === $store.setup.selectedPrizeId"></option>
@@ -226,7 +227,7 @@
                   </div>
                   <div class="col-md-2">
                     <label class="form-label fw-semibold">Number of Winners</label>
-                    <input type="number" class="form-control form-control-lg" id="quickWinnersCount" value="1" min="1" max="9999" placeholder="Count"
+                    <input type="number" class="form-control form-control-lg" id="quickWinnersCount" min="1" max="9999" placeholder="Count"
                            x-model.number="$store.setup.winnersCount"
                            :class="{ 'border-danger text-danger': $store.setup.hasValidationWarning }">
                     <template x-if="$store.setup.entriesExceeded">
@@ -2397,6 +2398,18 @@
             this.eligibleEntries = total;
             this.excludedCount = excluded;
           });
+
+        },
+
+        // Called when prize selection changes - updates winnersCount from prize default
+        onPrizeChange() {
+          const dataStore = Alpine.store('data');
+          if (this.selectedPrizeId && dataStore?.prizes) {
+            const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
+            if (prize?.winnersCount) {
+              this.winnersCount = prize.winnersCount;
+            }
+          }
         },
 
         get canStart() {
