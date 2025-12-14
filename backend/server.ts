@@ -2,6 +2,7 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 
 import { ROOT_DIR, DIST_DIR, UPLOADS_DIR, PORT } from './config.js';
 import { ensureDataDir } from './services/collection.js';
@@ -10,9 +11,10 @@ import {
   corsMiddleware,
   helmetMiddleware,
   generalLimiter,
-  basicAuth,
+  sessionAuth,
   securityHeaders
 } from './middleware.js';
+import { sessions, SESSION_DURATION } from './routes/auth.js';
 
 // Load environment variables
 dotenv.config();
@@ -25,9 +27,10 @@ app.set('trust proxy', 1);
 // Apply middleware
 app.use(corsMiddleware);
 app.use(helmetMiddleware);
-app.use('/api', generalLimiter);
-app.use('/api', basicAuth);
+app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
+app.use('/api', generalLimiter);
+app.use('/api', sessionAuth);
 app.use(securityHeaders);
 
 // Create main router
@@ -39,21 +42,49 @@ mainRouter.use('/api', apiRouter);
 // Serve uploaded images
 mainRouter.use('/uploads', express.static(UPLOADS_DIR));
 
-// Serve static files from dist
-mainRouter.use(express.static(DIST_DIR));
-
-// Route for scanner page
-mainRouter.get('/scan', (req: Request, res: Response) => {
-  res.sendFile(path.join(DIST_DIR, 'scan.html'));
+// Login page (public)
+mainRouter.get('/login', (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'login.html'));
 });
 
-// Route for conditions page
+// Route for conditions page (public)
 mainRouter.get('/conditions', (req: Request, res: Response) => {
   res.sendFile(path.join(ROOT_DIR, 'conditions.html'));
 });
 
-// Catch-all route for SPA
-mainRouter.get('*', (req: Request, res: Response) => {
+// Page auth middleware - redirects to login if not authenticated
+function pageAuth(req: Request, res: Response, next: Function) {
+  const token = req.cookies?.session;
+
+  if (!token) {
+    return res.redirect(`/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+  }
+
+  const session = sessions.get(token);
+  if (!session || Date.now() - session.createdAt > SESSION_DURATION) {
+    sessions.delete(token);
+    res.clearCookie('session');
+    return res.redirect(`/login?redirect=${encodeURIComponent(req.originalUrl)}`);
+  }
+
+  next();
+}
+
+// Route for main app (requires authentication) - must be before static middleware
+mainRouter.get('/', pageAuth, (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
+});
+
+// Route for scanner page (requires authentication)
+mainRouter.get('/scan', pageAuth, (req: Request, res: Response) => {
+  res.sendFile(path.join(DIST_DIR, 'scan.html'));
+});
+
+// Serve static files from dist (after explicit routes)
+mainRouter.use(express.static(DIST_DIR));
+
+// Catch-all route for SPA (requires authentication)
+mainRouter.get('*', pageAuth, (req: Request, res: Response) => {
   res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 

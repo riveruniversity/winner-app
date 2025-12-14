@@ -176,11 +176,11 @@
           <!-- Setup Tab -->
           <div class="tab-pane fade show active" id="quicksetup" role="tabpanel" x-data>
             <!-- Row 1: Full Width Quick Selection Setup -->
-            <div class="card">
+            <div class="card" style="overflow: visible;">
               <div class="card-header">
                 <h5 class="card-title"><i class="bi bi-gear-fill me-2"></i>Quick Selection Setup</h5>
               </div>
-              <div class="card-body">
+              <div class="card-body" style="overflow: visible;">
                 <p class="card-text text-muted mb-4">Configure the next public winner selection from here.</p>
                 <!-- Main Selection Controls in a Row -->
                 <div class="row g-3">
@@ -214,16 +214,64 @@
                       </div>
                     </div>
                   </div>
-                  <div class="col-md-5">
+                  <div class="col-md-5" x-data="{ prizeDropdownOpen: false }">
                     <label class="form-label fw-semibold">Select Prize</label>
-                    <select class="form-select form-select-lg" id="quickPrizeSelect"
-                            x-model="$store.setup.selectedPrizeId"
-                            @change="$store.setup.onPrizeChange()">
-                      <option value="">Select Prize...</option>
-                      <template x-for="prize in $store.data.prizes" :key="prize.prizeId">
-                        <option :value="prize.prizeId" x-text="prize.name + ' (' + prize.quantity + ' available)'" :selected="prize.prizeId === $store.setup.selectedPrizeId"></option>
-                      </template>
-                    </select>
+                    <!-- Hidden select for form compatibility -->
+                    <select class="d-none" id="quickPrizeSelect" x-model="$store.setup.selectedPrizeId"></select>
+                    <!-- Custom dropdown -->
+                    <div class="dropdown">
+                      <button class="btn btn-outline-secondary form-select-lg w-100 text-start"
+                              type="button"
+                              @click="prizeDropdownOpen = !prizeDropdownOpen"
+                              @click.away="prizeDropdownOpen = false"
+                              :class="{ 'border-primary': prizeDropdownOpen }">
+                        <template x-if="!$store.setup.selectedPrizeId">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Select Prize...</span>
+                            <i class="bi bi-chevron-down"></i>
+                          </div>
+                        </template>
+                        <template x-if="$store.setup.selectedPrizeId && $store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)">
+                          <div class="d-flex w-100 align-items-center">
+                            <div class="flex-grow-1 d-flex justify-content-between align-items-start">
+                              <div class="me-2" style="min-width: 0;">
+                                <div class="fw-medium text-truncate" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.name"></div>
+                                <small class="text-muted d-block text-truncate" x-show="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.description" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.description?.split('\n')[0]?.substring(0, 50) + ($store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.description?.length > 50 ? '...' : '')"></small>
+                              </div>
+                              <div class="d-flex flex-column align-items-end flex-shrink-0">
+                                <span class="badge badge-selection" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.quantity + ' qty'"></span>
+                                <small class="badge badge-secondary-theme mt-1" x-show="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.winnersCount" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.winnersCount + ' win'"></small>
+                              </div>
+                            </div>
+                            <i class="bi bi-chevron-down ms-2 flex-shrink-0"></i>
+                          </div>
+                        </template>
+                      </button>
+                      <div class="dropdown-menu w-100 shadow-sm"
+                           :class="{ 'show': prizeDropdownOpen }"
+                           style="max-height: 300px; overflow-y: auto;">
+                        <template x-for="prize in $store.data.prizes" :key="prize.prizeId">
+                          <a class="dropdown-item py-2 px-3"
+                             href="#"
+                             :class="{ 'active': $store.setup.selectedPrizeId === prize.prizeId }"
+                             @click.prevent="$store.setup.selectedPrizeId = prize.prizeId; $store.setup.onPrizeChange(); prizeDropdownOpen = false">
+                            <div class="d-flex justify-content-between align-items-start">
+                              <div class="me-2" style="min-width: 0;">
+                                <div class="fw-medium text-truncate" x-text="prize.name"></div>
+                                <small class="text-muted d-block text-truncate" x-show="prize.description" x-text="prize.description?.split('\n')[0]?.substring(0, 50) + (prize.description?.length > 50 ? '...' : '')"></small>
+                              </div>
+                              <div class="d-flex flex-column align-items-end flex-shrink-0">
+                                <span class="badge badge-selection" x-text="prize.quantity + ' qty'"></span>
+                                <small class="badge badge-secondary-theme mt-1" x-show="prize.winnersCount" x-text="prize.winnersCount + ' win'"></small>
+                              </div>
+                            </div>
+                          </a>
+                        </template>
+                        <div class="dropdown-item text-muted text-center py-3" x-show="$store.data.prizes.length === 0">
+                          No prizes available
+                        </div>
+                      </div>
+                    </div>
                     <template x-if="$store.setup.selectedPrizeDefaultWinners">
                       <small class="text-muted d-block mt-1" x-text="'Default: ' + $store.setup.selectedPrizeDefaultWinners + ' winner' + ($store.setup.selectedPrizeDefaultWinners > 1 ? 's' : '')"></small>
                     </template>
@@ -549,7 +597,7 @@
                       <p class="card-text text-muted small mb-2">
                         Uploaded <span x-text="new Date(list.metadata.timestamp).toLocaleDateString()"></span>
                         <!-- Last sync time for MP lists -->
-                        <span x-show="list.metadata.lastSyncAt" class="d-block">
+                        <span x-show="list.metadata.lastSyncAt && new Date(list.metadata.lastSyncAt).getFullYear() > 1970" class="d-block">
                           <i class="bi bi-arrow-repeat"></i> Synced <span x-text="new Date(list.metadata.lastSyncAt).toLocaleDateString()"></span>
                         </span>
                       </p>

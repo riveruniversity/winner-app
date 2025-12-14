@@ -437,6 +437,12 @@ async function restoreBackupData(backupData) {
   // Add lists to batch
   if (backupData.lists) {
     for (const list of backupData.lists) {
+      // Ensure lastSyncAt is null if not set or is epoch date (0)
+      if (list.metadata) {
+        if (!list.metadata.lastSyncAt || list.metadata.lastSyncAt === 0 || new Date(list.metadata.lastSyncAt).getFullYear() <= 1970) {
+          list.metadata.lastSyncAt = null;
+        }
+      }
       operations.push({
         collection: 'lists',
         data: list,

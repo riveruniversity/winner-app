@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { healthRouter } from './health.js';
+import { authRouter } from './auth.js';
 import { batchRouter } from './batch.js';
 import { uploadsRouter } from './uploads.js';
 import { reportsProxyRouter } from './reports-proxy.js';
@@ -12,6 +13,7 @@ export const apiRouter = express.Router();
 
 // Mount all route modules
 apiRouter.use(healthRouter);
+apiRouter.use(authRouter);
 apiRouter.use(batchRouter);
 apiRouter.use(uploadsRouter);
 apiRouter.use(reportsProxyRouter);
