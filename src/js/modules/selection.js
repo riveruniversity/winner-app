@@ -14,6 +14,14 @@ import { Animations } from './animations.js';
 import { setCurrentWinners } from '../app.js';
 import { getCurrentList, setCurrentList, getLastAction, setLastAction, loadHistory } from '../app.js'; // Import central state and history functions
 
+// Track pending display timeouts to prevent race conditions when starting new selections
+let pendingDisplayTimeouts = [];
+
+function clearPendingDisplayTimeouts() {
+  pendingDisplayTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+  pendingDisplayTimeouts = [];
+}
+
 function createRandomWorker() {
   const workerCode = `
     function generateId(length = 10) {
@@ -404,6 +412,7 @@ async function performWinnerSelection(numWinners, selectedPrize, selectionMode) 
       historyId: historyId,
       pickedUp: false, // Initialize pickup status
       pickupTimestamp: null,
+      position: index + 1,
       // Keep all original entry data under data key
       data: entry.data
     };
@@ -570,191 +579,11 @@ function showCountdown(delaySeconds, visualType) {
   });
 }
 
-async function selectWinners(numWinners, selectedPrize, selectionMode) {
-  try {
-    UI.showProgress('Selecting Winners', 'Preparing random selection...');
-
-    // Hide selection controls
-    document.getElementById('selectionControls').classList.add('d-none');
-
-    // Create and use random worker
-    const randomWorker = createRandomWorker();
-
-    const selectedEntries = await new Promise((resolve, reject) => {
-      randomWorker.onmessage = function (e) {
-        if (e.data.type === 'complete') {
-          resolve(e.data.result);
-        } else if (e.data.type === 'error') {
-          reject(new Error(e.data.error));
-        }
-      };
-
-      randomWorker.postMessage({
-        type: 'select',
-        entries: getCurrentList().entries,
-        numWinners: numWinners,
-        seed: Date.now()
-      });
-    });
-
-    UI.updateProgress(50, 'Creating winner records...');
-
-    // Create winner records
-    const historyId = UI.generateId(8);
-    const winners = selectedEntries.map((entry, index) => ({
-      winnerId: UI.generateId(),
-      entryId: entry.id, // Store the list entry ID for ticket scanning
-      displayName: Lists.formatDisplayName(entry, getCurrentList().metadata.nameConfig),
-      prize: selectedPrize.name,
-      timestamp: Date.now(),
-      listId: getCurrentList().listId || getCurrentList().metadata.listId,
-      position: index + 1,
-      historyId: historyId,
-      pickedUp: false, // Initialize pickup status
-      pickupTimestamp: null,
-      // Keep all original entry data under data key
-      data: entry.data
-    }));
-
-    UI.updateProgress(75, 'Saving winners...');
-
-    // Save winners
-    for (const winner of winners) {
-      await Winners.saveWinner(winner);
-    }
-
-    // Update prize quantity
-    selectedPrize.quantity -= numWinners;
-    await Database.saveToStore('prizes', selectedPrize);
-
-    // Save history
-    const historyEntry = {
-      historyId: historyId,
-      listId: getCurrentList().listId || getCurrentList().metadata.listId,
-      listName: getCurrentList().metadata.name,
-      prize: selectedPrize.name,
-      winners: winners.map(w => ({ winnerId: w.winnerId, displayName: w.displayName })),
-      timestamp: Date.now()
-    };
-    await Database.saveToStore('history', historyEntry);
-
-    // Remove winners from source lists based on per-list or global setting
-    const currentListSeq = getCurrentList();
-
-    // Determine if we should remove winners from this list
-    // Use per-list setting if available, otherwise fall back to global setting
-    const shouldRemoveWinnersSeq = currentListSeq.metadata?.listSettings?.removeWinnersFromList
-                                 ?? settings.preventDuplicates;
-
-    // Store last action for undo
-    setLastAction({
-      type: 'selectWinners',
-      winners: winners,
-      removedEntries: selectedEntries,
-      prizeId: selectedPrize.prizeId,
-      prizeCount: numWinners,
-      historyId: historyEntry.historyId,
-      entriesRemoved: shouldRemoveWinnersSeq // Track if entries were removed for undo
-    });
-
-    if (shouldRemoveWinnersSeq) {
-      // If it's a combined list, update each source list separately
-      if (currentListSeq.metadata?.isCombined && currentListSeq.metadata?.sourceListIds) {
-        // Group selected entries by their source list
-        const entriesByList = {};
-        selectedEntries.forEach(entry => {
-          if (entry.sourceListId) {
-            if (!entriesByList[entry.sourceListId]) {
-              entriesByList[entry.sourceListId] = [];
-            }
-            entriesByList[entry.sourceListId].push(entry.id);
-          }
-        });
-
-        // Update each source list (check per-list setting for each)
-        for (const listId of currentListSeq.metadata.sourceListIds) {
-          const sourceList = await Database.getFromStore('lists', listId);
-          if (sourceList && entriesByList[listId]) {
-            // Check per-list setting for this source list
-            const shouldRemoveFromSourceList = sourceList.metadata?.listSettings?.removeWinnersFromList
-                                             ?? settings.preventDuplicates;
-            if (shouldRemoveFromSourceList) {
-              // Remove the winners from this list
-              sourceList.entries = sourceList.entries.filter(entry =>
-                !entriesByList[listId].includes(entry.id)
-              );
-              sourceList.metadata.entryCount = sourceList.entries.length;
-              await Database.saveToStore('lists', sourceList);
-            }
-          }
-        }
-
-        // Update the combined list in memory
-        currentListSeq.entries = currentListSeq.entries.filter(entry =>
-          !selectedEntries.some(selected => selected.id === entry.id)
-        );
-        setCurrentList(currentListSeq);
-      } else {
-        // Single list - original logic
-        const updatedList = getCurrentList();
-        updatedList.entries = updatedList.entries.filter(entry =>
-          !selectedEntries.some(selected => selected.id === entry.id)
-        );
-        if (!updatedList.listId && updatedList.metadata && updatedList.metadata.listId) {
-          updatedList.listId = updatedList.metadata.listId;
-        }
-        setCurrentList(updatedList);
-        await Database.saveToStore('lists', updatedList);
-      }
-    }
-
-    UI.updateProgress(100, 'Winners selected!');
-
-    // Update Alpine store to reflect new entry counts after removing winners
-    if (shouldRemoveWinnersSeq) {
-      const { Lists } = await import('./lists.js');
-      await Lists.loadLists();
-    }
-
-    setTimeout(async () => {
-      UI.hideProgress();
-      
-      // Set current winners immediately (so SMS button appears)
-      setCurrentWinners(winners);
-      
-      await displayWinnersPublicly(winners, selectedPrize, selectionMode);
-
-      // Skip redundant data loading - data was just saved
-      // Only load if user navigates to the Winners tab
-      // This avoids unnecessary network requests
-      // Winners.loadWinners();  // Not needed
-      // loadHistory();  // Not needed
-
-      // Trigger webhook notification
-      try {
-        await Settings.triggerWebhook({
-          event: 'winners_selected',
-          winners: winners,
-          prize: selectedPrize,
-          listId: getCurrentList().listId || getCurrentList().metadata.listId,
-          listName: getCurrentList().metadata.name,
-          selectionId: historyId
-        });
-      } catch (error) {
-        console.error('Error triggering webhook:', error);
-      }
-    }, 500);
-
-  } catch (error) {
-    UI.hideProgress();
-    console.error('Error selecting winners:', error);
-    UI.showToast('Error selecting winners: ' + error.message, 'error');
-    Winners.resetToSelectionMode();
-  }
-}
-
 
 async function displayWinnersPublicly(winners, prize, selectionMode) {
+  // Clear any pending display timeouts from previous selections
+  clearPendingDisplayTimeouts();
+
   // Show prize display
   const prizeDisplay = document.getElementById('prizeDisplay');
   document.getElementById('displayPrizeName').textContent = prize.name;
@@ -861,14 +690,14 @@ async function displayWinnersSequential(winners, winnersGrid) {
       cards.forEach((winnerCard, index) => {
         const delay = index * (displayDuration * 1000);
 
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           // Remove placeholder class and add reveal animation
           winnerCard.classList.remove('winner-card-placeholder');
           winnerCard.classList.add(displayEffect);
 
           // Trigger coin burst from card position
           if (shouldShowCoins) {
-            setTimeout(() => {
+            const coinTimeoutId = setTimeout(() => {
               const rect = winnerCard.getBoundingClientRect();
               const cardCenterX = rect.left + rect.width / 2;
               const cardCenterY = rect.top + rect.height / 2;
@@ -876,6 +705,7 @@ async function displayWinnersSequential(winners, winnersGrid) {
                 Animations.createCoinBurst(cardCenterX, cardCenterY);
               }
             }, 300);
+            pendingDisplayTimeouts.push(coinTimeoutId);
           }
 
           // Track completion
@@ -886,13 +716,14 @@ async function displayWinnersSequential(winners, winnersGrid) {
             }
           });
         }, delay);
+        pendingDisplayTimeouts.push(timeoutId);
       });
     } else {
       // ORIGINAL MODE: Add cards to DOM sequentially (grid adjusts as cards appear)
       winners.forEach((winner, index) => {
         const delay = index * (displayDuration * 1000);
 
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           const winnerCard = createWinnerCard(winner, index);
           // Apply the selected display effect
           winnerCard.classList.add(displayEffect);
@@ -900,7 +731,7 @@ async function displayWinnersSequential(winners, winnersGrid) {
 
           // Trigger coin burst from card position after a short delay (only if coins are enabled)
           if (shouldShowCoins) {
-            setTimeout(() => {
+            const coinTimeoutId = setTimeout(() => {
               const rect = winnerCard.getBoundingClientRect();
               const cardCenterX = rect.left + rect.width / 2;
               const cardCenterY = rect.top + rect.height / 2;
@@ -908,6 +739,7 @@ async function displayWinnersSequential(winners, winnersGrid) {
                 Animations.createCoinBurst(cardCenterX, cardCenterY);
               }
             }, 300); // Delay to ensure card animation has started
+            pendingDisplayTimeouts.push(coinTimeoutId);
           }
 
           // Listen for animation end to track completion
@@ -918,6 +750,7 @@ async function displayWinnersSequential(winners, winnersGrid) {
             }
           });
         }, delay);
+        pendingDisplayTimeouts.push(timeoutId);
       });
     }
   });
@@ -1066,21 +899,6 @@ function formatInfoTemplate(template, winner) {
   return (result === '-' || result === '' || /^\s*$/.test(result)) ? '' : result;
 }
 
-// Legacy function - will be removed once info system is fully implemented
-function getWinnerDetails(winner) {
-  const details = [];
-  const fieldsToShow = ['email', 'phone', 'department', 'id', 'employee_id', 'member_id'];
-
-  for (const field of fieldsToShow) {
-    if (winner[field]) {
-      details.push(`${field.toUpperCase()}: ${winner[field]}`);
-      break;
-    }
-  }
-
-  return details.length > 0 ? details[0] : 'Winner Selected';
-}
-
 // MP3 Sound Effects
 let currentAudio = null; // Track currently playing audio for stopping
 
@@ -1177,12 +995,10 @@ export const Selection = {
   createRandomWorker,
   handleBigPlayClick,
   showCountdown,
-  selectWinners,
   displayWinnersPublicly,
   displayWinnersAllAtOnce,
   displayWinnersSequential,
   createWinnerCard,
-  getWinnerDetails,
   playSound
 };
 

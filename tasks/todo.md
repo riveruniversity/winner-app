@@ -1,78 +1,234 @@
-# Family Member Winner Search Feature
+# SvelteKit Migration Plan
 
 ## Overview
-Add a fallback search feature to the scan module that finds family members who won prizes when a parent scans their QR code (idCard) but isn't a direct winner.
+Migrate Winner App from Alpine.js + vanilla JS to SvelteKit with Svelte 5 runes for robust reactive property binding and state management.
 
-**Scope:** Only applies to MP-formatted idCards matching `/^[A-Z]-\d{5,7}$/` (e.g., "A-167162")
+## Current → Target Architecture
 
-## Current Flow
-1. Parent scans their QR code → e.g., "A-123456"
-2. System looks for winner with `entryId === "A-123456"`
-3. Not found → Shows "No Winner Found" alert
+| Layer | Current | Target |
+|-------|---------|--------|
+| Framework | Alpine.js 3.15 (CDN) | SvelteKit + Svelte 5 |
+| State | 7 Alpine stores in HTML | Svelte runes + stores |
+| Business Logic | Vanilla JS modules | TypeScript modules |
+| Routing | Single page + tabs | SvelteKit routes |
+| Build | Vite (vanilla) | Vite (SvelteKit) |
+| Backend | Express (keep as-is) | Express (keep as-is) |
 
-## Proposed Flow
-1. Parent scans their QR code → e.g., "A-123456"
-2. System looks for winner with `entryId === "A-123456"` (direct match)
-3. If not found AND idCard matches MP format (`/^[A-Z]-\d{5,7}$/`):
-   - Call MP API with the idCard to get family member idCards
-   - Match family idCards against winners (`data.idCard` or `entryId`)
-4. Show list of family members who won with distinct UI
+---
 
-## Implementation Tasks
+## Phase 1: Project Setup
 
-### Backend (routes.ts)
-- [x] Add new endpoint `POST /api/mp/family-members`
-  - Input: `{ idCard: string }` (parent's idCard, e.g., "A-123456")
-  - Uses MP API to query Contacts by ID_Card → get Household_ID
-  - Queries all Contacts in same Household
-  - Returns: `{ success: true, familyIdCards: string[], householdId }`
+### 1.1 Initialize SvelteKit Project
+- [ ] Create new SvelteKit project alongside existing code
+- [ ] Configure for SPA mode (adapter-static or adapter-node)
+- [ ] Set up TypeScript strict mode
+- [ ] Configure Vite proxy to Express backend (port 3001)
+- [ ] Add Bootstrap 5.3.3 (keep existing styles)
 
-### Frontend - winner-search.js
-- [x] Add method `isMPIdCard(input)` - checks for `/^[A-Z]-\d{5,7}$/` format
-- [x] Add method `findFamilyWinners(idCard, winners)`
-  - Calls `/api/mp/family-members` API
-  - Matches returned idCards against local winners (`data.idCard` or `entryId`)
-  - Returns array of family winner objects
-- [x] Update `findByTicketCode()` to call `findFamilyWinners()` as fallback
-  - Only for idCards matching `/^[A-Z]-\d{5,7}$/`
-  - Returns `{ type: 'familyWinners', scannedIdCard, results: [...] }` for family matches
-
-### Frontend - scanner.js
-- [x] Add `onFamilyWinners` callback
-- [x] Update `handleScanResult()` to check for `type: 'familyWinners'` and call appropriate callback
-
-### Frontend - scan-app.js
-- [x] Set up `Scanner.onFamilyWinners` callback
-- [x] Handle family winners in `performSearch()` for manual search
-- [x] Reset `isFamilySearch` and `scannedIdCard` in `backToScanner()`
-
-### Frontend - scan.html
-- [x] Add `isFamilySearch` and `scannedIdCard` state to Alpine store
-- [x] Show "Family Members Who Won" header with alert-info styling when isFamilySearch
-- [x] Show scanned idCard info (not a winner)
-- [x] Hide "Refine search" input for family searches
-- [x] Update backToScanner() placeholder to reset new state
-
-## Data Flow Example
+### 1.2 Project Structure
 ```
-Parent scans: "A-100000"
-↓
-No direct winner match (entryId lookup)
-↓
-idCard matches /^[A-Z]-\d{5,7}$/ → proceed with family lookup
-↓
-MP API: Get family members for idCard "A-100000"
-↓
-Returns family idCards: ["A-167162", "A-159077", ...]
-↓
-Match against winners.data.idCard or entryId
-↓
-Found: Michael Francois (A-167162), Adrian Francois (A-159077)
-↓
-Display family winners UI
+src/
+├── lib/
+│   ├── stores/           # Svelte stores (runes)
+│   │   ├── data.svelte.ts
+│   │   ├── settings.svelte.ts
+│   │   ├── setup.svelte.ts
+│   │   ├── ui.svelte.ts
+│   │   └── index.ts
+│   ├── api/              # API client (from database.js)
+│   │   └── client.ts
+│   ├── services/         # Business logic
+│   │   ├── winners.ts
+│   │   ├── prizes.ts
+│   │   ├── lists.ts
+│   │   ├── selection.ts
+│   │   └── settings.ts
+│   ├── components/       # Reusable components
+│   │   ├── modals/
+│   │   ├── forms/
+│   │   └── ui/
+│   └── types/            # TypeScript interfaces
+│       └── index.ts
+├── routes/
+│   ├── +layout.svelte    # Main layout with nav
+│   ├── +page.svelte      # Public view (winner display)
+│   └── manage/
+│       ├── +page.svelte  # Management dashboard
+│       ├── lists/
+│       ├── prizes/
+│       ├── winners/
+│       ├── history/
+│       └── settings/
+└── app.html
 ```
 
-## Defaults
-- Show ALL family winners (both pending and picked up)
-- Parent CAN mark pickup on behalf of children
-- Use Households table for family lookup
+---
+
+## Phase 2: Core Infrastructure
+
+### 2.1 TypeScript Types
+- [ ] Define interfaces from existing data structures:
+  - `List`, `ListEntry`, `Prize`, `Winner`, `HistoryEntry`
+  - `Settings`, `SetupState`, `UIState`
+- [ ] Extract from current Alpine store shapes in index.html
+
+### 2.2 API Client (from database.js)
+- [ ] Migrate `Database` module to TypeScript
+- [ ] Keep: `saveToStore()`, `getFromStore()`, `deleteFromStore()`
+- [ ] Keep: `batchSave()`, `batchFetch()`
+- [ ] Keep: List sharding logic for large datasets
+- [ ] Add proper TypeScript return types
+
+### 2.3 Svelte Stores with Runes
+
+**data.svelte.ts** (central data store):
+```typescript
+// Using Svelte 5 runes
+let lists = $state<List[]>([]);
+let prizes = $state<Prize[]>([]);
+let winners = $state<Winner[]>([]);
+let history = $state<HistoryEntry[]>([]);
+
+// Derived state
+let pendingWinners = $derived(winners.filter(w => !w.pickedUp));
+
+export const dataStore = {
+  get lists() { return lists; },
+  get prizes() { return prizes; },
+  // ... etc
+  async loadAll() { /* ... */ }
+};
+```
+
+**settings.svelte.ts**:
+```typescript
+let primaryColor = $state('#0d6efd');
+let preventDuplicates = $state(false);
+// ... with $effect for localStorage persistence
+```
+
+---
+
+## Phase 3: Component Migration
+
+### 3.1 Layout & Navigation
+- [ ] Main layout with Bootstrap navbar
+- [ ] Public/Management view toggle
+- [ ] Tab navigation for management sections
+
+### 3.2 Modal System
+- [ ] `ConfirmModal.svelte` - confirmation dialogs
+- [ ] `FormModal.svelte` - CRUD forms
+- [ ] `ViewModal.svelte` - detail views
+- [ ] Use Svelte's `{#if}` for show/hide (no x-show)
+
+### 3.3 Core Views
+- [ ] **Public View** - Winner display wheel/selection
+- [ ] **Lists Management** - CRUD, import, entries
+- [ ] **Prizes Management** - CRUD, images
+- [ ] **Winners Management** - filters, pickup status
+- [ ] **History View** - selection history
+- [ ] **Settings** - all configuration options
+
+### 3.4 Selection System
+- [ ] Quick setup component with reactive bindings
+- [ ] Selection animation/wheel
+- [ ] Web Worker integration (keep existing)
+- [ ] Sound effects integration
+
+---
+
+## Phase 4: Feature Parity Checklist
+
+### Data Management
+- [ ] List CRUD operations
+- [ ] List entry management (add/remove/import)
+- [ ] Prize CRUD with image upload
+- [ ] Winner management with pickup tracking
+- [ ] History logging
+
+### Selection Features
+- [ ] Quick setup (list + prize selection)
+- [ ] Eligible entries calculation (reactive)
+- [ ] Random selection with animation
+- [ ] Duplicate prevention logic
+- [ ] Multi-winner selection
+
+### Settings
+- [ ] Color theming (primary/secondary)
+- [ ] Font selection
+- [ ] Sound toggles
+- [ ] SMS template
+- [ ] All persisted to localStorage + backend
+
+### Scanning (scan.html)
+- [ ] QR/barcode scanner integration
+- [ ] Winner lookup
+- [ ] Family member search (MP integration)
+- [ ] Pickup marking
+
+---
+
+## Phase 5: Migration Strategy
+
+### Option A: Big Bang (Recommended for this size)
+1. Build complete SvelteKit app in `/svelte` directory
+2. Test thoroughly against same backend
+3. Replace frontend entirely when ready
+4. Keep Express backend unchanged
+
+### Option B: Incremental
+1. Embed Svelte components in existing HTML
+2. Migrate section by section
+3. More complex, longer timeline
+
+---
+
+## Phase 6: Testing & Deployment
+
+- [ ] Test all CRUD operations
+- [ ] Test selection with large lists (20k+ entries)
+- [ ] Test localStorage persistence
+- [ ] Test backend sync
+- [ ] Update Docker build for SvelteKit
+- [ ] Update vite.config.js
+
+---
+
+## Migration Mapping Reference
+
+| Alpine.js | Svelte 5 |
+|-----------|----------|
+| `x-data="{ count: 0 }"` | `let count = $state(0)` |
+| `x-text="count"` | `{count}` |
+| `x-model="name"` | `bind:value={name}` |
+| `x-show="visible"` | `{#if visible}` or `class:hidden` |
+| `x-for="item in items"` | `{#each items as item}` |
+| `@click="handler()"` | `onclick={handler}` |
+| `Alpine.store('data')` | Svelte store module |
+| `Alpine.effect()` | `$effect()` |
+| `$persist()` | `$effect` + localStorage |
+| `:class="{ active }"` | `class:active` |
+
+---
+
+## Estimated Scope
+
+- **Types**: ~200 lines
+- **Stores**: ~500 lines (replacing ~700 lines in HTML)
+- **API Client**: ~300 lines (from database.js)
+- **Components**: ~2000 lines (from index.html sections)
+- **Routes**: ~500 lines
+- **Services**: ~800 lines (from JS modules)
+
+**Total**: ~4300 lines TypeScript/Svelte (well-structured) replacing ~6000+ lines (HTML + JS)
+
+---
+
+## Next Steps
+
+1. [ ] Initialize SvelteKit project
+2. [ ] Define TypeScript interfaces
+3. [ ] Migrate API client
+4. [ ] Create first store (settings) as proof of concept
+5. [ ] Build one complete feature (e.g., Prizes CRUD) end-to-end

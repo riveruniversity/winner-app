@@ -36,7 +36,11 @@
       "Bash(findstr:*)",
       "Bash(tasklist:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run build:frontend:*)"
+      "Bash(npm run build:frontend:*)",
+      "Bash(cat:*)",
+      "Bash(npx svelte-kit:*)",
+      "Bash(npx svelte-check:*)",
+      "WebFetch(domain:svelte.dev)"
     ],
     "deny": [],
     "additionalDirectories": []

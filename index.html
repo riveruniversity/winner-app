@@ -2335,70 +2335,101 @@
         selectedListIds: Alpine.$persist([]).as('setup_selectedListIds'),
         selectedPrizeId: Alpine.$persist('').as('setup_selectedPrizeId'),
         winnersCount: Alpine.$persist(1).as('setup_winnersCount'),
-        eligibleEntries: 0,  // Computed by effect
-        excludedCount: 0,    // How many excluded due to same prize
 
-        init() {
-          // Use Alpine.effect() to compute eligibleEntries reactively
-          // This properly tracks dependencies across stores
-          Alpine.effect(() => {
-            const dataStore = Alpine.store('data');
-            const settingsStore = Alpine.store('settings');
+        // Computed eligible entries - calculated on-demand as a getter
+        get eligibleEntries() {
+          const result = this._computeEligibility();
+          return result.eligible;
+        },
 
-            // Guard: stores may not be ready yet
-            if (!dataStore || !settingsStore) {
-              this.eligibleEntries = 0;
-              this.excludedCount = 0;
-              return;
-            }
+        get excludedCount() {
+          const result = this._computeEligibility();
+          return result.excluded;
+        },
 
-            // Calculate total entries from selected lists
-            let total = this.selectedListIds.reduce((sum, listId) => {
-              const list = dataStore.lists?.find(l => l.listId === listId);
-              return sum + (list?.entries?.length || 0);
-            }, 0);
+        // Internal method to compute eligibility (called by getters)
+        _computeEligibility() {
+          const dataStore = Alpine.store('data');
+          const settingsStore = Alpine.store('settings');
 
-            let excluded = 0;
+          if (!dataStore || !settingsStore) {
+            return { eligible: 0, excluded: 0 };
+          }
 
-            // If preventSamePrize is enabled and a prize is selected, calculate exclusions
-            if (settingsStore.preventSamePrize && this.selectedPrizeId) {
-              const prize = dataStore.prizes?.find(p => p.prizeId === this.selectedPrizeId);
-              const prizeName = prize?.name;
+          // Calculate total entries from selected lists
+          let total = this.selectedListIds.reduce((sum, listId) => {
+            const list = dataStore.lists?.find(l => l.listId === listId);
+            return sum + (list?.entries?.length || 0);
+          }, 0);
 
-              if (prizeName && dataStore.winners) {
-                // Find entry IDs that already won this prize
-                const samePrizeWinnerEntryIds = new Set(
-                  dataStore.winners
-                    .filter(w => w.prize === prizeName)
-                    .map(w => w.entryId)
-                    .filter(Boolean)
-                );
+          let excluded = 0;
 
-                if (samePrizeWinnerEntryIds.size > 0) {
-                  // Recount entries excluding same-prize winners
-                  let eligible = 0;
-                  for (const listId of this.selectedListIds) {
-                    const list = dataStore.lists?.find(l => l.listId === listId);
-                    if (list?.entries) {
-                      for (const entry of list.entries) {
-                        const entryId = entry.id || entry.data?.['Ticket Code'] || entry.data?.ticketCode;
-                        if (!entryId || !samePrizeWinnerEntryIds.has(entryId)) {
-                          eligible++;
-                        } else {
-                          excluded++;
-                        }
+          // If preventSamePrize is enabled and a prize is selected, calculate exclusions
+          if (settingsStore.preventSamePrize && this.selectedPrizeId) {
+            const prize = dataStore.prizes?.find(p => p.prizeId === this.selectedPrizeId);
+            const prizeName = prize?.name;
+
+            if (prizeName && dataStore.winners) {
+              const samePrizeWinnerEntryIds = new Set(
+                dataStore.winners
+                  .filter(w => w.prize === prizeName)
+                  .map(w => w.entryId)
+                  .filter(Boolean)
+              );
+
+              if (samePrizeWinnerEntryIds.size > 0) {
+                let eligible = 0;
+                for (const listId of this.selectedListIds) {
+                  const list = dataStore.lists?.find(l => l.listId === listId);
+                  if (list?.entries) {
+                    for (const entry of list.entries) {
+                      const entryId = entry.id || entry.data?.['Ticket Code'] || entry.data?.ticketCode;
+                      if (!entryId || !samePrizeWinnerEntryIds.has(entryId)) {
+                        eligible++;
+                      } else {
+                        excluded++;
                       }
                     }
                   }
-                  total = eligible;
                 }
+                total = eligible;
               }
             }
+          }
 
-            this.eligibleEntries = total;
-            this.excludedCount = excluded;
+          return { eligible: total, excluded };
+        },
+
+        init() {
+          // Effect only for auto-capping winnersCount when limits change
+          Alpine.effect(() => {
+            const eligible = this.eligibleEntries;
+            const prizeQty = this.selectedPrizeQuantity;
+
+            // Cap to eligibleEntries if exceeded
+            if (eligible > 0 && this.winnersCount > eligible) {
+              this.winnersCount = eligible;
+            }
+
+            // Cap to prize quantity if exceeded
+            if (prizeQty !== null && this.winnersCount > prizeQty) {
+              this.winnersCount = prizeQty;
+            }
           });
+        },
 
+        // Cap winnersCount to not exceed eligibleEntries or prizeQuantity
+        capWinnersCount() {
+          const eligible = this.eligibleEntries;
+          // Cap to eligibleEntries if exceeded (and entries exist)
+          if (eligible > 0 && this.winnersCount > eligible) {
+            this.winnersCount = eligible;
+          }
+          // Cap to prize quantity if exceeded (and quantity is set)
+          const prizeQty = this.selectedPrizeQuantity;
+          if (prizeQty !== null && this.winnersCount > prizeQty) {
+            this.winnersCount = prizeQty;
+          }
         },
 
         // Called when prize selection changes - updates winnersCount from prize default
@@ -2410,6 +2441,7 @@
               this.winnersCount = prize.winnersCount;
             }
           }
+          this.capWinnersCount();
         },
 
         get canStart() {
@@ -2474,18 +2506,21 @@
           } else {
             this.selectedListIds = [...this.selectedListIds, listId];
           }
+          this.capWinnersCount(); // Cap immediately after list change
         },
 
         selectList(listId) {
           if (!this.selectedListIds.includes(listId)) {
             this.selectedListIds = [...this.selectedListIds, listId];
           }
+          this.capWinnersCount(); // Cap immediately after list change
         },
 
         deselectList(listId) {
           if (this.selectedListIds.includes(listId)) {
             this.selectedListIds = this.selectedListIds.filter(id => id !== listId);
           }
+          this.capWinnersCount(); // Cap immediately after list change
         }
       });
 

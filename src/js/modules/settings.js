@@ -932,11 +932,6 @@ function testDelay() {
   showDelayDisplay(delaySeconds, delayVisualType);
 }
 
-// Function to update delay settings quickly - deprecated, no longer needed
-function setDelaySettings(delaySeconds, displayType) {
-  debugLog('setDelaySettings called but post-display delay has been removed');
-}
-
 // Auto-save function for quick setup fields (efficient batch save)
 async function autoSaveQuickSetup(triggerElementId = null) {
   try {
@@ -1435,26 +1430,6 @@ async function updateQuickSelectionUI() {
   }
 }
 
-// Update total entries helper function
-async function updateTotalEntriesFromSettings() {
-  try {
-    // Get the first selected checkbox (for SMS placeholders we use the first list)
-    const firstSelectedCheckbox = document.querySelector('#quickListSelect .list-checkbox:checked');
-    const listId = firstSelectedCheckbox?.value;
-    if (listId) {
-      const list = await Database.getFromStore('lists', listId);
-      if (list) {
-        const totalEntriesDisplay = document.getElementById('totalEntriesDisplay');
-        if (totalEntriesDisplay) {
-          totalEntriesDisplay.textContent = list.entries.length;
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error updating total entries:', error);
-  }
-}
-
 // Debug logging utility function
 function debugLog(message, ...args) {
   if (settings.enableDebugLogs) {
@@ -1484,7 +1459,6 @@ export const Settings = {
   triggerWebhook,
   showDelayDisplay,
   testDelay,
-  setDelaySettings,
   setupSoundTestButtons,
   setupBackgroundTypeHandler,
   showImageSection,

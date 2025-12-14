@@ -37,22 +37,26 @@ export const helmetMiddleware = helmet({
   contentSecurityPolicy: false
 });
 
-// Rate limiting - general: 100 requests per minute
+// Rate limiting - general: 100 requests per minute (disabled in dev mode)
+// Default to dev mode unless NODE_ENV is explicitly 'production'
+const isDev = process.env.NODE_ENV !== 'production';
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: isDev ? 0 : 100, // 0 = unlimited in dev mode
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: () => isDev // Skip rate limiting entirely in dev mode
 });
 
-// Rate limiting - strict: 10 requests per minute for sensitive endpoints
+// Rate limiting - strict: 10 requests per minute for sensitive endpoints (disabled in dev mode)
 export const strictLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: isDev ? 0 : 10, // 0 = unlimited in dev mode
   message: { error: 'Too many requests to sensitive endpoint' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: () => isDev // Skip rate limiting entirely in dev mode
 });
 
 // Basic authentication middleware
