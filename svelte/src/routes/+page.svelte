@@ -5,11 +5,64 @@
 	import { setupStore } from '$stores/setup.svelte';
 	import { uiStore } from '$stores/ui.svelte';
 	import QuickSetup from '$components/QuickSetup.svelte';
+	import ListCard from '$components/ListCard.svelte';
+	import PrizeCard from '$components/PrizeCard.svelte';
+	import ConfirmModal from '$components/ConfirmModal.svelte';
+	import SelectionView from '$components/SelectionView.svelte';
+	import type { List, Prize } from '$types';
+
+	// Modal state
+	let deleteListModal: ConfirmModal;
+	let deletePrizeModal: ConfirmModal;
+	let pendingDeleteList: List | null = $state(null);
+	let pendingDeletePrize: Prize | null = $state(null);
 
 	// Load data on mount
 	onMount(async () => {
 		await dataStore.loadAll();
+		settingsStore.applyTheme();
 	});
+
+	// List actions
+	function handleViewList(list: List) {
+		console.log('View list:', list.listId);
+		// TODO: Open list entries modal
+	}
+
+	function handleEditList(list: List) {
+		console.log('Edit list:', list.listId);
+		// TODO: Open edit list modal
+	}
+
+	function handleDeleteList(list: List) {
+		pendingDeleteList = list;
+		deleteListModal?.show();
+	}
+
+	async function confirmDeleteList() {
+		if (pendingDeleteList) {
+			await dataStore.delete('lists', pendingDeleteList.listId);
+			pendingDeleteList = null;
+		}
+	}
+
+	// Prize actions
+	function handleEditPrize(prize: Prize) {
+		console.log('Edit prize:', prize.prizeId);
+		// TODO: Open edit prize modal
+	}
+
+	function handleDeletePrize(prize: Prize) {
+		pendingDeletePrize = prize;
+		deletePrizeModal?.show();
+	}
+
+	async function confirmDeletePrize() {
+		if (pendingDeletePrize) {
+			await dataStore.delete('prizes', pendingDeletePrize.prizeId);
+			pendingDeletePrize = null;
+		}
+	}
 </script>
 
 <!-- Public Selection Interface -->
@@ -25,54 +78,7 @@
 			</button>
 		</header>
 
-		<main class="selection-main">
-			<div class="selection-controls">
-				<h2 class="selection-title">Select Winners</h2>
-				<p class="selection-subtitle">Choose a list and prize to begin</p>
-
-				<!-- Info Cards -->
-				<div class="selection-info">
-					<div class="info-card">
-						<div class="info-label">Current List</div>
-						<div class="info-value">{setupStore.listDisplayText}</div>
-					</div>
-					<div class="info-card">
-						<div class="info-label">Eligible Entries</div>
-						<div class="info-value">{setupStore.eligibleEntries}</div>
-					</div>
-					<div class="info-card">
-						<div class="info-label">Winners to Select</div>
-						<div class="info-value">{setupStore.winnersCount}</div>
-					</div>
-					<div class="info-card">
-						<div class="info-label">Prize</div>
-						<div class="info-value">{setupStore.prizeDisplayText}</div>
-					</div>
-				</div>
-
-				<!-- Big Play Button -->
-				<button
-					class="big-play-button"
-					disabled={!setupStore.canStart}
-					onclick={() => console.log('Start selection')}
-					aria-label="Start winner selection"
-				>
-					<i class="bi bi-play-fill"></i>
-				</button>
-
-				{#if setupStore.hasValidationWarning}
-					<div class="alert alert-warning mt-3">
-						{#if setupStore.entriesExceeded}
-							<i class="bi bi-exclamation-triangle"></i>
-							Winners count exceeds available entries
-						{:else if setupStore.prizeQuantityExceeded}
-							<i class="bi bi-exclamation-triangle"></i>
-							Winners count exceeds prize quantity
-						{/if}
-					</div>
-				{/if}
-			</div>
-		</main>
+		<SelectionView />
 	</div>
 
 <!-- Management Interface -->
@@ -163,7 +169,9 @@
 				{:else if uiStore.currentTab === 'lists'}
 					<div class="card">
 						<div class="card-header d-flex justify-content-between align-items-center">
-							<h5 class="card-title">Lists</h5>
+							<h5 class="card-title mb-0">
+								<i class="bi bi-list-ul me-2"></i>Lists
+							</h5>
 							<button class="btn btn-primary btn-sm">
 								<i class="bi bi-plus"></i> Add List
 							</button>
@@ -181,14 +189,12 @@
 								<div class="row g-3">
 									{#each dataStore.lists as list (list.listId)}
 										<div class="col-md-4 col-lg-3">
-											<div class="card h-100">
-												<div class="card-body">
-													<h6 class="card-title">{list.metadata.name}</h6>
-													<p class="text-muted small mb-0">
-														{list.entries?.length || 0} entries
-													</p>
-												</div>
-											</div>
+											<ListCard
+												{list}
+												onView={handleViewList}
+												onEdit={handleEditList}
+												onDelete={handleDeleteList}
+											/>
 										</div>
 									{/each}
 								</div>
@@ -198,7 +204,9 @@
 				{:else if uiStore.currentTab === 'prizes'}
 					<div class="card">
 						<div class="card-header d-flex justify-content-between align-items-center">
-							<h5 class="card-title">Prizes</h5>
+							<h5 class="card-title mb-0">
+								<i class="bi bi-trophy me-2"></i>Prizes
+							</h5>
 							<button class="btn btn-primary btn-sm">
 								<i class="bi bi-plus"></i> Add Prize
 							</button>
@@ -216,15 +224,11 @@
 								<div class="row g-3">
 									{#each dataStore.prizes as prize (prize.prizeId)}
 										<div class="col-md-4 col-lg-3">
-											<div class="card h-100">
-												<div class="card-body">
-													<h6 class="card-title">{prize.name}</h6>
-													<span class="badge bg-primary">{prize.quantity} remaining</span>
-													{#if prize.description}
-														<p class="text-muted small mt-2 mb-0">{prize.description}</p>
-													{/if}
-												</div>
-											</div>
+											<PrizeCard
+												{prize}
+												onEdit={handleEditPrize}
+												onDelete={handleDeletePrize}
+											/>
 										</div>
 									{/each}
 								</div>
@@ -384,6 +388,27 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Modals -->
+<ConfirmModal
+	id="delete-list-modal"
+	title="Delete List"
+	message="Are you sure you want to delete '{pendingDeleteList?.metadata.name}'? This action cannot be undone."
+	confirmText="Delete"
+	variant="danger"
+	onConfirm={confirmDeleteList}
+	bind:this={deleteListModal}
+/>
+
+<ConfirmModal
+	id="delete-prize-modal"
+	title="Delete Prize"
+	message="Are you sure you want to delete '{pendingDeletePrize?.name}'? This action cannot be undone."
+	confirmText="Delete"
+	variant="danger"
+	onConfirm={confirmDeletePrize}
+	bind:this={deletePrizeModal}
+/>
 
 <style>
 	/* Additional component-specific styles */
