@@ -4,6 +4,7 @@
 	import { settingsStore } from '$stores/settings.svelte';
 	import { setupStore } from '$stores/setup.svelte';
 	import { uiStore } from '$stores/ui.svelte';
+	import QuickSetup from '$components/QuickSetup.svelte';
 
 	// Load data on mount
 	onMount(async () => {
@@ -158,15 +159,7 @@
 			<!-- Tab Content -->
 			<div class="tab-content">
 				{#if uiStore.currentTab === 'quicksetup'}
-					<div class="card">
-						<div class="card-header">
-							<h5 class="card-title">Quick Setup</h5>
-						</div>
-						<div class="card-body">
-							<p class="text-muted">Quick setup form will go here...</p>
-							<!-- TODO: QuickSetup component -->
-						</div>
-					</div>
+					<QuickSetup />
 				{:else if uiStore.currentTab === 'lists'}
 					<div class="card">
 						<div class="card-header d-flex justify-content-between align-items-center">
@@ -334,7 +327,8 @@
 											type="checkbox"
 											class="form-check-input"
 											id="preventDuplicates"
-											bind:checked={settingsStore.preventDuplicates.value}
+											checked={settingsStore.preventDuplicates}
+											onchange={(e) => (settingsStore.preventDuplicates = e.currentTarget.checked)}
 										/>
 										<label class="form-check-label" for="preventDuplicates">
 											Prevent duplicate winners
@@ -345,7 +339,8 @@
 											type="checkbox"
 											class="form-check-input"
 											id="preventSamePrize"
-											bind:checked={settingsStore.preventSamePrize.value}
+											checked={settingsStore.preventSamePrize}
+											onchange={(e) => (settingsStore.preventSamePrize = e.currentTarget.checked)}
 										/>
 										<label class="form-check-label" for="preventSamePrize">
 											Prevent same person winning same prize twice
@@ -360,8 +355,11 @@
 											type="color"
 											class="form-control form-control-color"
 											id="primaryColor"
-											bind:value={settingsStore.primaryColor.value}
-											onchange={() => settingsStore.applyTheme()}
+											value={settingsStore.primaryColor}
+											onchange={(e) => {
+												settingsStore.primaryColor = e.currentTarget.value;
+												settingsStore.applyTheme();
+											}}
 										/>
 									</div>
 									<div class="mb-3">
@@ -370,8 +368,11 @@
 											type="color"
 											class="form-control form-control-color"
 											id="secondaryColor"
-											bind:value={settingsStore.secondaryColor.value}
-											onchange={() => settingsStore.applyTheme()}
+											value={settingsStore.secondaryColor}
+											onchange={(e) => {
+												settingsStore.secondaryColor = e.currentTarget.value;
+												settingsStore.applyTheme();
+											}}
 										/>
 									</div>
 								</div>

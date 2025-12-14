@@ -1,57 +1,65 @@
 import { browser } from '$app/environment';
+import { persistedState } from 'svelte-persisted-state';
 import type { ViewType, TabId } from '$types';
-
-/**
- * Helper to create a persisted state value
- */
-function persisted<T>(key: string, defaultValue: T): { value: T } {
-	const stored = browser ? localStorage.getItem(key) : null;
-	let value = $state<T>(stored ? JSON.parse(stored) : defaultValue);
-
-	$effect(() => {
-		if (browser) {
-			localStorage.setItem(key, JSON.stringify(value));
-		}
-	});
-
-	return {
-		get value() {
-			return value;
-		},
-		set value(v: T) {
-			value = v;
-		}
-	};
-}
 
 /**
  * UI Store
  * Manages UI navigation and progress state
+ * Uses svelte-persisted-state for localStorage persistence
  */
 class UIStore {
 	// Persisted navigation state
-	private _view = persisted<ViewType>('ui_view', 'public');
-	private _currentTab = persisted<TabId>('ui_currentTab', 'quicksetup');
+	private _view = persistedState<ViewType>('ui_view', 'public');
+	private _currentTab = persistedState<TabId>('ui_currentTab', 'quicksetup');
 
-	// Progress overlay state (NOT persisted)
-	showProgress = $state(false);
-	progressTitle = $state('Processing...');
-	progressText = $state('Please wait...');
-	progressPercent = $state(0);
+	// Progress overlay state (NOT persisted - transient UI state)
+	private _showProgress = $state(false);
+	private _progressTitle = $state('Processing...');
+	private _progressText = $state('Please wait...');
+	private _progressPercent = $state(0);
 
 	// Getters/setters for persisted values
 	get view(): ViewType {
-		return this._view.value;
+		return this._view.current;
 	}
 	set view(value: ViewType) {
-		this._view.value = value;
+		this._view.current = value;
 	}
 
 	get currentTab(): TabId {
-		return this._currentTab.value;
+		return this._currentTab.current;
 	}
 	set currentTab(value: TabId) {
-		this._currentTab.value = value;
+		this._currentTab.current = value;
+	}
+
+	// Getters/setters for transient progress state
+	get showProgress(): boolean {
+		return this._showProgress;
+	}
+	set showProgress(value: boolean) {
+		this._showProgress = value;
+	}
+
+	get progressTitle(): string {
+		return this._progressTitle;
+	}
+	set progressTitle(value: string) {
+		this._progressTitle = value;
+	}
+
+	get progressText(): string {
+		return this._progressText;
+	}
+	set progressText(value: string) {
+		this._progressText = value;
+	}
+
+	get progressPercent(): number {
+		return this._progressPercent;
+	}
+	set progressPercent(value: number) {
+		this._progressPercent = value;
 	}
 
 	/**
@@ -131,6 +139,14 @@ class UIStore {
 			const tab = bootstrap.Tab.getOrCreateInstance(tabTrigger);
 			tab.show();
 		}
+	}
+
+	/**
+	 * Reset navigation to defaults
+	 */
+	resetNavigation(): void {
+		this._view.reset();
+		this._currentTab.reset();
 	}
 }
 

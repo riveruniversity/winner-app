@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { persistedState } from 'svelte-persisted-state';
 import { dataStore } from './data.svelte';
 import type {
 	Winner,
@@ -9,70 +9,63 @@ import type {
 } from '$types';
 
 /**
- * Helper to create a persisted filter value
- */
-function persistedFilter(key: string, defaultValue: string): { value: string } {
-	const stored = browser ? localStorage.getItem(key) : null;
-	let value = $state(stored ?? defaultValue);
-
-	$effect(() => {
-		if (browser) {
-			localStorage.setItem(key, value);
-		}
-	});
-
-	return {
-		get value() {
-			return value;
-		},
-		set value(v: string) {
-			value = v;
-		}
-	};
-}
-
-/**
  * Winners Filter Store
  * Manages filtering and sorting for winners list
+ * Uses svelte-persisted-state for localStorage persistence
  */
 class WinnersFilterStore {
 	// Filter state (persisted)
-	private _filterPrize = persistedFilter('winners_filter_prize', '');
-	private _filterList = persistedFilter('winners_filter_list', '');
-	private _filterBatch = persistedFilter('winners_filter_batch', '');
-	private _filterDate = persistedFilter('winners_filter_date', '');
+	private _filterPrize = persistedState('winners_filter_prize', '');
+	private _filterList = persistedState('winners_filter_list', '');
+	private _filterBatch = persistedState('winners_filter_batch', '');
+	private _filterDate = persistedState('winners_filter_date', '');
 
-	// Sort state (not persisted)
-	sortField = $state<WinnerSortField>('date');
-	sortDir = $state<SortDirection>('desc');
+	// Sort state (not persisted - transient)
+	private _sortField = $state<WinnerSortField>('date');
+	private _sortDir = $state<SortDirection>('desc');
 
-	// Getters/setters
+	// Getters/setters for persisted filters
 	get filterPrize(): string {
-		return this._filterPrize.value;
+		return this._filterPrize.current;
 	}
 	set filterPrize(value: string) {
-		this._filterPrize.value = value;
+		this._filterPrize.current = value;
 	}
 
 	get filterList(): string {
-		return this._filterList.value;
+		return this._filterList.current;
 	}
 	set filterList(value: string) {
-		this._filterList.value = value;
+		this._filterList.current = value;
 	}
 
 	get filterBatch(): string {
-		return this._filterBatch.value;
+		return this._filterBatch.current;
 	}
 	set filterBatch(value: string) {
-		this._filterBatch.value = value;
+		this._filterBatch.current = value;
 	}
 
 	get filterDate(): string {
-		return this._filterDate.value;
+		return this._filterDate.current;
 	}
 	set filterDate(value: string) {
-		this._filterDate.value = value;
+		this._filterDate.current = value;
+	}
+
+	// Getters/setters for transient sort state
+	get sortField(): WinnerSortField {
+		return this._sortField;
+	}
+	set sortField(value: WinnerSortField) {
+		this._sortField = value;
+	}
+
+	get sortDir(): SortDirection {
+		return this._sortDir;
+	}
+	set sortDir(value: SortDirection) {
+		this._sortDir = value;
 	}
 
 	/**
@@ -168,47 +161,63 @@ class WinnersFilterStore {
 	 * Clear all filters
 	 */
 	clearFilters(): void {
-		this.filterPrize = '';
-		this.filterList = '';
-		this.filterBatch = '';
-		this.filterDate = '';
+		this._filterPrize.reset();
+		this._filterList.reset();
+		this._filterBatch.reset();
+		this._filterDate.reset();
 	}
 }
 
 /**
  * History Filter Store
  * Manages filtering and sorting for history list
+ * Uses svelte-persisted-state for localStorage persistence
  */
 class HistoryFilterStore {
 	// Filter state (persisted)
-	private _filterList = persistedFilter('history_filter_list', '');
-	private _filterPrize = persistedFilter('history_filter_prize', '');
-	private _filterDate = persistedFilter('history_filter_date', '');
+	private _filterList = persistedState('history_filter_list', '');
+	private _filterPrize = persistedState('history_filter_prize', '');
+	private _filterDate = persistedState('history_filter_date', '');
 
-	// Sort state (not persisted)
-	sortField = $state<HistorySortField>('date');
-	sortDir = $state<SortDirection>('desc');
+	// Sort state (not persisted - transient)
+	private _sortField = $state<HistorySortField>('date');
+	private _sortDir = $state<SortDirection>('desc');
 
-	// Getters/setters
+	// Getters/setters for persisted filters
 	get filterList(): string {
-		return this._filterList.value;
+		return this._filterList.current;
 	}
 	set filterList(value: string) {
-		this._filterList.value = value;
+		this._filterList.current = value;
 	}
 
 	get filterPrize(): string {
-		return this._filterPrize.value;
+		return this._filterPrize.current;
 	}
 	set filterPrize(value: string) {
-		this._filterPrize.value = value;
+		this._filterPrize.current = value;
 	}
 
 	get filterDate(): string {
-		return this._filterDate.value;
+		return this._filterDate.current;
 	}
 	set filterDate(value: string) {
-		this._filterDate.value = value;
+		this._filterDate.current = value;
+	}
+
+	// Getters/setters for transient sort state
+	get sortField(): HistorySortField {
+		return this._sortField;
+	}
+	set sortField(value: HistorySortField) {
+		this._sortField = value;
+	}
+
+	get sortDir(): SortDirection {
+		return this._sortDir;
+	}
+	set sortDir(value: SortDirection) {
+		this._sortDir = value;
 	}
 
 	/**
@@ -307,9 +316,9 @@ class HistoryFilterStore {
 	 * Clear all filters
 	 */
 	clearFilters(): void {
-		this.filterList = '';
-		this.filterPrize = '';
-		this.filterDate = '';
+		this._filterList.reset();
+		this._filterPrize.reset();
+		this._filterDate.reset();
 	}
 }
 

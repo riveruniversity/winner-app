@@ -1,60 +1,38 @@
-import { browser } from '$app/environment';
+import { persistedState } from 'svelte-persisted-state';
 import { dataStore } from './data.svelte';
 import { settingsStore } from './settings.svelte';
 
 /**
- * Helper to create a persisted state value for setup
- */
-function persisted<T>(key: string, defaultValue: T): { value: T } {
-	const stored = browser ? localStorage.getItem(key) : null;
-	let value = $state<T>(stored ? JSON.parse(stored) : defaultValue);
-
-	$effect(() => {
-		if (browser) {
-			localStorage.setItem(key, JSON.stringify(value));
-		}
-	});
-
-	return {
-		get value() {
-			return value;
-		},
-		set value(v: T) {
-			value = v;
-		}
-	};
-}
-
-/**
  * Setup Store
  * Manages the quick setup selection state with derived/computed values
+ * Uses svelte-persisted-state for localStorage persistence
  */
 class SetupStore {
 	// Persisted selection state
-	private _selectedListIds = persisted<string[]>('setup_selectedListIds', []);
-	private _selectedPrizeId = persisted<string>('setup_selectedPrizeId', '');
-	private _winnersCount = persisted<number>('setup_winnersCount', 1);
+	private _selectedListIds = persistedState<string[]>('setup_selectedListIds', []);
+	private _selectedPrizeId = persistedState<string>('setup_selectedPrizeId', '');
+	private _winnersCount = persistedState<number>('setup_winnersCount', 1);
 
-	// Getters/setters for the persisted values
+	// Getters/setters using .current property
 	get selectedListIds(): string[] {
-		return this._selectedListIds.value;
+		return this._selectedListIds.current;
 	}
 	set selectedListIds(value: string[]) {
-		this._selectedListIds.value = value;
+		this._selectedListIds.current = value;
 	}
 
 	get selectedPrizeId(): string {
-		return this._selectedPrizeId.value;
+		return this._selectedPrizeId.current;
 	}
 	set selectedPrizeId(value: string) {
-		this._selectedPrizeId.value = value;
+		this._selectedPrizeId.current = value;
 	}
 
 	get winnersCount(): number {
-		return this._winnersCount.value;
+		return this._winnersCount.current;
 	}
 	set winnersCount(value: number) {
-		this._winnersCount.value = value;
+		this._winnersCount.current = value;
 	}
 
 	/**
@@ -62,15 +40,18 @@ class SetupStore {
 	 * Accounts for preventSamePrize exclusions
 	 */
 	get eligibleEntries(): number {
+		const selectedIds = this._selectedListIds.current;
+		const prizeId = this._selectedPrizeId.current;
+
 		// Calculate total entries from selected lists
-		let total = this.selectedListIds.reduce((sum, listId) => {
+		let total = selectedIds.reduce((sum, listId) => {
 			const list = dataStore.lists.find((l) => l.listId === listId);
 			return sum + (list?.entries?.length || 0);
 		}, 0);
 
 		// If preventSamePrize is enabled and a prize is selected, calculate exclusions
-		if (settingsStore.preventSamePrize.value && this.selectedPrizeId) {
-			const prize = dataStore.prizes.find((p) => p.prizeId === this.selectedPrizeId);
+		if (settingsStore.preventSamePrize && prizeId) {
+			const prize = dataStore.prizes.find((p) => p.prizeId === prizeId);
 			const prizeName = prize?.name;
 
 			if (prizeName && dataStore.winners.length > 0) {
@@ -85,7 +66,7 @@ class SetupStore {
 				if (samePrizeWinnerEntryIds.size > 0) {
 					// Recount entries excluding same-prize winners
 					let eligible = 0;
-					for (const listId of this.selectedListIds) {
+					for (const listId of selectedIds) {
 						const list = dataStore.lists.find((l) => l.listId === listId);
 						if (list?.entries) {
 							for (const entry of list.entries) {
@@ -111,11 +92,14 @@ class SetupStore {
 	 * Computed: Count of entries excluded due to same prize
 	 */
 	get excludedCount(): number {
-		if (!settingsStore.preventSamePrize.value || !this.selectedPrizeId) {
+		const prizeId = this._selectedPrizeId.current;
+		const selectedIds = this._selectedListIds.current;
+
+		if (!settingsStore.preventSamePrize || !prizeId) {
 			return 0;
 		}
 
-		const prize = dataStore.prizes.find((p) => p.prizeId === this.selectedPrizeId);
+		const prize = dataStore.prizes.find((p) => p.prizeId === prizeId);
 		const prizeName = prize?.name;
 
 		if (!prizeName || dataStore.winners.length === 0) {
@@ -130,7 +114,7 @@ class SetupStore {
 		);
 
 		let excluded = 0;
-		for (const listId of this.selectedListIds) {
+		for (const listId of selectedIds) {
 			const list = dataStore.lists.find((l) => l.listId === listId);
 			if (list?.entries) {
 				for (const entry of list.entries) {
@@ -152,27 +136,29 @@ class SetupStore {
 	 * Computed: Can start selection (has list and prize selected)
 	 */
 	get canStart(): boolean {
-		return this.selectedListIds.length > 0 && !!this.selectedPrizeId;
+		return this._selectedListIds.current.length > 0 && !!this._selectedPrizeId.current;
 	}
 
 	/**
 	 * Computed: Display text for selected list(s)
 	 */
 	get listDisplayText(): string {
-		if (this.selectedListIds.length === 0) return 'Not Selected';
-		if (this.selectedListIds.length === 1) {
-			const list = dataStore.lists.find((l) => l.listId === this.selectedListIds[0]);
+		const selectedIds = this._selectedListIds.current;
+		if (selectedIds.length === 0) return 'Not Selected';
+		if (selectedIds.length === 1) {
+			const list = dataStore.lists.find((l) => l.listId === selectedIds[0]);
 			return list?.metadata?.name || 'Unknown';
 		}
-		return `${this.selectedListIds.length} Lists Selected`;
+		return `${selectedIds.length} Lists Selected`;
 	}
 
 	/**
 	 * Computed: Display text for selected prize
 	 */
 	get prizeDisplayText(): string {
-		if (!this.selectedPrizeId) return 'Not Selected';
-		const prize = dataStore.prizes.find((p) => p.prizeId === this.selectedPrizeId);
+		const prizeId = this._selectedPrizeId.current;
+		if (!prizeId) return 'Not Selected';
+		const prize = dataStore.prizes.find((p) => p.prizeId === prizeId);
 		return prize?.name || 'Not Selected';
 	}
 
@@ -180,8 +166,9 @@ class SetupStore {
 	 * Computed: Selected prize quantity
 	 */
 	get selectedPrizeQuantity(): number | null {
-		if (!this.selectedPrizeId) return null;
-		const prize = dataStore.prizes.find((p) => p.prizeId === this.selectedPrizeId);
+		const prizeId = this._selectedPrizeId.current;
+		if (!prizeId) return null;
+		const prize = dataStore.prizes.find((p) => p.prizeId === prizeId);
 		return prize?.quantity ?? null;
 	}
 
@@ -189,8 +176,8 @@ class SetupStore {
 	 * Computed: Winners count exceeds eligible entries
 	 */
 	get entriesExceeded(): boolean {
-		if (this.selectedListIds.length === 0) return false;
-		return this.winnersCount > this.eligibleEntries;
+		if (this._selectedListIds.current.length === 0) return false;
+		return this._winnersCount.current > this.eligibleEntries;
 	}
 
 	/**
@@ -199,7 +186,7 @@ class SetupStore {
 	get prizeQuantityExceeded(): boolean {
 		const qty = this.selectedPrizeQuantity;
 		if (qty === null) return false;
-		return this.winnersCount > qty;
+		return this._winnersCount.current > qty;
 	}
 
 	/**
@@ -214,24 +201,25 @@ class SetupStore {
 	 */
 	get validSelectedCount(): number {
 		const validIds = dataStore.lists.map((l) => l.listId);
-		return this.selectedListIds.filter((id) => validIds.includes(id)).length;
+		return this._selectedListIds.current.filter((id) => validIds.includes(id)).length;
 	}
 
 	/**
 	 * Check if a list is selected
 	 */
 	isListSelected(listId: string): boolean {
-		return this.selectedListIds.includes(listId);
+		return this._selectedListIds.current.includes(listId);
 	}
 
 	/**
 	 * Toggle list selection
 	 */
 	toggleList(listId: string): void {
-		if (this.selectedListIds.includes(listId)) {
-			this.selectedListIds = this.selectedListIds.filter((id) => id !== listId);
+		const currentIds = this._selectedListIds.current;
+		if (currentIds.includes(listId)) {
+			this.selectedListIds = currentIds.filter((id) => id !== listId);
 		} else {
-			this.selectedListIds = [...this.selectedListIds, listId];
+			this.selectedListIds = [...currentIds, listId];
 		}
 	}
 
@@ -239,8 +227,8 @@ class SetupStore {
 	 * Select a list
 	 */
 	selectList(listId: string): void {
-		if (!this.selectedListIds.includes(listId)) {
-			this.selectedListIds = [...this.selectedListIds, listId];
+		if (!this._selectedListIds.current.includes(listId)) {
+			this.selectedListIds = [...this._selectedListIds.current, listId];
 		}
 	}
 
@@ -248,8 +236,8 @@ class SetupStore {
 	 * Deselect a list
 	 */
 	deselectList(listId: string): void {
-		if (this.selectedListIds.includes(listId)) {
-			this.selectedListIds = this.selectedListIds.filter((id) => id !== listId);
+		if (this._selectedListIds.current.includes(listId)) {
+			this.selectedListIds = this._selectedListIds.current.filter((id) => id !== listId);
 		}
 	}
 
@@ -257,8 +245,9 @@ class SetupStore {
 	 * Handle prize change - update winnersCount from prize default
 	 */
 	onPrizeChange(): void {
-		if (this.selectedPrizeId) {
-			const prize = dataStore.prizes.find((p) => p.prizeId === this.selectedPrizeId);
+		const prizeId = this._selectedPrizeId.current;
+		if (prizeId) {
+			const prize = dataStore.prizes.find((p) => p.prizeId === prizeId);
 			if (prize?.winnersCount) {
 				this.winnersCount = prize.winnersCount;
 			}
@@ -270,13 +259,15 @@ class SetupStore {
 	 * Cap winnersCount to not exceed eligibleEntries or prizeQuantity
 	 */
 	capWinnersCount(): void {
+		const currentCount = this._winnersCount.current;
+
 		// Cap to eligibleEntries if exceeded (and entries exist)
-		if (this.eligibleEntries > 0 && this.winnersCount > this.eligibleEntries) {
+		if (this.eligibleEntries > 0 && currentCount > this.eligibleEntries) {
 			this.winnersCount = this.eligibleEntries;
 		}
 		// Cap to prize quantity if exceeded (and quantity is set)
 		const prizeQty = this.selectedPrizeQuantity;
-		if (prizeQty !== null && this.winnersCount > prizeQty) {
+		if (prizeQty !== null && this._winnersCount.current > prizeQty) {
 			this.winnersCount = prizeQty;
 		}
 	}
@@ -285,9 +276,9 @@ class SetupStore {
 	 * Clear all selections
 	 */
 	clearSelections(): void {
-		this.selectedListIds = [];
-		this.selectedPrizeId = '';
-		this.winnersCount = 1;
+		this._selectedListIds.reset();
+		this._selectedPrizeId.reset();
+		this._winnersCount.reset();
 	}
 }
 
