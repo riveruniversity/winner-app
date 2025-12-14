@@ -281,7 +281,7 @@
 		<div class="alert alert-danger alert-dismissible">
 			<i class="bi bi-exclamation-triangle me-2"></i>
 			{error}
-			<button type="button" class="btn-close" onclick={() => (error = null)}></button>
+			<button type="button" class="btn-close" aria-label="Dismiss error" onclick={() => (error = null)}></button>
 		</div>
 	{/if}
 
@@ -483,7 +483,7 @@
 			<h5 class="mb-3"><i class="bi bi-key me-2"></i>ID Configuration</h5>
 
 			<div class="mb-3">
-				<label class="form-label">Record ID Source</label>
+				<span class="form-label d-block">Record ID Source</span>
 				<div class="form-check">
 					<input
 						class="form-check-input"

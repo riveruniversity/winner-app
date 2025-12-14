@@ -34,7 +34,7 @@
 
 	// QR Scanner reference
 	let qrScanner: unknown = null;
-	let videoElement: HTMLVideoElement;
+	let videoElement = $state<HTMLVideoElement | null>(null);
 
 	onMount(async () => {
 		if (!browser) return;
@@ -259,6 +259,7 @@
 		<div class="d-flex gap-2">
 			<button
 				class="header-btn"
+				aria-label="Change operator"
 				onclick={() => {
 					operatorInput = operatorName;
 					showOperatorModal = true;
@@ -266,10 +267,10 @@
 			>
 				<i class="bi bi-person"></i>
 			</button>
-			<button class="header-btn" onclick={toggleTheme}>
+			<button class="header-btn" aria-label="Toggle theme" onclick={toggleTheme}>
 				<i class="bi bi-{darkMode ? 'sun' : 'moon'}"></i>
 			</button>
-			<a href="/" class="header-btn">
+			<a href="/" class="header-btn" aria-label="Return to home">
 				<i class="bi bi-house"></i>
 			</a>
 		</div>
@@ -312,7 +313,7 @@
 								bind:value={searchInput}
 								onkeypress={(e) => e.key === 'Enter' && performSearch()}
 							/>
-							<button class="btn btn-primary" onclick={performSearch}>
+							<button class="btn btn-primary" aria-label="Search" onclick={performSearch}>
 								<i class="bi bi-search"></i>
 							</button>
 						</div>
@@ -419,8 +420,15 @@
 
 	<!-- Alert Modal - No Winner Found -->
 	{#if showAlert}
-		<div class="alert-overlay" onclick={() => (showAlert = false)}>
-			<div class="alert-modal" onclick={(e) => e.stopPropagation()}>
+		<div
+			class="alert-overlay"
+			role="button"
+			tabindex="0"
+			aria-label="Close alert"
+			onclick={(e) => e.target === e.currentTarget && (showAlert = false)}
+			onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (showAlert = false)}
+		>
+			<div class="alert-modal">
 				<div class="alert-icon alert-icon-error">
 					<i class="bi bi-x-lg"></i>
 				</div>
@@ -434,8 +442,15 @@
 
 	<!-- No Results Modal -->
 	{#if showNoResultsModal}
-		<div class="alert-overlay" onclick={() => (showNoResultsModal = false)}>
-			<div class="alert-modal" onclick={(e) => e.stopPropagation()}>
+		<div
+			class="alert-overlay"
+			role="button"
+			tabindex="0"
+			aria-label="Close alert"
+			onclick={(e) => e.target === e.currentTarget && (showNoResultsModal = false)}
+			onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (showNoResultsModal = false)}
+		>
+			<div class="alert-modal">
 				<div class="alert-icon alert-icon-search">
 					<i class="bi bi-search"></i>
 				</div>
@@ -449,7 +464,7 @@
 	<!-- Operator Modal -->
 	{#if showOperatorModal}
 		<div class="alert-overlay">
-			<div class="alert-modal" onclick={(e) => e.stopPropagation()}>
+			<div class="alert-modal">
 				<div class="alert-icon alert-icon-info">
 					<i class="bi bi-person"></i>
 				</div>

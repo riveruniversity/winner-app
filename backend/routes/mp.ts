@@ -277,6 +277,37 @@ mpRouter.post('/mp/family-members', strictLimiter, async (req: Request, res: Res
   }
 });
 
+// Helper: Fetch parent (Head of Household) phones by household IDs
+async function fetchParentPhones(mp: MPInstance, householdIds: number[]): Promise<Map<number, string>> {
+  const parentPhoneMap = new Map<number, string>();
+
+  if (householdIds.length === 0) return parentPhoneMap;
+
+  const idsString = householdIds.join(',');
+  const result = await mp.getContacts({
+    select: 'Household_ID, Mobile_Phone',
+    filter: `Household_ID IN (${idsString}) AND Household_Position_ID = 1`
+  });
+
+  if ('error' in result) {
+    console.error('Failed to fetch parent phones:', result.error);
+    return parentPhoneMap;
+  }
+
+  if (Array.isArray(result)) {
+    for (const contact of result) {
+      const householdId = contact.householdID;
+      const phone = contact.mobilePhone;
+      if (householdId && phone) {
+        parentPhoneMap.set(householdId, phone);
+      }
+    }
+  }
+
+  console.log(`Fetched ${parentPhoneMap.size} parent phones for ${householdIds.length} households`);
+  return parentPhoneMap;
+}
+
 // MinistryPlatform: Execute query
 mpRouter.post('/mp/execute', strictLimiter, async (req: Request, res: Response) => {
   try {
@@ -379,6 +410,29 @@ mpRouter.post('/mp/execute', strictLimiter, async (req: Request, res: Response) 
       updateMissingIdCards(mp, recordsToUpdate).catch(err => {
         console.error('Background idCard update failed:', err);
       });
+    }
+
+    // Fetch parent phones if enabled in query config
+    if (query.fetchParentPhone) {
+      const householdIds = [...new Set(
+        data
+          .map((r: any) => r.householdID || r.householdId)
+          .filter((id: any): id is number => typeof id === 'number')
+      )];
+
+      if (householdIds.length > 0) {
+        const parentPhoneMap = await fetchParentPhones(mp, householdIds);
+        for (const record of data) {
+          const householdId = record.householdID || record.householdId;
+          if (householdId && parentPhoneMap.has(householdId)) {
+            record.parentPhone = parentPhoneMap.get(householdId);
+            // Use parentPhone as mobilePhone if mobilePhone is empty
+            if (!record.mobilePhone) {
+              record.mobilePhone = record.parentPhone;
+            }
+          }
+        }
+      }
     }
 
     res.json({
