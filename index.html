@@ -224,6 +224,9 @@
                         <option :value="prize.prizeId" x-text="prize.name + ' (' + prize.quantity + ' available)'" :selected="prize.prizeId === $store.setup.selectedPrizeId"></option>
                       </template>
                     </select>
+                    <template x-if="$store.setup.selectedPrizeDefaultWinners">
+                      <small class="text-muted d-block mt-1" x-text="'Default: ' + $store.setup.selectedPrizeDefaultWinners + ' winner' + ($store.setup.selectedPrizeDefaultWinners > 1 ? 's' : '')"></small>
+                    </template>
                   </div>
                   <div class="col-md-2">
                     <label class="form-label fw-semibold">Number of Winners</label>
@@ -919,9 +922,10 @@
                     </div>
                     <div class="card-body d-flex flex-column">
                       <p class="card-text text-muted small mb-2" x-show="prize.description" x-text="prize.description"></p>
-                      <p class="card-text text-muted small mb-2">
-                        Added <span x-text="new Date(prize.timestamp).toLocaleDateString()"></span>
-                      </p>
+                      <div class="d-flex justify-content-between align-items-center small text-muted mb-2">
+                        <span>Added <span x-text="new Date(prize.timestamp).toLocaleDateString()"></span></span>
+                        <span class="badge bg-light text-muted" x-show="prize.winnersCount" x-text="prize.winnersCount + ' winner' + (prize.winnersCount > 1 ? 's' : '')" style="font-size: 0.8rem;"></span>
+                      </div>
                       <div class="mt-auto pt-2">
                         <div class="d-flex justify-content-between align-items-center">
                           <button class="btn btn-sm"
@@ -2472,6 +2476,13 @@
           if (!dataStore?.prizes || !this.selectedPrizeId) return null;
           const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
           return prize?.quantity ?? null;
+        },
+
+        get selectedPrizeDefaultWinners() {
+          const dataStore = Alpine.store('data');
+          if (!dataStore?.prizes || !this.selectedPrizeId) return null;
+          const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
+          return prize?.winnersCount ?? null;
         },
 
         get entriesExceeded() {

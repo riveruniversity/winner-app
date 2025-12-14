@@ -64,7 +64,7 @@
         "type": "number",
         "label": "Event ID(s)",
         "required": true,
-        "value": "71509,71510"
+        "value": "71510"
       }
     },
     "metadata": {
@@ -91,7 +91,7 @@
         "type": "number",
         "label": "Event ID(s)",
         "required": true,
-        "value": "71509,71510"
+        "value": "71510"
       }
     },
     "metadata": {
@@ -107,7 +107,7 @@
   },
   {
     "id": "christmas-fest-toys-youngsters",
-    "name": "🎄 Youngsters",
+    "name": "🎄 River Youth",
     "description": "Get attending Christmas Fest youngsters participants",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
@@ -118,7 +118,7 @@
         "type": "number",
         "label": "Event ID(s)",
         "required": true,
-        "value": "71509,71510"
+        "value": "71510"
       }
     },
     "metadata": {

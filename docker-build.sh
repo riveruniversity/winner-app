@@ -20,7 +20,7 @@ chmod -R 777 ./data
 echo -e "${YELLOW}Step 1: Stopping existing containers...${NC}"
 docker stop winner-app 2>/dev/null
 docker rm winner-app 2>/dev/null
-docker-compose down
+docker-compose down -v
 
 # Build and start
 echo -e "${YELLOW}Step 2: Building and starting containers...${NC}"

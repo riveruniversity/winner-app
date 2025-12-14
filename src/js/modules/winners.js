@@ -365,9 +365,6 @@ async function undoLastSelection() {
         // Update UI immediately by reloading winners
         await loadWinners();
 
-        // Reset winnersCount to prize default after undo
-        Alpine.store('setup').onPrizeChange();
-
       } catch (error) {
         console.error('Error undoing selection:', error);
         UI.showToast('Error undoing selection: ' + error.message, 'error');

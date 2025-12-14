@@ -14,14 +14,6 @@ import { Animations } from './animations.js';
 import { setCurrentWinners } from '../app.js';
 import { getCurrentList, setCurrentList, getLastAction, setLastAction, loadHistory } from '../app.js'; // Import central state and history functions
 
-// Track pending display timeouts to prevent race conditions when starting new selections
-let pendingDisplayTimeouts = [];
-
-function clearPendingDisplayTimeouts() {
-  pendingDisplayTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-  pendingDisplayTimeouts = [];
-}
-
 function createRandomWorker() {
   const workerCode = `
     function generateId(length = 10) {
@@ -581,9 +573,6 @@ function showCountdown(delaySeconds, visualType) {
 
 
 async function displayWinnersPublicly(winners, prize, selectionMode) {
-  // Clear any pending display timeouts from previous selections
-  clearPendingDisplayTimeouts();
-
   // Show prize display
   const prizeDisplay = document.getElementById('prizeDisplay');
   document.getElementById('displayPrizeName').textContent = prize.name;
@@ -661,98 +650,47 @@ async function displayWinnersAllAtOnce(winners, winnersGrid) {
   });
 }
 
-// Display winners sequentially using CSS grid
+// Display winners sequentially using CSS animation-delay (no setTimeout race conditions)
 async function displayWinnersSequential(winners, winnersGrid) {
   const displayDuration = parseFloat(document.getElementById('displayDuration').value) || 0.5;
   const displayEffect = document.getElementById('displayEffect')?.value || 'fade-in';
   const celebrationAutoTrigger = document.getElementById('celebrationAutoTrigger')?.checked;
   const celebrationEffect = document.getElementById('celebrationEffect')?.value;
   const shouldShowCoins = celebrationAutoTrigger && (celebrationEffect === 'coins' || celebrationEffect === 'both');
-  const stableGrid = document.getElementById('stableGrid')?.checked || false;
 
   return new Promise((resolve) => {
     let completedWinners = 0;
 
-    if (stableGrid) {
-      // STABLE GRID MODE: Pre-create all cards as placeholders, then reveal sequentially
-      // This prevents grid layout shifting as cards are revealed
-      const cards = [];
+    // Create all cards upfront with CSS animation-delay for staggered reveal
+    winners.forEach((winner, index) => {
+      const winnerCard = createWinnerCard(winner, index);
+      const delay = index * displayDuration;
 
-      // Step 1: Create all cards as invisible placeholders
-      winners.forEach((winner, index) => {
-        const winnerCard = createWinnerCard(winner, index);
-        winnerCard.classList.add('winner-card-placeholder');
-        winnersGrid.appendChild(winnerCard);
-        cards.push(winnerCard);
-      });
+      // Set CSS animation-delay for staggered appearance
+      winnerCard.style.animationDelay = `${delay}s`;
+      winnerCard.classList.add(displayEffect);
+      winnersGrid.appendChild(winnerCard);
 
-      // Step 2: Reveal cards one by one with animation
-      cards.forEach((winnerCard, index) => {
-        const delay = index * (displayDuration * 1000);
-
-        const timeoutId = setTimeout(() => {
-          // Remove placeholder class and add reveal animation
-          winnerCard.classList.remove('winner-card-placeholder');
-          winnerCard.classList.add(displayEffect);
-
-          // Trigger coin burst from card position
-          if (shouldShowCoins) {
-            const coinTimeoutId = setTimeout(() => {
-              const rect = winnerCard.getBoundingClientRect();
-              const cardCenterX = rect.left + rect.width / 2;
-              const cardCenterY = rect.top + rect.height / 2;
-              if (Animations && Animations.createCoinBurst) {
-                Animations.createCoinBurst(cardCenterX, cardCenterY);
-              }
-            }, 300);
-            pendingDisplayTimeouts.push(coinTimeoutId);
+      // Trigger coin burst when animation starts
+      if (shouldShowCoins) {
+        winnerCard.addEventListener('animationstart', () => {
+          const rect = winnerCard.getBoundingClientRect();
+          const cardCenterX = rect.left + rect.width / 2;
+          const cardCenterY = rect.top + rect.height / 2;
+          if (Animations && Animations.createCoinBurst) {
+            Animations.createCoinBurst(cardCenterX, cardCenterY);
           }
+        }, { once: true });
+      }
 
-          // Track completion
-          winnerCard.addEventListener('animationend', () => {
-            completedWinners++;
-            if (completedWinners === winners.length) {
-              resolve();
-            }
-          });
-        }, delay);
-        pendingDisplayTimeouts.push(timeoutId);
-      });
-    } else {
-      // ORIGINAL MODE: Add cards to DOM sequentially (grid adjusts as cards appear)
-      winners.forEach((winner, index) => {
-        const delay = index * (displayDuration * 1000);
-
-        const timeoutId = setTimeout(() => {
-          const winnerCard = createWinnerCard(winner, index);
-          // Apply the selected display effect
-          winnerCard.classList.add(displayEffect);
-          winnersGrid.appendChild(winnerCard);
-
-          // Trigger coin burst from card position after a short delay (only if coins are enabled)
-          if (shouldShowCoins) {
-            const coinTimeoutId = setTimeout(() => {
-              const rect = winnerCard.getBoundingClientRect();
-              const cardCenterX = rect.left + rect.width / 2;
-              const cardCenterY = rect.top + rect.height / 2;
-              if (Animations && Animations.createCoinBurst) {
-                Animations.createCoinBurst(cardCenterX, cardCenterY);
-              }
-            }, 300); // Delay to ensure card animation has started
-            pendingDisplayTimeouts.push(coinTimeoutId);
-          }
-
-          // Listen for animation end to track completion
-          winnerCard.addEventListener('animationend', () => {
-            completedWinners++;
-            if (completedWinners === winners.length) {
-              resolve();
-            }
-          });
-        }, delay);
-        pendingDisplayTimeouts.push(timeoutId);
-      });
-    }
+      // Track completion
+      winnerCard.addEventListener('animationend', () => {
+        completedWinners++;
+        if (completedWinners === winners.length) {
+          resolve();
+        }
+      }, { once: true });
+    });
   });
 }
 
@@ -780,7 +718,7 @@ function createWinnerCard(winner, index) {
   // Build card content safely
   const numberDiv = document.createElement('div');
   numberDiv.className = 'winner-number';
-  numberDiv.textContent = String(winner.position || index + 1);
+  numberDiv.textContent = String(winner.position);
   winnerCard.appendChild(numberDiv);
   
   if (info1) {

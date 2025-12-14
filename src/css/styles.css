@@ -657,25 +657,25 @@ body {
   }
 }
 
-/* Display Effect Classes */
+/* Display Effect Classes - use 'both' fill-mode to stay invisible during animation-delay */
 .winner-card.fade-in {
-  animation: fadeIn 0.6s ease-out forwards;
+  animation: fadeIn 0.6s ease-out both;
 }
 
 .winner-card.fly-in {
-  animation: flyIn 0.6s ease-out forwards;
+  animation: flyIn 0.6s ease-out both;
 }
 
 .winner-card.zoom-in {
-  animation: zoomIn 0.6s ease-out forwards;
+  animation: zoomIn 0.6s ease-out both;
 }
 
 .winner-card.slide-in {
-  animation: slideInUp 0.6s ease-out forwards;
+  animation: slideInUp 0.6s ease-out both;
 }
 
 .winner-card.bounce-in {
-  animation: bounceIn 0.8s ease-out forwards;
+  animation: bounceIn 0.8s ease-out both;
 }
 
 /* Stable Grid: Placeholder state for cards before reveal */

@@ -326,9 +326,8 @@ function loadSettingsToForm() {
   if (quickPrizeSelect && settings.selectedPrizeId) {
     quickPrizeSelect.value = settings.selectedPrizeId;
   }
-  if (quickWinnersCount && settings.winnersCount) {
-    quickWinnersCount.value = settings.winnersCount;
-  }
+  // winnersCount is now managed by Alpine store with persistence
+  // Don't overwrite - it would bypass the capped value
 
   // Load new selection settings
   const selectionMode = document.getElementById('selectionMode');
@@ -1353,8 +1352,8 @@ function setupQuickSetupAutoSave() {
         }
       }
       
-      // Update UI when winner count or prize changes
-      if (fieldId === 'quickWinnersCount' || fieldId === 'quickPrizeSelect') {
+      // Update UI when winner count changes (prize is handled by autoSaveQuickSetup)
+      if (fieldId === 'quickWinnersCount') {
         const updateUIHandler = async () => {
           if (UI && UI.updateSelectionInfo) {
             await UI.updateSelectionInfo();
