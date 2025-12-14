@@ -18,3 +18,7 @@ backend/**/*.map
 # Keep TypeScript files
 !backend/*.ts
 !backend/**/*.ts
+
+# SvelteKit build output
+svelte/build/
+svelte/.svelte-kit/
