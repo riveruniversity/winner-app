@@ -85,11 +85,11 @@ async function handleBigPlayClick() {
       return;
     }
     
-    // Get selected list IDs (now multiple)
-    const selectedCheckboxes = document.querySelectorAll('#quickListSelect .list-checkbox:checked');
-    const listIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-    const prizeId = document.getElementById('quickPrizeSelect').value;
-    const winnersCountInput = document.getElementById('quickWinnersCount').value;
+    // Get selected list IDs, prize, and winners count from Alpine store
+    const setupStore = Alpine.store('setup');
+    const listIds = setupStore.selectedListIds;
+    const prizeId = setupStore.selectedPrizeId;
+    const winnersCountInput = setupStore.winnersCount;
     const selectionMode = document.getElementById('selectionMode').value;
     const delayVisualType = document.getElementById('delayVisualType').value;
 
@@ -98,11 +98,8 @@ async function handleBigPlayClick() {
       return;
     }
 
-    // Get total available entries first
-    const selectedCheckboxesArray = Array.from(selectedCheckboxes);
-    const totalAvailable = selectedCheckboxesArray.reduce((sum, cb) => {
-      return sum + parseInt(cb.dataset.entryCount || 0);
-    }, 0);
+    // Get total available entries from Alpine store
+    const totalAvailable = setupStore.eligibleEntries;
 
     // Validate winner count
     const countValidation = Validation.validateWinnerCount(winnersCountInput, totalAvailable);
@@ -120,7 +117,7 @@ async function handleBigPlayClick() {
     
     // Get the selected prize first
     const prizes = batchResults.prizes || [];
-    const selectedPrize = prizes.find(p => p.prizeId === prizeId);
+    const selectedPrize = prizes.find(p => String(p.prizeId) === String(prizeId));
 
     if (!selectedPrize) {
       UI.showToast('Selected prize not found', 'error');
