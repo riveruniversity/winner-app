@@ -23,6 +23,7 @@
   "dependencies": {
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
+    "qr-scanner": "^1.4.2",
     "svelte-persisted-state": "^1.2.0"
   }
 }

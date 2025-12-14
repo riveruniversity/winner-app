@@ -18,6 +18,7 @@ class SettingsStore {
 	// General settings
 	private _preventDuplicates = persistedState('settings_preventDuplicates', false);
 	private _preventSamePrize = persistedState('settings_preventSamePrize', false);
+	private _skipExistingWinners = persistedState('settings_skipExistingWinners', false);
 	private _hideEntryCounts = persistedState('settings_hideEntryCounts', false);
 	private _enableDebugLogs = persistedState('settings_enableDebugLogs', false);
 	private _enableWebhook = persistedState('settings_enableWebhook', false);
@@ -75,6 +76,13 @@ class SettingsStore {
 	}
 	set preventSamePrize(v: boolean) {
 		this._preventSamePrize.current = v;
+	}
+
+	get skipExistingWinners() {
+		return this._skipExistingWinners.current;
+	}
+	set skipExistingWinners(v: boolean) {
+		this._skipExistingWinners.current = v;
 	}
 
 	get hideEntryCounts() {
@@ -275,6 +283,7 @@ class SettingsStore {
 		return {
 			preventDuplicates: this.preventDuplicates,
 			preventSamePrize: this.preventSamePrize,
+			skipExistingWinners: this.skipExistingWinners,
 			hideEntryCounts: this.hideEntryCounts,
 			enableDebugLogs: this.enableDebugLogs,
 			enableWebhook: this.enableWebhook,
@@ -307,6 +316,7 @@ class SettingsStore {
 	resetAll(): void {
 		this._preventDuplicates.reset();
 		this._preventSamePrize.reset();
+		this._skipExistingWinners.reset();
 		this._hideEntryCounts.reset();
 		this._enableDebugLogs.reset();
 		this._enableWebhook.reset();

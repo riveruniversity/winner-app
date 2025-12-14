@@ -2024,17 +2024,20 @@ body {
 }
 
 /* Sortable table headers */
-.sortable-header {
+.sortable-header,
+.sortable {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.15s ease-in-out;
 }
 
-.sortable-header:hover {
+.sortable-header:hover,
+.sortable:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-[data-theme="dark"] .sortable-header:hover {
+[data-theme="dark"] .sortable-header:hover,
+[data-theme="dark"] .sortable:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 

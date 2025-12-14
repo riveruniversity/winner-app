@@ -9,13 +9,20 @@
 	import PrizeCard from '$components/PrizeCard.svelte';
 	import ConfirmModal from '$components/ConfirmModal.svelte';
 	import SelectionView from '$components/SelectionView.svelte';
+	import ImportWizard from '$components/ImportWizard.svelte';
+	import FormModal from '$components/FormModal.svelte';
+	import WinnerFilters from '$components/WinnerFilters.svelte';
+	import HistoryFilters from '$components/HistoryFilters.svelte';
+	import { winnersFilterStore, historyFilterStore } from '$stores/filters.svelte';
 	import type { List, Prize } from '$types';
 
 	// Modal state
 	let deleteListModal: ConfirmModal;
 	let deletePrizeModal: ConfirmModal;
+	let importModal: FormModal;
 	let pendingDeleteList: List | null = $state(null);
 	let pendingDeletePrize: Prize | null = $state(null);
+	let showImportWizard = $state(false);
 
 	// Load data on mount
 	onMount(async () => {
@@ -167,40 +174,59 @@
 				{#if uiStore.currentTab === 'quicksetup'}
 					<QuickSetup />
 				{:else if uiStore.currentTab === 'lists'}
-					<div class="card">
-						<div class="card-header d-flex justify-content-between align-items-center">
-							<h5 class="card-title mb-0">
-								<i class="bi bi-list-ul me-2"></i>Lists
-							</h5>
-							<button class="btn btn-primary btn-sm">
-								<i class="bi bi-plus"></i> Add List
-							</button>
+					{#if showImportWizard}
+						<div class="card">
+							<div class="card-header d-flex justify-content-between align-items-center">
+								<h5 class="card-title mb-0">
+									<i class="bi bi-upload me-2"></i>Import List
+								</h5>
+								<button class="btn btn-outline-secondary btn-sm" onclick={() => (showImportWizard = false)}>
+									<i class="bi bi-x"></i> Cancel
+								</button>
+							</div>
+							<div class="card-body">
+								<ImportWizard
+									onComplete={() => (showImportWizard = false)}
+									onCancel={() => (showImportWizard = false)}
+								/>
+							</div>
 						</div>
-						<div class="card-body">
-							{#if dataStore.loading.lists}
-								<div class="text-center py-4">
-									<div class="spinner-border text-primary" role="status">
-										<span class="visually-hidden">Loading...</span>
-									</div>
-								</div>
-							{:else if dataStore.lists.length === 0}
-								<p class="text-muted text-center py-4">No lists yet. Upload a CSV to get started.</p>
-							{:else}
-								<div class="row g-3">
-									{#each dataStore.lists as list (list.listId)}
-										<div class="col-md-4 col-lg-3">
-											<ListCard
-												{list}
-												onView={handleViewList}
-												onEdit={handleEditList}
-												onDelete={handleDeleteList}
-											/>
+					{:else}
+						<div class="card">
+							<div class="card-header d-flex justify-content-between align-items-center">
+								<h5 class="card-title mb-0">
+									<i class="bi bi-list-ul me-2"></i>Lists
+								</h5>
+								<button class="btn btn-primary btn-sm" onclick={() => (showImportWizard = true)}>
+									<i class="bi bi-plus"></i> Import List
+								</button>
+							</div>
+							<div class="card-body">
+								{#if dataStore.loading.lists}
+									<div class="text-center py-4">
+										<div class="spinner-border text-primary" role="status">
+											<span class="visually-hidden">Loading...</span>
 										</div>
-									{/each}
-								</div>
-							{/if}
+									</div>
+								{:else if dataStore.lists.length === 0}
+									<p class="text-muted text-center py-4">No lists yet. Click "Import List" to upload a CSV.</p>
+								{:else}
+									<div class="row g-3">
+										{#each dataStore.lists as list (list.listId)}
+											<div class="col-md-4 col-lg-3">
+												<ListCard
+													{list}
+													onView={handleViewList}
+													onEdit={handleEditList}
+													onDelete={handleDeleteList}
+												/>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
 						</div>
-					</div>
+					{/if}
 				{:else if uiStore.currentTab === 'prizes'}
 					<div class="card">
 						<div class="card-header d-flex justify-content-between align-items-center">
@@ -238,7 +264,7 @@
 				{:else if uiStore.currentTab === 'winners'}
 					<div class="card">
 						<div class="card-header">
-							<h5 class="card-title">Winners</h5>
+							<h5 class="card-title mb-0"><i class="bi bi-people me-2"></i>Winners</h5>
 						</div>
 						<div class="card-body">
 							{#if dataStore.loading.winners}
@@ -250,19 +276,60 @@
 							{:else if dataStore.winners.length === 0}
 								<p class="text-muted text-center py-4">No winners yet. Run a selection to get started.</p>
 							{:else}
+								<WinnerFilters />
 								<div class="table-responsive">
-									<table class="table table-striped">
+									<table class="table table-striped table-hover">
 										<thead>
 											<tr>
-												<th>Name</th>
-												<th>Prize</th>
-												<th>List</th>
-												<th>Date</th>
-												<th>Status</th>
+												<th
+													class="sortable"
+													onclick={() => winnersFilterStore.toggleSort('name')}
+												>
+													Name
+													{#if winnersFilterStore.sortField === 'name'}
+														<i class="bi bi-caret-{winnersFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => winnersFilterStore.toggleSort('prize')}
+												>
+													Prize
+													{#if winnersFilterStore.sortField === 'prize'}
+														<i class="bi bi-caret-{winnersFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => winnersFilterStore.toggleSort('list')}
+												>
+													List
+													{#if winnersFilterStore.sortField === 'list'}
+														<i class="bi bi-caret-{winnersFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => winnersFilterStore.toggleSort('date')}
+												>
+													Date
+													{#if winnersFilterStore.sortField === 'date'}
+														<i class="bi bi-caret-{winnersFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => winnersFilterStore.toggleSort('pickup')}
+												>
+													Status
+													{#if winnersFilterStore.sortField === 'pickup'}
+														<i class="bi bi-caret-{winnersFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
 											</tr>
 										</thead>
 										<tbody>
-											{#each dataStore.winners as winner (winner.winnerId)}
+											{#each winnersFilterStore.filtered as winner (winner.winnerId)}
 												<tr>
 													<td>{winner.displayName}</td>
 													<td>{winner.prize}</td>
@@ -280,40 +347,79 @@
 										</tbody>
 									</table>
 								</div>
+								{#if winnersFilterStore.filtered.length === 0}
+									<p class="text-muted text-center py-3">No winners match the current filters.</p>
+								{/if}
 							{/if}
 						</div>
 					</div>
 				{:else if uiStore.currentTab === 'history'}
 					<div class="card">
 						<div class="card-header">
-							<h5 class="card-title">Selection History</h5>
+							<h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Selection History</h5>
 						</div>
 						<div class="card-body">
 							{#if dataStore.history.length === 0}
 								<p class="text-muted text-center py-4">No selection history yet.</p>
 							{:else}
+								<HistoryFilters />
 								<div class="table-responsive">
-									<table class="table table-striped">
+									<table class="table table-striped table-hover">
 										<thead>
 											<tr>
-												<th>Date</th>
-												<th>List</th>
-												<th>Prize</th>
-												<th>Winners</th>
+												<th
+													class="sortable"
+													onclick={() => historyFilterStore.toggleSort('date')}
+												>
+													Date
+													{#if historyFilterStore.sortField === 'date'}
+														<i class="bi bi-caret-{historyFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => historyFilterStore.toggleSort('list')}
+												>
+													List
+													{#if historyFilterStore.sortField === 'list'}
+														<i class="bi bi-caret-{historyFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => historyFilterStore.toggleSort('prize')}
+												>
+													Prize
+													{#if historyFilterStore.sortField === 'prize'}
+														<i class="bi bi-caret-{historyFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
+												<th
+													class="sortable"
+													onclick={() => historyFilterStore.toggleSort('count')}
+												>
+													Winners
+													{#if historyFilterStore.sortField === 'count'}
+														<i class="bi bi-caret-{historyFilterStore.sortDir === 'asc' ? 'up' : 'down'}-fill ms-1"></i>
+													{/if}
+												</th>
 											</tr>
 										</thead>
 										<tbody>
-											{#each dataStore.history as entry (entry.historyId)}
+											{#each historyFilterStore.filtered as entry (entry.historyId)}
 												<tr>
 													<td>{new Date(entry.timestamp).toLocaleString()}</td>
 													<td>{entry.listName}</td>
 													<td>{entry.prizeName}</td>
-													<td>{entry.winnersCount}</td>
+													<td><span class="badge bg-primary">{entry.winnersCount}</span></td>
 												</tr>
 											{/each}
 										</tbody>
 									</table>
 								</div>
+								{#if historyFilterStore.filtered.length === 0}
+									<p class="text-muted text-center py-3">No history entries match the current filters.</p>
+								{/if}
 							{/if}
 						</div>
 					</div>

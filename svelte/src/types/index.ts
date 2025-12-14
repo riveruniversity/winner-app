@@ -106,6 +106,7 @@ export interface Settings {
 	// General settings
 	preventDuplicates: boolean;
 	preventSamePrize: boolean;
+	skipExistingWinners: boolean;
 	hideEntryCounts: boolean;
 	enableDebugLogs: boolean;
 	enableWebhook: boolean;

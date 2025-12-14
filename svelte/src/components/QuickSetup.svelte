@@ -36,8 +36,9 @@
 		<div class="row g-3">
 			<!-- List Selection -->
 			<div class="col-md-5">
-				<label class="form-label fw-semibold">Select Lists</label>
-				<div class="list-selection-container">
+				<!-- svelte-ignore a11y_label_has_associated_control -->
+				<label class="form-label fw-semibold" id="lists-label">Select Lists</label>
+				<div class="list-selection-container" role="group" aria-labelledby="lists-label">
 					<div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
 						{#if dataStore.lists.length === 0}
 							<p class="text-muted mb-0">No lists uploaded yet</p>
@@ -84,8 +85,9 @@
 
 			<!-- Prize Selection -->
 			<div class="col-md-5">
-				<label class="form-label fw-semibold">Select Prize</label>
+				<label class="form-label fw-semibold" for="prize-select">Select Prize</label>
 				<select
+					id="prize-select"
 					class="form-select form-select-lg"
 					value={setupStore.selectedPrizeId}
 					onchange={handlePrizeChange}
@@ -101,8 +103,9 @@
 
 			<!-- Winners Count -->
 			<div class="col-md-2">
-				<label class="form-label fw-semibold">Number of Winners</label>
+				<label class="form-label fw-semibold" for="winners-count">Number of Winners</label>
 				<input
+					id="winners-count"
 					type="number"
 					class="form-control form-control-lg"
 					min="1"
@@ -141,8 +144,9 @@
 			</div>
 			<div class="card-body">
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Selection Mode</label>
+					<label class="form-label fw-semibold" for="selection-mode">Selection Mode</label>
 					<select
+						id="selection-mode"
 						class="form-select form-select-lg"
 						value={settingsStore.selectionMode}
 						onchange={(e) => (settingsStore.selectionMode = e.currentTarget.value as any)}
@@ -154,8 +158,9 @@
 				</div>
 
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Display Effect</label>
+					<label class="form-label fw-semibold" for="display-effect">Display Effect</label>
 					<select
+						id="display-effect"
 						class="form-select form-select-lg"
 						value={settingsStore.displayEffect}
 						onchange={(e) => (settingsStore.displayEffect = e.currentTarget.value as any)}
@@ -169,8 +174,9 @@
 				</div>
 
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Time Between Winners (seconds)</label>
+					<label class="form-label fw-semibold" for="time-between">Time Between Winners (seconds)</label>
 					<input
+						id="time-between"
 						type="number"
 						class="form-control form-control-lg"
 						min="0.1"
@@ -215,8 +221,9 @@
 			</div>
 			<div class="card-body">
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Delay Duration (seconds)</label>
+					<label class="form-label fw-semibold" for="delay-duration">Delay Duration (seconds)</label>
 					<input
+						id="delay-duration"
 						type="number"
 						class="form-control form-control-lg"
 						min="0"
@@ -229,8 +236,9 @@
 				</div>
 
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Delay Visual</label>
+					<label class="form-label fw-semibold" for="delay-visual">Delay Visual</label>
 					<select
+						id="delay-visual"
 						class="form-select form-select-lg"
 						value={settingsStore.delayVisualType}
 						onchange={(e) => (settingsStore.delayVisualType = e.currentTarget.value as any)}
@@ -266,8 +274,9 @@
 			</div>
 			<div class="card-body">
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Celebration Animation</label>
+					<label class="form-label fw-semibold" for="celebration-animation">Celebration Animation</label>
 					<select
+						id="celebration-animation"
 						class="form-select form-select-lg"
 						value={settingsStore.celebrationEffect}
 						onchange={(e) => (settingsStore.celebrationEffect = e.currentTarget.value as any)}
@@ -280,8 +289,9 @@
 				</div>
 
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Animation Duration (seconds)</label>
+					<label class="form-label fw-semibold" for="animation-duration">Animation Duration (seconds)</label>
 					<input
+						id="animation-duration"
 						type="number"
 						class="form-control form-control-lg"
 						min="1"
@@ -331,9 +341,10 @@
 			</div>
 			<div class="card-body">
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Sound During Delay</label>
+					<label class="form-label fw-semibold" for="sound-during-delay">Sound During Delay</label>
 					<div class="input-group">
 						<select
+							id="sound-during-delay"
 							class="form-select form-select-lg"
 							value={settingsStore.soundDuringDelay}
 							onchange={(e) => (settingsStore.soundDuringDelay = e.currentTarget.value as any)}
@@ -354,9 +365,10 @@
 				</div>
 
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Sound at End of Delay</label>
+					<label class="form-label fw-semibold" for="sound-end-delay">Sound at End of Delay</label>
 					<div class="input-group">
 						<select
+							id="sound-end-delay"
 							class="form-select form-select-lg"
 							value={settingsStore.soundEndOfDelay}
 							onchange={(e) => (settingsStore.soundEndOfDelay = e.currentTarget.value as any)}
@@ -377,9 +389,10 @@
 				</div>
 
 				<div class="mb-3">
-					<label class="form-label fw-semibold">Sound During Reveal</label>
+					<label class="form-label fw-semibold" for="sound-reveal">Sound During Reveal</label>
 					<div class="input-group">
 						<select
+							id="sound-reveal"
 							class="form-select form-select-lg"
 							value={settingsStore.soundDuringReveal}
 							onchange={(e) => (settingsStore.soundDuringReveal = e.currentTarget.value as any)}
