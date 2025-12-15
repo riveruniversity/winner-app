@@ -52,12 +52,12 @@
     "category": "Events"
   },
   {
-    "id": "christmas-fest-toys-bears",
-    "name": "🎄 River Bears",
-    "description": "Get attending Christmas Fest River Bears kids participants",
+    "id": "christmas-fest-toys-3-5",
+    "name": "🎄 Ages 3-5",
+    "description": "Get attending Christmas Fest participants ages 3-5",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Participant_ID_Table_Contact_ID_Table.Household_ID, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
-    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND (Event_Participants.Group_ID = 411 OR (Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -3, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -6, GETDATE())  ))",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -3, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -6, GETDATE())",
     "distinct": true,
     "fetchParentPhone": true,
     "params": {
@@ -80,12 +80,12 @@
     "category": "Events"
   },
   {
-    "id": "christmas-fest-toys-kids",
-    "name": "🎄 River Kids",
-    "description": "Get attending Christmas Fest kids participants",
+    "id": "christmas-fest-toys-6-8",
+    "name": "🎄 Ages 6-8",
+    "description": "Get attending Christmas Fest participants ages 6-8",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Participant_ID_Table_Contact_ID_Table.Household_ID, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
-    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND (Event_Participants.Group_ID = 412 OR (Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -6, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -13, GETDATE())  ))",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -6, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -9, GETDATE())",
     "distinct": true,
     "fetchParentPhone": true,
     "params": {
@@ -108,12 +108,40 @@
     "category": "Events"
   },
   {
-    "id": "christmas-fest-toys-youngsters",
-    "name": "🎄 River Youth",
-    "description": "Get attending Christmas Fest youngsters participants",
+    "id": "christmas-fest-toys-9-13",
+    "name": "🎄 Ages 9-13",
+    "description": "Get attending Christmas Fest participants ages 9-13",
     "table": "Event_Participants",
     "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Participant_ID_Table_Contact_ID_Table.Household_ID, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
-    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND ((Event_Participants.Group_ID = 485 AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -18, GETDATE())) OR (Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -13, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -18, GETDATE())))",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -9, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -14, GETDATE())",
+    "distinct": true,
+    "fetchParentPhone": true,
+    "params": {
+      "eventId": {
+        "type": "number",
+        "label": "Event ID(s)",
+        "required": true,
+        "value": "71510"
+      }
+    },
+    "metadata": {
+      "category": "Events",
+      "previewFields": [
+        "idCard",
+        "firstName",
+        "lastName",
+        "timeIn"
+      ]
+    },
+    "category": "Events"
+  },
+  {
+    "id": "christmas-fest-toys-14-17",
+    "name": "🎄 Ages 14-17",
+    "description": "Get attending Christmas Fest participants ages 14-17",
+    "table": "Event_Participants",
+    "select": "Participant_ID_Table_Contact_ID_Table.ID_Card, Time_In, Participant_ID_Table_Contact_ID_Table.Contact_ID, Participant_ID_Table_Contact_ID_Table.Nickname AS [First_Name], Participant_ID_Table_Contact_ID_Table.Last_Name, Participant_ID_Table_Contact_ID_Table.Date_of_Birth, Participant_ID_Table_Contact_ID_Table.Email_Address, Participant_ID_Table_Contact_ID_Table.Mobile_Phone, Participant_ID_Table_Contact_ID_Table.Household_ID, Group_Participant_ID_Table_Group_ID_Table.Group_Name ",
+    "filter": "Event_ID IN ({{eventId}}) AND Participation_Status_ID = 3 AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth <= DATEADD(YEAR, -14, GETDATE()) AND Participant_ID_Table_Contact_ID_Table.Date_of_Birth > DATEADD(YEAR, -18, GETDATE())",
     "distinct": true,
     "fetchParentPhone": true,
     "params": {

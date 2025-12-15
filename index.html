@@ -225,22 +225,22 @@
                               @click="prizeDropdownOpen = !prizeDropdownOpen"
                               @click.away="prizeDropdownOpen = false"
                               :class="{ 'border-primary': prizeDropdownOpen }">
-                        <template x-if="!$store.setup.selectedPrizeId">
+                        <template x-if="!$store.setup.selectedPrize">
                           <div class="d-flex justify-content-between align-items-center">
                             <span class="text-muted">Select Prize...</span>
                             <i class="bi bi-chevron-down"></i>
                           </div>
                         </template>
-                        <template x-if="$store.setup.selectedPrizeId && $store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)">
+                        <template x-if="$store.setup.selectedPrize">
                           <div class="d-flex w-100 align-items-center">
                             <div class="flex-grow-1 d-flex justify-content-between align-items-start">
                               <div class="me-2" style="min-width: 0;">
-                                <div class="fw-medium text-truncate" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.name"></div>
-                                <small class="text-muted d-block text-truncate" x-show="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.description" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.description?.split('\n')[0]?.substring(0, 50) + ($store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.description?.length > 50 ? '...' : '')"></small>
+                                <div class="fw-medium text-truncate" x-text="$store.setup.selectedPrize?.name"></div>
+                                <small class="text-muted d-block text-truncate" x-show="$store.setup.selectedPrize?.description" x-text="$store.setup.selectedPrize?.description?.split('\n')[0]?.substring(0, 50) + ($store.setup.selectedPrize?.description?.length > 50 ? '...' : '')"></small>
                               </div>
                               <div class="d-flex flex-column align-items-end flex-shrink-0">
-                                <span class="badge badge-selection" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.quantity + ' qty'"></span>
-                                <small class="badge badge-secondary-theme mt-1" x-show="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.winnersCount" x-text="$store.data.prizes.find(p => p.prizeId === $store.setup.selectedPrizeId)?.winnersCount + ' win'"></small>
+                                <span class="badge badge-selection" x-text="$store.setup.selectedPrize?.quantity + ' qty'"></span>
+                                <small class="badge badge-secondary-theme mt-1" x-show="$store.setup.selectedPrize?.winnersCount" x-text="$store.setup.selectedPrize?.winnersCount + ' win'"></small>
                               </div>
                             </div>
                             <i class="bi bi-chevron-down ms-2 flex-shrink-0"></i>
@@ -253,8 +253,8 @@
                         <template x-for="prize in $store.data.prizes" :key="prize.prizeId">
                           <a class="dropdown-item py-2 px-3"
                              href="#"
-                             :class="{ 'active': $store.setup.selectedPrizeId === prize.prizeId }"
-                             @click.prevent="$store.setup.selectedPrizeId = prize.prizeId; $store.setup.onPrizeChange(); prizeDropdownOpen = false">
+                             :class="{ 'active': $store.setup.isPrizeSelected(prize.prizeId) }"
+                             @click.prevent="$store.setup.selectPrize(prize.prizeId); prizeDropdownOpen = false">
                             <div class="d-flex justify-content-between align-items-start">
                               <div class="me-2" style="min-width: 0;">
                                 <div class="fw-medium text-truncate" x-text="prize.name"></div>
@@ -956,12 +956,12 @@
               <template x-for="prize in $store.prizes.sorted" :key="prize.prizeId">
                 <div class="col-md-6 col-lg-4">
                   <div class="card h-100 prize-card"
-                       :class="{ 'border-selected': $store.setup.selectedPrizeId === prize.prizeId }">
+                       :class="{ 'border-selected': $store.setup.isPrizeSelected(prize.prizeId) }">
                     <div class="card-header">
                       <div class="d-flex justify-content-between align-items-center">
                         <h6 class="card-title mb-0 text-truncate" x-text="prize.name" style="max-width: 230px;"></h6>
                         <div>
-                          <span class="badge badge-selection me-1" x-show="$store.setup.selectedPrizeId === prize.prizeId">
+                          <span class="badge badge-selection me-1" x-show="$store.setup.isPrizeSelected(prize.prizeId)">
                             <i class="bi bi-check-circle-fill"></i>
                           </span>
                           <span class="badge bg-secondary" x-text="prize.quantity"></span>
@@ -977,10 +977,10 @@
                       <div class="mt-auto pt-2">
                         <div class="d-flex justify-content-between align-items-center">
                           <button class="btn btn-sm"
-                                  :class="$store.setup.selectedPrizeId === prize.prizeId ? 'btn-selection' : 'btn-outline-selection'"
-                                  @click="$store.setup.selectedPrizeId = prize.prizeId">
-                            <i :class="$store.setup.selectedPrizeId === prize.prizeId ? 'bi bi-check-circle-fill' : 'bi bi-check-circle'"></i>
-                            <span x-text="$store.setup.selectedPrizeId === prize.prizeId ? 'Selected' : 'Select'"></span>
+                                  :class="$store.setup.isPrizeSelected(prize.prizeId) ? 'btn-selection' : 'btn-outline-selection'"
+                                  @click="$store.setup.selectPrize(prize.prizeId)">
+                            <i :class="$store.setup.isPrizeSelected(prize.prizeId) ? 'bi bi-check-circle-fill' : 'bi bi-check-circle'"></i>
+                            <span x-text="$store.setup.isPrizeSelected(prize.prizeId) ? 'Selected' : 'Select'"></span>
                           </button>
                           <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-secondary" @click="Prizes.editPrizeModal(prize.prizeId)" title="Edit prize">
@@ -2431,7 +2431,7 @@
 
           // If preventSamePrize is enabled and a prize is selected, calculate exclusions
           if (settingsStore.preventSamePrize && this.selectedPrizeId) {
-            const prize = dataStore.prizes?.find(p => p.prizeId === this.selectedPrizeId);
+            const prize = this.selectedPrize;
             const prizeName = prize?.name;
 
             if (prizeName && dataStore.winners) {
@@ -2499,12 +2499,9 @@
 
         // Called when prize selection changes - updates winnersCount from prize default
         onPrizeChange() {
-          const dataStore = Alpine.store('data');
-          if (this.selectedPrizeId && dataStore?.prizes) {
-            const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
-            if (prize?.winnersCount) {
-              this.winnersCount = prize.winnersCount;
-            }
+          const prize = this.selectedPrize;
+          if (prize?.winnersCount) {
+            this.winnersCount = prize.winnersCount;
           }
           this.capWinnersCount();
         },
@@ -2524,26 +2521,23 @@
           return `${this.selectedListIds.length} Lists Selected`;
         },
 
-        get prizeDisplayText() {
+        get selectedPrize() {
           const dataStore = Alpine.store('data');
-          if (!dataStore || !dataStore.prizes) return 'Not Selected';
+          if (!dataStore?.prizes || !this.selectedPrizeId) return null;
+          return dataStore.prizes.find(p => String(p.prizeId) === String(this.selectedPrizeId)) || null;
+        },
+
+        get prizeDisplayText() {
           if (!this.selectedPrizeId) return 'Not Selected';
-          const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
-          return prize?.name || 'Not Selected';
+          return this.selectedPrize?.name || 'Not Selected';
         },
 
         get selectedPrizeQuantity() {
-          const dataStore = Alpine.store('data');
-          if (!dataStore?.prizes || !this.selectedPrizeId) return null;
-          const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
-          return prize?.quantity ?? null;
+          return this.selectedPrize?.quantity ?? null;
         },
 
         get selectedPrizeDefaultWinners() {
-          const dataStore = Alpine.store('data');
-          if (!dataStore?.prizes || !this.selectedPrizeId) return null;
-          const prize = dataStore.prizes.find(p => p.prizeId === this.selectedPrizeId);
-          return prize?.winnersCount ?? null;
+          return this.selectedPrize?.winnersCount ?? null;
         },
 
         get entriesExceeded() {
@@ -2570,6 +2564,15 @@
 
         isListSelected(listId) {
           return this.selectedListIds.includes(listId);
+        },
+
+        isPrizeSelected(prizeId) {
+          return String(this.selectedPrizeId) === String(prizeId);
+        },
+
+        selectPrize(prizeId) {
+          this.selectedPrizeId = String(prizeId);
+          this.onPrizeChange();
         },
 
         toggleList(listId) {
